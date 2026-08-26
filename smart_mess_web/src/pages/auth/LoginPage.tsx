@@ -146,6 +146,49 @@ export const LoginPage: React.FC = () => {
     setResetLoading(true);
     setResetSuccessMessage(null);
 
+    // 🛡️ SECURITY CHECK: Verify email is registered in our student or manager database
+    let isEmailInDatabase = false;
+
+    // 1. Check local student roster & manager data
+    let studentsList = H4_STUDENTS_LIST;
+    const savedStudents = localStorage.getItem('SMART_MESS_H4_STUDENTS');
+    if (savedStudents) {
+      try {
+        studentsList = JSON.parse(savedStudents);
+      } catch (e) {}
+    }
+
+    const matchedStudent = studentsList.find((s) => s.email && s.email.toLowerCase() === emailToReset.toLowerCase());
+    if (matchedStudent) {
+      isEmailInDatabase = true;
+    }
+
+    // Check manager email
+    if (emailToReset.toLowerCase() === 'manager@smartmess.edu' || emailToReset.toLowerCase() === 'admin@smartmess.edu') {
+      isEmailInDatabase = true;
+    }
+
+    // 2. If not found in local memory, verify against Cloud Firestore directly
+    if (!isEmailInDatabase) {
+      try {
+        const { getDocs, collection, query, where } = await import('firebase/firestore/lite');
+        const { db } = await import('../../lib/firebase');
+        const q = query(collection(db, 'students'), where('email', '==', emailToReset.toLowerCase()));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          isEmailInDatabase = true;
+        }
+      } catch (checkErr) {
+        console.error('[SECURITY] Firestore lookup check:', checkErr);
+      }
+    }
+
+    if (!isEmailInDatabase) {
+      toast.error('❌ Access Denied: This email is not registered in the student roster. Please ask the Admin to link your email first.', { duration: 6000 });
+      setResetLoading(false);
+      return;
+    }
+
     try {
       // 1. Try sending password reset email directly
       try {
@@ -155,9 +198,9 @@ export const LoginPage: React.FC = () => {
         setResetLoading(false);
         return;
       } catch (err: any) {
-        // If user not found in Auth, automatically provision the Auth user and retry
+        // If verified user not yet in Auth, provision account securely and retry
         if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
-          console.log(`[AUTH] User ${emailToReset} not in Auth. Auto-provisioning account...`);
+          console.log(`[AUTH] Verified resident ${emailToReset} found in DB. Provisioning Auth account...`);
           const { initializeApp, getApps } = await import('firebase/app');
           const { getAuth, createUserWithEmailAndPassword } = await import('firebase/auth');
 
