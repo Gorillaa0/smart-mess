@@ -147,17 +147,58 @@ export const LoginPage: React.FC = () => {
     setResetSuccessMessage(null);
 
     try {
-      // Standard Firebase Auth password reset email
-      await sendPasswordResetEmail(auth, emailToReset);
-      setResetSuccessMessage(`A password reset link has been sent to ${emailToReset}. Please check your inbox (and spam/promotions folder) and click the link to reset your password.`);
-      toast.success('Password reset email sent via Firebase Auth!');
+      // 1. Try sending password reset email directly
+      try {
+        await sendPasswordResetEmail(auth, emailToReset);
+        setResetSuccessMessage(`A password reset link has been sent to ${emailToReset}. Please check your inbox (and Spam/Promotions folder).`);
+        toast.success(`Password reset email sent to ${emailToReset}!`);
+        setResetLoading(false);
+        return;
+      } catch (err: any) {
+        // If user not found in Auth, automatically provision the Auth user and retry
+        if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+          console.log(`[AUTH] User ${emailToReset} not in Auth. Auto-provisioning account...`);
+          const { initializeApp, getApps } = await import('firebase/app');
+          const { getAuth, createUserWithEmailAndPassword } = await import('firebase/auth');
+
+          const FIREBASE_CONFIG = {
+            apiKey: 'AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
+            authDomain: 'smart-mess-sih.firebaseapp.com',
+            projectId: 'smart-mess-sih',
+            storageBucket: 'smart-mess-sih.firebasestorage.app',
+            messagingSenderId: '190175767796',
+            appId: '1:190175767796:web:9d8da3ec9adbe2fd9882a1'
+          };
+
+          const existingApps = getApps();
+          const authApp = existingApps.find((a) => a.name === 'auth-provisioner') || initializeApp(FIREBASE_CONFIG, 'auth-provisioner');
+          const provAuth = getAuth(authApp);
+
+          const tempPass = 'Pass@' + Math.random().toString(36).slice(-8) + '1!';
+          try {
+            await createUserWithEmailAndPassword(provAuth, emailToReset, tempPass);
+            console.log(`[AUTH] Auto-created user for ${emailToReset}`);
+          } catch (createErr: any) {
+            if (createErr.code !== 'auth/email-already-in-use') {
+              throw createErr;
+            }
+          }
+
+          // Retry sending reset email
+          await sendPasswordResetEmail(auth, emailToReset);
+          setResetSuccessMessage(`A password reset link has been sent to ${emailToReset}. Please check your inbox (and Spam/Promotions folder).`);
+          toast.success(`Password reset email sent to ${emailToReset}!`);
+          setResetLoading(false);
+          return;
+        } else {
+          throw err;
+        }
+      }
     } catch (err: any) {
       console.error('Firebase password reset error:', err);
       let errorMsg = err.message || 'Failed to send password reset email';
-      if (err.code === 'auth/user-not-found') {
-        errorMsg = 'This email is not registered in Firebase Authentication. Please create the user account first in Firebase Console.';
-      } else if (err.code === 'auth/operation-not-allowed') {
-        errorMsg = 'Email/Password sign-in provider is not enabled in Firebase Console -> Authentication -> Sign-in method.';
+      if (err.code === 'auth/operation-not-allowed') {
+        errorMsg = 'Email/Password sign-in provider is not enabled in Firebase Console.';
       } else if (err.code === 'auth/invalid-email') {
         errorMsg = 'The email address is badly formatted.';
       } else if (err.code === 'auth/network-request-failed') {
