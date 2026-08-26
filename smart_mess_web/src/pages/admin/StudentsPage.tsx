@@ -264,52 +264,43 @@ export const StudentsPage: React.FC = () => {
     toast.success('Reset to official 112 H4 resident roster!');
   };
 
-  // ─── Firestore REST API helpers (bypasses SDK offline-persistence hang) ───
-  const FS_BASE = 'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/(default)/documents';
-
-  const toFsValue = (v: any): any => {
-    if (v === null || v === undefined) return { nullValue: null };
-    if (typeof v === 'boolean') return { booleanValue: v };
-    if (typeof v === 'number') return { doubleValue: v };
-    return { stringValue: String(v) };
-  };
-
-  const toFsDoc = (data: Record<string, any>) => ({
-    fields: Object.fromEntries(Object.entries(data).map(([k, val]) => [k, toFsValue(val)]))
-  });
-
-  const fsWrite = async (collection: string, docId: string, data: Record<string, any>) => {
-    const url = `${FS_BASE}/${collection}/${encodeURIComponent(docId)}`;
-    const res = await fetch(url, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(toFsDoc(data))
-    });
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`HTTP ${res.status}: ${errText}`);
-    }
-    return res.json();
-  };
-  // ──────────────────────────────────────────────────────────────────────────
+  const [isSyncingCloud, setIsSyncingCloud] = useState(false);
+  const [isTestingFirestore, setIsTestingFirestore] = useState(false);
 
   const handleTestFirestore = async () => {
     setIsTestingFirestore(true);
-    const toastId = toast.loading('Testing Firestore connection with 1 document...');
-    console.log('[TEST] Calling Firestore REST API...');
+    const toastId = toast.loading('Testing Firestore connection...');
+    console.log('[TEST] Using Firestore Lite SDK (no offline persistence)...');
     try {
-      await fsWrite('test_connection', 'ping', {
+      const { initializeApp, getApps, getApp } = await import('firebase/app');
+      const { getFirestore, doc, setDoc } = await import('firebase/firestore/lite');
+
+      const FIREBASE_CONFIG = {
+        apiKey: 'AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
+        authDomain: 'smart-mess-sih.firebaseapp.com',
+        projectId: 'smart-mess-sih',
+        storageBucket: 'smart-mess-sih.firebasestorage.app',
+        messagingSenderId: '190175767796',
+        appId: '1:190175767796:web:9d8da3ec9adbe2fd9882a1'
+      };
+
+      const existingApps = getApps();
+      const liteApp = existingApps.find(a => a.name === 'lite-app') || initializeApp(FIREBASE_CONFIG, 'lite-app');
+      const liteDb = getFirestore(liteApp, 'default');
+
+      await setDoc(doc(liteDb, 'test_connection', 'ping'), {
         status: 'connected',
         timestamp: new Date().toISOString(),
-        message: 'Smart Mess Firestore REST test OK'
+        message: 'Smart Mess Firestore Lite test ✅'
       });
-      console.log('[TEST] ✅ Success! Document written via REST API.');
+
+      console.log('[TEST] ✅ Firestore Lite write succeeded!');
       toast.dismiss(toastId);
       toast.success('✅ Firestore connected! Now click "Sync to Cloud Firestore".', { duration: 6000 });
     } catch (err: any) {
-      console.error('[TEST] ❌', err.message);
+      console.error('[TEST] ❌', err.code, err.message);
       toast.dismiss(toastId);
-      toast.error(`❌ Test Failed: ${err.message}`, { duration: 8000 });
+      toast.error(`❌ ${err.code || err.message}`, { duration: 8000 });
     } finally {
       setIsTestingFirestore(false);
     }
@@ -317,12 +308,31 @@ export const StudentsPage: React.FC = () => {
 
   const handleSyncToCloudFirestore = async () => {
     setIsSyncingCloud(true);
-    const toastId = toast.loading('Syncing students via Firestore REST API...');
-    console.log('[SYNC] Starting REST API sync for', students.length, 'students');
+    const toastId = toast.loading('Syncing via Firestore Lite...');
+    console.log('[SYNC] Starting Firestore Lite sync for', students.length, 'students');
     try {
+      const { initializeApp, getApps } = await import('firebase/app');
+      const { getFirestore, doc, setDoc, writeBatch } = await import('firebase/firestore/lite');
+
+      const FIREBASE_CONFIG = {
+        apiKey: 'AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
+        authDomain: 'smart-mess-sih.firebaseapp.com',
+        projectId: 'smart-mess-sih',
+        storageBucket: 'smart-mess-sih.firebasestorage.app',
+        messagingSenderId: '190175767796',
+        appId: '1:190175767796:web:9d8da3ec9adbe2fd9882a1'
+      };
+
+      const existingApps = getApps();
+      const liteApp = existingApps.find(a => a.name === 'lite-app') || initializeApp(FIREBASE_CONFIG, 'lite-app');
+      const liteDb = getFirestore(liteApp, 'default');
+
+      // Firestore Lite writeBatch — no offline queuing, direct HTTP, max 500 ops
+      let batch = writeBatch(liteDb);
       let count = 0;
+
       for (const s of students) {
-        await fsWrite('students', s.registrationNo, {
+        batch.set(doc(liteDb, 'students', s.registrationNo), {
           studentId: s.registrationNo,
           slNo: s.slNo,
           name: s.name,
@@ -341,27 +351,35 @@ export const StudentsPage: React.FC = () => {
           updatedAt: new Date().toISOString()
         });
         count++;
-        if (count % 10 === 0) {
+        if (count % 40 === 0) {
+          await batch.commit();
+          batch = writeBatch(liteDb);
           toast.loading(`Syncing... ${count}/${students.length} saved`, { id: toastId });
-          console.log(`[SYNC] ${count}/${students.length} written`);
+          console.log(`[SYNC] ${count}/${students.length} committed`);
         }
       }
 
-      await fsWrite('hostels', 'hostel_h4', { hostelId: 'hostel_h4', name: 'Hostel Number 4', capacity: 150, activeDiners: students.length });
-      await fsWrite('messes', 'mess_h4', { messId: 'mess_h4', name: 'Hostel Number 4 Central Mess', hostelId: 'hostel_h4', managerId: 'manager_dhaneshwar', capacity: 150 });
-      await fsWrite('managers', 'manager_dhaneshwar', { managerId: 'manager_dhaneshwar', name: 'Dhaneshwar Yadav', mobile: '6200432942', messId: 'mess_h4', role: 'manager', status: 'active' });
+      // Commit remaining
+      if (count % 40 !== 0) {
+        batch.set(doc(liteDb, 'hostels', 'hostel_h4'), { hostelId: 'hostel_h4', name: 'Hostel Number 4', capacity: 150 });
+        batch.set(doc(liteDb, 'messes', 'mess_h4'), { messId: 'mess_h4', name: 'Hostel Number 4 Central Mess', hostelId: 'hostel_h4', managerId: 'manager_dhaneshwar', capacity: 150 });
+        batch.set(doc(liteDb, 'managers', 'manager_dhaneshwar'), { managerId: 'manager_dhaneshwar', name: 'Dhaneshwar Yadav', mobile: '6200432942', messId: 'mess_h4', role: 'manager', status: 'active' });
+        await batch.commit();
+      }
 
-      console.log('[SYNC] ✅ All', count, 'students saved via REST API!');
+      console.log('[SYNC] ✅ All', count, 'students saved via Firestore Lite!');
       toast.dismiss(toastId);
       toast.success(`🎉 All ${count} students saved to Cloud Firestore!`, { duration: 6000 });
     } catch (err: any) {
-      console.error('[SYNC] ❌', err.message);
+      console.error('[SYNC] ❌', err.code, err.message);
       toast.dismiss(toastId);
-      toast.error(`Sync failed: ${err.message}`, { duration: 8000 });
+      toast.error(`Sync failed: ${err.code || err.message}`, { duration: 8000 });
     } finally {
       setIsSyncingCloud(false);
     }
   };
+
+
 
 
   return (

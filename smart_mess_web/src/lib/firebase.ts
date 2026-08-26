@@ -15,7 +15,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+export const db = getFirestore(app, 'default');
 export const functions = getFunctions(app);
 
 // Messaging may not be supported in all browsers
