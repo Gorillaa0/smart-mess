@@ -264,43 +264,52 @@ export const StudentsPage: React.FC = () => {
     toast.success('Reset to official 112 H4 resident roster!');
   };
 
-  const [isSyncingCloud, setIsSyncingCloud] = useState(false);
-  const [isTestingFirestore, setIsTestingFirestore] = useState(false);
+  // ─── Firestore REST API helpers (bypasses SDK offline-persistence hang) ───
+  const FS_BASE = 'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/(default)/documents';
+
+  const toFsValue = (v: any): any => {
+    if (v === null || v === undefined) return { nullValue: null };
+    if (typeof v === 'boolean') return { booleanValue: v };
+    if (typeof v === 'number') return { doubleValue: v };
+    return { stringValue: String(v) };
+  };
+
+  const toFsDoc = (data: Record<string, any>) => ({
+    fields: Object.fromEntries(Object.entries(data).map(([k, val]) => [k, toFsValue(val)]))
+  });
+
+  const fsWrite = async (collection: string, docId: string, data: Record<string, any>) => {
+    const url = `${FS_BASE}/${collection}/${encodeURIComponent(docId)}`;
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(toFsDoc(data))
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`HTTP ${res.status}: ${errText}`);
+    }
+    return res.json();
+  };
+  // ──────────────────────────────────────────────────────────────────────────
 
   const handleTestFirestore = async () => {
     setIsTestingFirestore(true);
-    const toastId = toast.loading('Testing Firestore connection with 1 student...');
-    console.log('[TEST] Writing 1 test document to Firestore...');
+    const toastId = toast.loading('Testing Firestore connection with 1 document...');
+    console.log('[TEST] Calling Firestore REST API...');
     try {
-      const { initializeApp, getApps } = await import('firebase/app');
-      const { getFirestore, doc, setDoc } = await import('firebase/firestore');
-
-      const FIREBASE_CONFIG = {
-        apiKey: 'AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
-        authDomain: 'smart-mess-sih.firebaseapp.com',
-        projectId: 'smart-mess-sih',
-        storageBucket: 'smart-mess-sih.firebasestorage.app',
-        messagingSenderId: '190175767796',
-        appId: '1:190175767796:web:9d8da3ec9adbe2fd9882a1'
-      };
-
-      const existingApps = getApps();
-      const syncApp = existingApps.find(a => a.name === 'sync-app') || initializeApp(FIREBASE_CONFIG, 'sync-app');
-      const syncDb = getFirestore(syncApp);
-
-      await setDoc(doc(syncDb, 'test_connection', 'ping'), {
+      await fsWrite('test_connection', 'ping', {
         status: 'connected',
         timestamp: new Date().toISOString(),
-        message: 'Smart Mess Firestore connection test ✅'
+        message: 'Smart Mess Firestore REST test OK'
       });
-
-      console.log('[TEST] ✅ Test document written successfully!');
+      console.log('[TEST] ✅ Success! Document written via REST API.');
       toast.dismiss(toastId);
-      toast.success('✅ Firestore connected! Test document saved. Now try full Sync.', { duration: 6000 });
+      toast.success('✅ Firestore connected! Now click "Sync to Cloud Firestore".', { duration: 6000 });
     } catch (err: any) {
-      console.error('[TEST] ❌ Error code:', err.code, '| Message:', err.message);
+      console.error('[TEST] ❌', err.message);
       toast.dismiss(toastId);
-      toast.error(`❌ Test Failed: ${err.code || err.message}`, { duration: 8000 });
+      toast.error(`❌ Test Failed: ${err.message}`, { duration: 8000 });
     } finally {
       setIsTestingFirestore(false);
     }
@@ -308,87 +317,52 @@ export const StudentsPage: React.FC = () => {
 
   const handleSyncToCloudFirestore = async () => {
     setIsSyncingCloud(true);
-    const toastId = toast.loading('Syncing 112 students to Cloud Database...');
-    console.log('[SYNC] Starting Firestore sync for', students.length, 'students');
-
+    const toastId = toast.loading('Syncing students via Firestore REST API...');
+    console.log('[SYNC] Starting REST API sync for', students.length, 'students');
     try {
-      // Use initializeApp directly with hardcoded config (bypass env var loading issues)
-      const { initializeApp, getApps } = await import('firebase/app');
-      const { getFirestore, doc, setDoc } = await import('firebase/firestore');
-
-      const FIREBASE_CONFIG = {
-        apiKey: 'AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
-        authDomain: 'smart-mess-sih.firebaseapp.com',
-        projectId: 'smart-mess-sih',
-        storageBucket: 'smart-mess-sih.firebasestorage.app',
-        messagingSenderId: '190175767796',
-        appId: '1:190175767796:web:9d8da3ec9adbe2fd9882a1'
-      };
-
-      // Reuse existing app or create a sync-specific one
-      const appName = 'sync-app';
-      const existingApps = getApps();
-      const syncApp = existingApps.find(a => a.name === appName) || initializeApp(FIREBASE_CONFIG, appName);
-      const syncDb = getFirestore(syncApp);
-
-      console.log('[SYNC] Firebase app initialized, writing to Firestore...');
-
-      // Write students one by one (no batch limit issues)
       let count = 0;
       for (const s of students) {
-        await setDoc(doc(syncDb, 'students', s.registrationNo), {
+        await fsWrite('students', s.registrationNo, {
           studentId: s.registrationNo,
           slNo: s.slNo,
           name: s.name,
           rollNo: s.rollNo,
-          mobile: s.mobile,
-          email: s.email || null,
+          mobile: s.mobile || '',
+          email: s.email || '',
           branch: s.branch,
           registrationNo: s.registrationNo,
-          semester: s.semester,
-          cgpa: s.cgpa,
-          hostel: s.hostel,
-          roomNo: s.roomNo,
+          semester: s.semester || '6th',
+          cgpa: s.cgpa || 0,
+          hostel: s.hostel || 'Hostel Number 4',
+          roomNo: s.roomNo || '',
           messId: 'mess_h4',
           status: 'active',
           role: 'student',
           updatedAt: new Date().toISOString()
-        }, { merge: true });
+        });
         count++;
         if (count % 10 === 0) {
-          console.log(`[SYNC] Written ${count}/${students.length} students`);
-          toast.loading(`Syncing... ${count}/${students.length} students saved`, { id: toastId });
+          toast.loading(`Syncing... ${count}/${students.length} saved`, { id: toastId });
+          console.log(`[SYNC] ${count}/${students.length} written`);
         }
       }
 
-      // Write hostel & mess
-      await setDoc(doc(syncDb, 'hostels', 'hostel_h4'), {
-        hostelId: 'hostel_h4', name: 'Hostel Number 4', capacity: 150, activeDiners: students.length
-      }, { merge: true });
+      await fsWrite('hostels', 'hostel_h4', { hostelId: 'hostel_h4', name: 'Hostel Number 4', capacity: 150, activeDiners: students.length });
+      await fsWrite('messes', 'mess_h4', { messId: 'mess_h4', name: 'Hostel Number 4 Central Mess', hostelId: 'hostel_h4', managerId: 'manager_dhaneshwar', capacity: 150 });
+      await fsWrite('managers', 'manager_dhaneshwar', { managerId: 'manager_dhaneshwar', name: 'Dhaneshwar Yadav', mobile: '6200432942', messId: 'mess_h4', role: 'manager', status: 'active' });
 
-      await setDoc(doc(syncDb, 'messes', 'mess_h4'), {
-        messId: 'mess_h4', name: 'Hostel Number 4 Central Mess',
-        hostelId: 'hostel_h4', managerId: 'manager_dhaneshwar',
-        capacity: 150, activeDiners: students.length
-      }, { merge: true });
-
-      await setDoc(doc(syncDb, 'managers', 'manager_dhaneshwar'), {
-        managerId: 'manager_dhaneshwar', uid: 'mgr_dhaneshwar_01',
-        name: 'Dhaneshwar Yadav', mobile: '6200432942',
-        messId: 'mess_h4', role: 'manager', status: 'active'
-      }, { merge: true });
-
-      console.log('[SYNC] ✅ All', students.length, 'students saved to Firestore!');
+      console.log('[SYNC] ✅ All', count, 'students saved via REST API!');
       toast.dismiss(toastId);
-      toast.success(`🎉 All ${students.length} students successfully saved to Cloud Firestore!`, { duration: 6000 });
+      toast.success(`🎉 All ${count} students saved to Cloud Firestore!`, { duration: 6000 });
     } catch (err: any) {
-      console.error('[SYNC] ❌ Error:', err.code, err.message);
+      console.error('[SYNC] ❌', err.message);
       toast.dismiss(toastId);
       toast.error(`Sync failed: ${err.message}`, { duration: 8000 });
     } finally {
       setIsSyncingCloud(false);
     }
   };
+
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
