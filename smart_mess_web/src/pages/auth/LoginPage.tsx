@@ -149,13 +149,22 @@ export const LoginPage: React.FC = () => {
     try {
       // Standard Firebase Auth password reset email
       await sendPasswordResetEmail(auth, emailToReset);
-      setResetSuccessMessage(`A password reset link has been sent to ${emailToReset}. Please check your inbox and click the link to reset your password.`);
-      toast.success('Password reset email sent!');
+      setResetSuccessMessage(`A password reset link has been sent to ${emailToReset}. Please check your inbox (and spam/promotions folder) and click the link to reset your password.`);
+      toast.success('Password reset email sent via Firebase Auth!');
     } catch (err: any) {
-      console.warn('Firebase password reset notification:', err);
-      // Clean fallback for demo / emulator instances
-      setResetSuccessMessage(`A password reset link has been sent to ${emailToReset}. Please check your inbox and click the link to reset your password.`);
-      toast.success('Password reset email sent!');
+      console.error('Firebase password reset error:', err);
+      let errorMsg = err.message || 'Failed to send password reset email';
+      if (err.code === 'auth/user-not-found') {
+        errorMsg = 'This email is not registered in Firebase Authentication. Please create the user account first in Firebase Console.';
+      } else if (err.code === 'auth/operation-not-allowed') {
+        errorMsg = 'Email/Password sign-in provider is not enabled in Firebase Console -> Authentication -> Sign-in method.';
+      } else if (err.code === 'auth/invalid-email') {
+        errorMsg = 'The email address is badly formatted.';
+      } else if (err.code === 'auth/network-request-failed') {
+        errorMsg = 'Network error: Check your internet connection.';
+      }
+      toast.error(errorMsg, { duration: 6000 });
+      setResetSuccessMessage(null);
     } finally {
       setResetLoading(false);
     }

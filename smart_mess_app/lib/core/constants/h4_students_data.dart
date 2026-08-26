@@ -79,7 +79,7 @@ class H4StudentDirectory {
     H4Student(slNo: 13, name: 'Shubham Kumar', rollNo: '231019', mobile: '9122082129', branch: 'Civil', registrationNo: '23101108079', semester: '6th', cgpa: 8.32, roomNo: '113', password: 'Pass@8079'),
     H4Student(slNo: 14, name: 'Harshit Kumar', rollNo: '23410', mobile: '9546212356', branch: 'ECE', registrationNo: '23104108008', semester: '6th', cgpa: 8.3, roomNo: '114', password: 'Pass@8008'),
     H4Student(slNo: 15, name: 'Gagan Kumar', rollNo: 'D241130', mobile: '7367063701', branch: 'Civil', registrationNo: '24101108917', semester: '6th', cgpa: 8.27, roomNo: '115', password: 'Pass@8917'),
-    H4Student(slNo: 16, name: 'Pawan Kumar', rollNo: '23534', mobile: '8092439899', branch: 'CSE', registrationNo: '23105108023', semester: '6th', cgpa: 8.26, roomNo: '116', password: 'Pass@8023'),
+    H4Student(slNo: 16, name: 'Pawan Kumar', rollNo: '23534', mobile: '8092439899', email: 'pawankr0745@gmail.com', branch: 'CSE', registrationNo: '23105108023', semester: '6th', cgpa: 8.26, roomNo: '116', password: 'Pass@8023'),
     H4Student(slNo: 17, name: 'Nitish Kumar', rollNo: '23442', mobile: '6299226484', branch: 'ECE', registrationNo: '23104108041', semester: '6th', cgpa: 8.25, roomNo: '117', password: 'Pass@8041'),
     H4Student(slNo: 18, name: 'Akash Ranjan', rollNo: '23535', mobile: '9798808038', branch: 'CSE', registrationNo: '23105108006', semester: '6th', cgpa: 8.22, roomNo: '118', password: 'Pass@8006'),
     H4Student(slNo: 19, name: 'Shubham Kumar', rollNo: '231044', mobile: '6201451179', branch: 'Civil', registrationNo: '23101108057', semester: '6th', cgpa: 8.19, roomNo: '119', password: 'Pass@8057'),
