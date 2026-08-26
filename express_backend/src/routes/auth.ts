@@ -1,4 +1,4 @@
-﻿import { Router, Response } from 'express';
+import { Router, Response } from 'express';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { verifyToken, requireRole, AuthRequest } from '../middleware/verifyToken';
@@ -77,6 +77,57 @@ router.post('/importStudentsCSV', verifyToken, requireRole('admin'), async (req:
   }
   await createAuditLog(req.user.uid, 'IMPORT_STUDENTS', 'batch', 'students', `Imported ${students.length} students`);
   res.json({ results });
+});
+
+// POST /auth/syncRoster - 1-Click Sync of 112 students to Firestore
+router.post('/syncRoster', async (req, res) => {
+  const { students } = req.body;
+  const list = Array.isArray(students) && students.length > 0 ? students : [];
+  if (list.length === 0) {
+    return res.status(400).json({ error: 'No students provided' });
+  }
+
+  const db = getFirestore();
+  let count = 0;
+  let batch = db.batch();
+
+  try {
+    for (const s of list) {
+      const ref = db.collection('students').doc(s.registrationNo || s.studentId);
+      batch.set(ref, {
+        studentId: s.registrationNo || s.studentId,
+        slNo: s.slNo,
+        name: s.name,
+        rollNo: s.rollNo,
+        mobile: s.mobile,
+        email: s.email || null,
+        branch: s.branch,
+        registrationNo: s.registrationNo || s.studentId,
+        semester: s.semester || '6th',
+        cgpa: s.cgpa || 8.0,
+        hostel: s.hostel || 'Hostel Number 4',
+        roomNo: s.roomNo,
+        messId: 'mess_h4',
+        status: 'active',
+        role: 'student',
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+
+      count++;
+      if (count % 40 === 0) {
+        await batch.commit();
+        batch = db.batch();
+      }
+    }
+
+    if (count % 40 !== 0) {
+      await batch.commit();
+    }
+
+    res.json({ success: true, count });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message, count });
+  }
 });
 
 // POST /auth/setUserStatus
