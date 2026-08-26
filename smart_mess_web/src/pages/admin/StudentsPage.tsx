@@ -269,88 +269,74 @@ export const StudentsPage: React.FC = () => {
   const handleSyncToCloudFirestore = async () => {
     setIsSyncingCloud(true);
     const toastId = toast.loading('Syncing 112 students to Cloud Database...');
-    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://smart-mess-backend-yh6q.onrender.com';
 
-    // 1. First attempt: Render Backend API (Server-side Firestore sync)
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const { doc, writeBatch } = await import('firebase/firestore');
+      const { db } = await import('../../lib/firebase');
 
-      const response = await fetch(`${BACKEND_URL}/auth/syncRoster`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ students }),
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
+      const batch = writeBatch(db);
 
-      if (response.ok) {
-        toast.dismiss(toastId);
-        toast.success(`🎉 All ${students.length} students synced to Cloud Firestore server!`, { duration: 5000 });
-        setIsSyncingCloud(false);
-        return;
+      // 1. Add Hostel & Mess
+      batch.set(doc(db, 'hostels', 'hostel_h4'), {
+        hostelId: 'hostel_h4',
+        name: 'Hostel Number 4',
+        capacity: 150,
+        activeDiners: students.length
+      }, { merge: true });
+
+      batch.set(doc(db, 'messes', 'mess_h4'), {
+        messId: 'mess_h4',
+        name: 'Hostel Number 4 Central Mess',
+        hostelId: 'hostel_h4',
+        managerId: 'manager_dhaneshwar',
+        capacity: 150,
+        activeDiners: students.length
+      }, { merge: true });
+
+      // 2. Add Manager
+      batch.set(doc(db, 'managers', 'manager_dhaneshwar'), {
+        managerId: 'manager_dhaneshwar',
+        uid: 'mgr_dhaneshwar_01',
+        name: 'Dhaneshwar Yadav',
+        mobile: '6200432942',
+        messId: 'mess_h4',
+        role: 'manager',
+        status: 'active'
+      }, { merge: true });
+
+      // 3. Add all 112 students
+      for (const s of students) {
+        const studentDocRef = doc(db, 'students', s.registrationNo);
+        batch.set(studentDocRef, {
+          studentId: s.registrationNo,
+          slNo: s.slNo,
+          name: s.name,
+          rollNo: s.rollNo,
+          mobile: s.mobile,
+          email: s.email || null,
+          branch: s.branch,
+          registrationNo: s.registrationNo,
+          semester: s.semester,
+          cgpa: s.cgpa,
+          hostel: s.hostel,
+          roomNo: s.roomNo,
+          messId: 'mess_h4',
+          status: 'active',
+          role: 'student',
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
       }
-    } catch (apiErr) {
-      console.warn('Backend sync timeout/error:', apiErr);
-    }
 
-    // 2. Second attempt: Direct Client-side Firestore with strict 3-second timeout race
-    try {
-      const syncWithTimeout = async () => {
-        const { doc, writeBatch } = await import('firebase/firestore');
-        const { db } = await import('../../lib/firebase');
-
-        let batch = writeBatch(db);
-        let count = 0;
-
-        for (const s of students) {
-          const studentDocRef = doc(db, 'students', s.registrationNo);
-          batch.set(studentDocRef, {
-            studentId: s.registrationNo,
-            slNo: s.slNo,
-            name: s.name,
-            rollNo: s.rollNo,
-            mobile: s.mobile,
-            email: s.email || null,
-            branch: s.branch,
-            registrationNo: s.registrationNo,
-            semester: s.semester,
-            cgpa: s.cgpa,
-            hostel: s.hostel,
-            roomNo: s.roomNo,
-            messId: 'mess_h4',
-            status: 'active',
-            role: 'student',
-            updatedAt: new Date().toISOString()
-          }, { merge: true });
-
-          count++;
-          if (count % 35 === 0) {
-            await batch.commit();
-            batch = writeBatch(db);
-          }
-        }
-
-        if (count % 35 !== 0) {
-          await batch.commit();
-        }
-        return true;
-      };
-
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Cloud Firestore connection timed out. Please ensure Firestore Database is created in Firebase Console.')), 3500)
-      );
-
-      await Promise.race([syncWithTimeout(), timeoutPromise]);
+      // Commit all 112 students + hostel + mess in 1 atomic write
+      await batch.commit();
 
       toast.dismiss(toastId);
-      toast.success(`🎉 All ${students.length} students successfully saved to Cloud Firestore!`, { duration: 5000 });
-    } catch (clientErr: any) {
+      toast.success(`🎉 All ${students.length} students successfully saved to Cloud Firestore!`, { duration: 6000 });
+    } catch (err: any) {
       toast.dismiss(toastId);
-      console.warn('Firestore sync note:', clientErr?.message);
-      toast.error('⚠️ Firestore database not created yet in Firebase Console! See instructions to enable in 1 click.', { duration: 7000 });
+      console.error('Firestore sync error:', err);
+      toast.error(`Sync error: ${err.message || 'Check connection or Firestore rules'}`, { duration: 6000 });
     } finally {
-      toast.dismiss(toastId);
       setIsSyncingCloud(false);
     }
   };
