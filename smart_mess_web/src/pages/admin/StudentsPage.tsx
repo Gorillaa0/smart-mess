@@ -215,6 +215,39 @@ export const StudentsPage: React.FC = () => {
 
     toast.success(`Updated credentials & email for ${editForm.name}!`);
     setEditingStudent(null);
+
+    // Auto-update in Cloud Firestore
+    (async () => {
+      try {
+        const { initializeApp, getApps } = await import('firebase/app');
+        const { getFirestore, doc, setDoc } = await import('firebase/firestore/lite');
+        const FIREBASE_CONFIG = {
+          apiKey: 'AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
+          authDomain: 'smart-mess-sih.firebaseapp.com',
+          projectId: 'smart-mess-sih',
+          storageBucket: 'smart-mess-sih.firebasestorage.app',
+          messagingSenderId: '190175767796',
+          appId: '1:190175767796:web:9d8da3ec9adbe2fd9882a1'
+        };
+        const existingApps = getApps();
+        const liteApp = existingApps.find(a => a.name === 'lite-app') || initializeApp(FIREBASE_CONFIG, 'lite-app');
+        const liteDb = getFirestore(liteApp, 'default');
+
+        await setDoc(doc(liteDb, 'students', editForm.registrationNo.trim()), {
+          studentId: editForm.registrationNo.trim(),
+          name: editForm.name.trim(),
+          rollNo: editForm.rollNo.trim(),
+          email: editForm.email.trim() || '',
+          mobile: editForm.mobile.trim(),
+          branch: editForm.branch,
+          roomNo: editForm.roomNo.trim(),
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+        console.log(`[FIRESTORE] Auto-updated student ${editForm.name} in Firestore`);
+      } catch (err: any) {
+        console.error('[FIRESTORE] Auto-update error:', err);
+      }
+    })();
   };
 
   const handleSaveNewStudent = () => {
@@ -256,6 +289,47 @@ export const StudentsPage: React.FC = () => {
       cgpa: '8.00',
       password: ''
     });
+
+    // Auto-save new student immediately to Cloud Firestore
+    (async () => {
+      try {
+        const { initializeApp, getApps } = await import('firebase/app');
+        const { getFirestore, doc, setDoc } = await import('firebase/firestore/lite');
+        const FIREBASE_CONFIG = {
+          apiKey: 'AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
+          authDomain: 'smart-mess-sih.firebaseapp.com',
+          projectId: 'smart-mess-sih',
+          storageBucket: 'smart-mess-sih.firebasestorage.app',
+          messagingSenderId: '190175767796',
+          appId: '1:190175767796:web:9d8da3ec9adbe2fd9882a1'
+        };
+        const existingApps = getApps();
+        const liteApp = existingApps.find(a => a.name === 'lite-app') || initializeApp(FIREBASE_CONFIG, 'lite-app');
+        const liteDb = getFirestore(liteApp, 'default');
+
+        await setDoc(doc(liteDb, 'students', reg), {
+          studentId: reg,
+          slNo: newStudent.slNo,
+          name: newStudent.name,
+          rollNo: newStudent.rollNo,
+          mobile: newStudent.mobile,
+          email: newStudent.email || '',
+          branch: newStudent.branch,
+          registrationNo: reg,
+          semester: newStudent.semester,
+          cgpa: newStudent.cgpa,
+          hostel: newStudent.hostel,
+          roomNo: newStudent.roomNo,
+          messId: 'mess_h4',
+          status: 'active',
+          role: 'student',
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+        console.log(`[FIRESTORE] Auto-saved new student ${newStudent.name} (${reg}) to Cloud Firestore`);
+      } catch (err: any) {
+        console.error('[FIRESTORE] Auto-save error:', err);
+      }
+    })();
   };
 
   const handleResetToDefaultRoster = () => {
@@ -265,46 +339,6 @@ export const StudentsPage: React.FC = () => {
   };
 
   const [isSyncingCloud, setIsSyncingCloud] = useState(false);
-  const [isTestingFirestore, setIsTestingFirestore] = useState(false);
-
-  const handleTestFirestore = async () => {
-    setIsTestingFirestore(true);
-    const toastId = toast.loading('Testing Firestore connection...');
-    console.log('[TEST] Using Firestore Lite SDK (no offline persistence)...');
-    try {
-      const { initializeApp, getApps, getApp } = await import('firebase/app');
-      const { getFirestore, doc, setDoc } = await import('firebase/firestore/lite');
-
-      const FIREBASE_CONFIG = {
-        apiKey: 'AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
-        authDomain: 'smart-mess-sih.firebaseapp.com',
-        projectId: 'smart-mess-sih',
-        storageBucket: 'smart-mess-sih.firebasestorage.app',
-        messagingSenderId: '190175767796',
-        appId: '1:190175767796:web:9d8da3ec9adbe2fd9882a1'
-      };
-
-      const existingApps = getApps();
-      const liteApp = existingApps.find(a => a.name === 'lite-app') || initializeApp(FIREBASE_CONFIG, 'lite-app');
-      const liteDb = getFirestore(liteApp, 'default');
-
-      await setDoc(doc(liteDb, 'test_connection', 'ping'), {
-        status: 'connected',
-        timestamp: new Date().toISOString(),
-        message: 'Smart Mess Firestore Lite test ✅'
-      });
-
-      console.log('[TEST] ✅ Firestore Lite write succeeded!');
-      toast.dismiss(toastId);
-      toast.success('✅ Firestore connected! Now click "Sync to Cloud Firestore".', { duration: 6000 });
-    } catch (err: any) {
-      console.error('[TEST] ❌', err.code, err.message);
-      toast.dismiss(toastId);
-      toast.error(`❌ ${err.code || err.message}`, { duration: 8000 });
-    } finally {
-      setIsTestingFirestore(false);
-    }
-  };
 
   const handleSyncToCloudFirestore = async () => {
     setIsSyncingCloud(true);
@@ -399,17 +433,6 @@ export const StudentsPage: React.FC = () => {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Test Firestore Connection */}
-          <button
-            onClick={handleTestFirestore}
-            disabled={isTestingFirestore || isSyncingCloud}
-            className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-3.5 py-2 rounded-xl font-bold text-xs shadow-md transition-all disabled:opacity-50"
-            title="Test Firestore connection with 1 document"
-          >
-            <Database className="w-4 h-4" />
-            <span>{isTestingFirestore ? 'Testing...' : 'Test DB (1 doc)'}</span>
-          </button>
-
           {/* 1-Click Cloud Sync */}
           <button
             onClick={handleSyncToCloudFirestore}
