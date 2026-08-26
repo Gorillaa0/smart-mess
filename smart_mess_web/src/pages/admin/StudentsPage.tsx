@@ -268,13 +268,13 @@ export const StudentsPage: React.FC = () => {
 
   const handleSyncToCloudFirestore = async () => {
     setIsSyncingCloud(true);
-    const toastId = toast.loading('Connecting to Cloud Server & Syncing 112 students...');
+    const toastId = toast.loading('Syncing 112 students to Cloud Database...');
     const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://smart-mess-backend-yh6q.onrender.com';
 
+    // 1. First attempt: Render Backend API (Server-side Firestore sync)
     try {
-      // 1. Try Backend API Cloud Sync first (Fast & Server-side)
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
 
       const response = await fetch(`${BACKEND_URL}/auth/syncRoster`, {
         method: 'POST',
@@ -285,59 +285,72 @@ export const StudentsPage: React.FC = () => {
       clearTimeout(timeoutId);
 
       if (response.ok) {
-        toast.success(`🎉 All ${students.length} students successfully saved to Cloud Firestore server!`, { id: toastId, duration: 5000 });
+        toast.dismiss(toastId);
+        toast.success(`🎉 All ${students.length} students synced to Cloud Firestore server!`, { duration: 5000 });
         setIsSyncingCloud(false);
         return;
       }
     } catch (apiErr) {
-      console.warn('Backend sync fallback to direct Firestore:', apiErr);
+      console.warn('Backend sync timeout/error:', apiErr);
     }
 
-    // 2. Direct Firestore fallback
+    // 2. Second attempt: Direct Client-side Firestore with strict 3-second timeout race
     try {
-      const { doc, writeBatch } = await import('firebase/firestore');
-      const { db } = await import('../../lib/firebase');
+      const syncWithTimeout = async () => {
+        const { doc, writeBatch } = await import('firebase/firestore');
+        const { db } = await import('../../lib/firebase');
 
-      let batch = writeBatch(db);
-      let count = 0;
+        let batch = writeBatch(db);
+        let count = 0;
 
-      for (const s of students) {
-        const studentDocRef = doc(db, 'students', s.registrationNo);
-        batch.set(studentDocRef, {
-          studentId: s.registrationNo,
-          slNo: s.slNo,
-          name: s.name,
-          rollNo: s.rollNo,
-          mobile: s.mobile,
-          email: s.email || null,
-          branch: s.branch,
-          registrationNo: s.registrationNo,
-          semester: s.semester,
-          cgpa: s.cgpa,
-          hostel: s.hostel,
-          roomNo: s.roomNo,
-          messId: 'mess_h4',
-          status: 'active',
-          role: 'student',
-          updatedAt: new Date().toISOString()
-        }, { merge: true });
+        for (const s of students) {
+          const studentDocRef = doc(db, 'students', s.registrationNo);
+          batch.set(studentDocRef, {
+            studentId: s.registrationNo,
+            slNo: s.slNo,
+            name: s.name,
+            rollNo: s.rollNo,
+            mobile: s.mobile,
+            email: s.email || null,
+            branch: s.branch,
+            registrationNo: s.registrationNo,
+            semester: s.semester,
+            cgpa: s.cgpa,
+            hostel: s.hostel,
+            roomNo: s.roomNo,
+            messId: 'mess_h4',
+            status: 'active',
+            role: 'student',
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
 
-        count++;
-        if (count % 35 === 0) {
-          await batch.commit();
-          batch = writeBatch(db);
+          count++;
+          if (count % 35 === 0) {
+            await batch.commit();
+            batch = writeBatch(db);
+          }
         }
-      }
 
-      if (count % 35 !== 0) {
-        await batch.commit();
-      }
+        if (count % 35 !== 0) {
+          await batch.commit();
+        }
+        return true;
+      };
 
-      toast.success(`🎉 All ${students.length} students successfully saved to Cloud Firestore!`, { id: toastId, duration: 5000 });
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Cloud Firestore connection timed out. Please ensure Firestore Database is created in Firebase Console.')), 3500)
+      );
+
+      await Promise.race([syncWithTimeout(), timeoutPromise]);
+
+      toast.dismiss(toastId);
+      toast.success(`🎉 All ${students.length} students successfully saved to Cloud Firestore!`, { duration: 5000 });
     } catch (clientErr: any) {
-      console.warn('Sync completed with local persistence guarantee:', clientErr);
-      toast.success(`✅ 112 Students saved & ready across all dashboards!`, { id: toastId, duration: 4000 });
+      toast.dismiss(toastId);
+      console.warn('Firestore sync note:', clientErr?.message);
+      toast.error('⚠️ Firestore database not created yet in Firebase Console! See instructions to enable in 1 click.', { duration: 7000 });
     } finally {
+      toast.dismiss(toastId);
       setIsSyncingCloud(false);
     }
   };
