@@ -133,23 +133,27 @@ export const LoginPage: React.FC = () => {
         navigate('/dashboard');
         return;
       } catch (firebaseErr: any) {
-        console.log('[AUTH] Firebase Auth direct login check:', firebaseErr.code);
-        // If wrong password in Firebase Auth, check if they used their initial default password
-        if (student && (cleanPass === student.password || cleanPass === `Pass@${student.registrationNo.slice(-4)}` || cleanPass === '12345678')) {
-          toast.success(`Welcome ${student.name} (Room ${student.roomNo})`);
-          setUser({
-            uid: `stu_${student.registrationNo}`,
-            email: `${student.registrationNo}@smartmess.edu`,
-            name: student.name,
-            role: 'student' as any
-          });
-          setLoading(false);
-          navigate('/dashboard');
-          return;
-        } else if (firebaseErr.code === 'auth/wrong-password' || firebaseErr.code === 'auth/invalid-credential') {
-          toast.error(`Incorrect password. If you recently reset your password, please use your new password.`);
+        console.log('[AUTH] Firebase Auth login attempt result:', firebaseErr.code);
+        // If the account exists in Firebase Auth but password was wrong -> REJECT (old password is invalid!)
+        if (firebaseErr.code === 'auth/wrong-password' || firebaseErr.code === 'auth/invalid-credential') {
+          toast.error(`❌ Incorrect password for ${student ? student.name : cleanId}. Please enter your new updated password.`);
           setLoading(false);
           return;
+        }
+        // If user is not yet created in Firebase Auth -> allow initial default password
+        if (firebaseErr.code === 'auth/user-not-found') {
+          if (student && (cleanPass === student.password || cleanPass === `Pass@${student.registrationNo.slice(-4)}` || cleanPass === '12345678')) {
+            toast.success(`Welcome ${student.name} (Room ${student.roomNo})`);
+            setUser({
+              uid: `stu_${student.registrationNo}`,
+              email: `${student.registrationNo}@smartmess.edu`,
+              name: student.name,
+              role: 'student' as any
+            });
+            setLoading(false);
+            navigate('/dashboard');
+            return;
+          }
         }
       }
     }
