@@ -1,6 +1,6 @@
 ﻿import * as admin from 'firebase-admin';
 import { readFileSync, existsSync } from 'fs';
-import { H4_STUDENTS_LIST } from '../../smart_mess_web/src/data/h4StudentsData';
+import { H4_STUDENTS_LIST } from './data/h4StudentsData';
 
 const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || './service_account.json';
 if (existsSync(serviceAccountPath)) {
@@ -101,3 +101,4 @@ async function seed() {
 seed().catch(err => {
   console.log('Seeding note:', err.message);
 });
+
