@@ -4,7 +4,7 @@ import { useAuthStore } from '../../store/authStore';
 import { Mail, Lock, Eye, EyeOff, Shield, ArrowRight, Utensils, User, KeyRound, X, CheckCircle2 } from 'lucide-react';
 import { H4_STUDENTS_LIST } from '../../data/h4StudentsData';
 import { auth } from '../../lib/firebase';
-import { sendPasswordResetEmail } from 'firebase/auth';
+import { sendPasswordResetEmail, signInWithEmailAndPassword } from 'firebase/auth';
 import toast from 'react-hot-toast';
 
 export const LoginPage: React.FC = () => {
@@ -108,8 +108,51 @@ export const LoginPage: React.FC = () => {
       (s) =>
         s.registrationNo.toLowerCase() === cleanId ||
         s.rollNo.toLowerCase() === cleanId ||
-        s.mobile === cleanId
+        s.mobile === cleanId ||
+        (s.email && s.email.toLowerCase() === cleanId)
     );
+
+    // If identifier is an email or student has an email: check Firebase Auth first
+    const targetEmail = student?.email || (cleanId.includes('@') ? cleanId : null);
+    if (targetEmail) {
+      try {
+        const userCredential = await signInWithEmailAndPassword(auth, targetEmail, cleanPass);
+        const loggedStudent = student || {
+          name: userCredential.user.displayName || targetEmail.split('@')[0],
+          registrationNo: userCredential.user.uid.slice(0, 11),
+          roomNo: '101'
+        };
+        toast.success(`Welcome ${loggedStudent.name}!`);
+        setUser({
+          uid: userCredential.user.uid,
+          email: targetEmail,
+          name: loggedStudent.name,
+          role: 'student' as any
+        });
+        setLoading(false);
+        navigate('/dashboard');
+        return;
+      } catch (firebaseErr: any) {
+        console.log('[AUTH] Firebase Auth direct login check:', firebaseErr.code);
+        // If wrong password in Firebase Auth, check if they used their initial default password
+        if (student && (cleanPass === student.password || cleanPass === `Pass@${student.registrationNo.slice(-4)}` || cleanPass === '12345678')) {
+          toast.success(`Welcome ${student.name} (Room ${student.roomNo})`);
+          setUser({
+            uid: `stu_${student.registrationNo}`,
+            email: `${student.registrationNo}@smartmess.edu`,
+            name: student.name,
+            role: 'student' as any
+          });
+          setLoading(false);
+          navigate('/dashboard');
+          return;
+        } else if (firebaseErr.code === 'auth/wrong-password' || firebaseErr.code === 'auth/invalid-credential') {
+          toast.error(`Incorrect password. If you recently reset your password, please use your new password.`);
+          setLoading(false);
+          return;
+        }
+      }
+    }
 
     if (student) {
       if (cleanPass === student.password || cleanPass === `Pass@${student.registrationNo.slice(-4)}` || cleanPass === '12345678') {
