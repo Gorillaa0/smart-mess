@@ -140,9 +140,9 @@ export const LoginPage: React.FC = () => {
           setLoading(false);
           return;
         }
-        // If user is not yet created in Firebase Auth -> allow initial default password
+        // If user is not yet created in Firebase Auth -> allow initial password from roster
         if (firebaseErr.code === 'auth/user-not-found') {
-          if (student && (cleanPass === student.password || cleanPass === `Pass@${student.registrationNo.slice(-4)}` || cleanPass === '12345678')) {
+          if (student && cleanPass === student.password) {
             toast.success(`Welcome ${student.name} (Room ${student.roomNo})`);
             setUser({
               uid: `stu_${student.registrationNo}`,
@@ -159,7 +159,7 @@ export const LoginPage: React.FC = () => {
     }
 
     if (student) {
-      if (cleanPass === student.password || cleanPass === `Pass@${student.registrationNo.slice(-4)}` || cleanPass === '12345678') {
+      if (cleanPass === student.password) {
         toast.success(`Welcome ${student.name} (Room ${student.roomNo})`);
         setUser({
           uid: `stu_${student.registrationNo}`,

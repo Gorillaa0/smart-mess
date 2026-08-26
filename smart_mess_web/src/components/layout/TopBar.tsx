@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { H4_STUDENTS_LIST } from '../../data/h4StudentsData';
 import { useAuthStore } from '../../store/authStore';
 import { Bell, KeyRound, Lock, Eye, EyeOff, X, Check, ShieldCheck, User } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
@@ -75,7 +76,7 @@ export const TopBar: React.FC = () => {
         } catch (err) {}
       }
 
-      if (currentPassword.trim() !== currentData.password && currentPassword.trim() !== 'Pass@2942' && currentPassword.trim() !== '12345678') {
+      if (currentPassword.trim() !== currentData.password) {
         toast.error('Current password is incorrect');
         return;
       }
@@ -86,7 +87,78 @@ export const TopBar: React.FC = () => {
       };
 
       localStorage.setItem('SMART_MESS_MANAGER_DATA', JSON.stringify(updated));
-      toast.success(`Password changed successfully for ${updated.name}! Reflected in Super Admin dashboard.`);
+      toast.success(`Password changed successfully for ${updated.name}!`);
+      setIsPasswordModalOpen(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } else if (user?.role === 'student') {
+      // Student Password Change
+      let studentsList = H4_STUDENTS_LIST;
+      const saved = localStorage.getItem('SMART_MESS_H4_STUDENTS');
+      if (saved) {
+        try {
+          studentsList = JSON.parse(saved);
+        } catch (e) {}
+      }
+
+      const cleanUid = user.uid.replace('stu_', '');
+      const studentIdx = studentsList.findIndex(
+        (s) =>
+          s.registrationNo === cleanUid ||
+          s.rollNo === cleanUid ||
+          (user.email && s.email && s.email.toLowerCase() === user.email.toLowerCase()) ||
+          s.name === user.name
+      );
+
+      if (studentIdx === -1) {
+        toast.error('Student profile not found');
+        return;
+      }
+
+      const currentStudent = studentsList[studentIdx];
+      if (currentPassword.trim() !== currentStudent.password) {
+        toast.error('Current password is incorrect');
+        return;
+      }
+
+      // Update student's password
+      const updatedList = [...studentsList];
+      updatedList[studentIdx] = {
+        ...currentStudent,
+        password: newPassword.trim()
+      };
+
+      localStorage.setItem('SMART_MESS_H4_STUDENTS', JSON.stringify(updatedList));
+
+      // Also sync to Cloud Firestore
+      (async () => {
+        try {
+          const { initializeApp, getApps } = await import('firebase/app');
+          const { getFirestore, doc, setDoc } = await import('firebase/firestore/lite');
+          const FIREBASE_CONFIG = {
+            apiKey: 'AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
+            authDomain: 'smart-mess-sih.firebaseapp.com',
+            projectId: 'smart-mess-sih',
+            storageBucket: 'smart-mess-sih.firebasestorage.app',
+            messagingSenderId: '190175767796',
+            appId: '1:190175767796:web:9d8da3ec9adbe2fd9882a1'
+          };
+          const existingApps = getApps();
+          const liteApp = existingApps.find((a) => a.name === 'lite-app') || initializeApp(FIREBASE_CONFIG, 'lite-app');
+          const liteDb = getFirestore(liteApp, 'default');
+
+          await setDoc(
+            doc(liteDb, 'students', currentStudent.registrationNo),
+            { password: newPassword.trim(), updatedAt: new Date().toISOString() },
+            { merge: true }
+          );
+        } catch (fsErr) {
+          console.error('[FIRESTORE] Student password sync:', fsErr);
+        }
+      })();
+
+      toast.success(`Password updated successfully for ${currentStudent.name}!`);
       setIsPasswordModalOpen(false);
       setCurrentPassword('');
       setNewPassword('');
@@ -94,6 +166,9 @@ export const TopBar: React.FC = () => {
     } else {
       toast.success('Super Admin password updated successfully!');
       setIsPasswordModalOpen(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
     }
   };
 
