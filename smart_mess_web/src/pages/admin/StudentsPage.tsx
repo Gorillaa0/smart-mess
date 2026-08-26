@@ -265,6 +265,46 @@ export const StudentsPage: React.FC = () => {
   };
 
   const [isSyncingCloud, setIsSyncingCloud] = useState(false);
+  const [isTestingFirestore, setIsTestingFirestore] = useState(false);
+
+  const handleTestFirestore = async () => {
+    setIsTestingFirestore(true);
+    const toastId = toast.loading('Testing Firestore connection with 1 student...');
+    console.log('[TEST] Writing 1 test document to Firestore...');
+    try {
+      const { initializeApp, getApps } = await import('firebase/app');
+      const { getFirestore, doc, setDoc } = await import('firebase/firestore');
+
+      const FIREBASE_CONFIG = {
+        apiKey: 'AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
+        authDomain: 'smart-mess-sih.firebaseapp.com',
+        projectId: 'smart-mess-sih',
+        storageBucket: 'smart-mess-sih.firebasestorage.app',
+        messagingSenderId: '190175767796',
+        appId: '1:190175767796:web:9d8da3ec9adbe2fd9882a1'
+      };
+
+      const existingApps = getApps();
+      const syncApp = existingApps.find(a => a.name === 'sync-app') || initializeApp(FIREBASE_CONFIG, 'sync-app');
+      const syncDb = getFirestore(syncApp);
+
+      await setDoc(doc(syncDb, 'test_connection', 'ping'), {
+        status: 'connected',
+        timestamp: new Date().toISOString(),
+        message: 'Smart Mess Firestore connection test ✅'
+      });
+
+      console.log('[TEST] ✅ Test document written successfully!');
+      toast.dismiss(toastId);
+      toast.success('✅ Firestore connected! Test document saved. Now try full Sync.', { duration: 6000 });
+    } catch (err: any) {
+      console.error('[TEST] ❌ Error code:', err.code, '| Message:', err.message);
+      toast.dismiss(toastId);
+      toast.error(`❌ Test Failed: ${err.code || err.message}`, { duration: 8000 });
+    } finally {
+      setIsTestingFirestore(false);
+    }
+  };
 
   const handleSyncToCloudFirestore = async () => {
     setIsSyncingCloud(true);
@@ -367,6 +407,17 @@ export const StudentsPage: React.FC = () => {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Test Firestore Connection */}
+          <button
+            onClick={handleTestFirestore}
+            disabled={isTestingFirestore || isSyncingCloud}
+            className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-3.5 py-2 rounded-xl font-bold text-xs shadow-md transition-all disabled:opacity-50"
+            title="Test Firestore connection with 1 document"
+          >
+            <Database className="w-4 h-4" />
+            <span>{isTestingFirestore ? 'Testing...' : 'Test DB (1 doc)'}</span>
+          </button>
+
           {/* 1-Click Cloud Sync */}
           <button
             onClick={handleSyncToCloudFirestore}
