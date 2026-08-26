@@ -14,6 +14,19 @@ export const TopBar: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
 
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState([
+    { id: '1', title: '📊 AI Meal Prediction Ready', body: 'Dinner attendance forecast: 88 students expected. Buffer recommendation +5%.', time: '10 mins ago', read: false },
+    { id: '2', title: '⏱️ Mess-Off Cutoff Approaching', body: 'Dinner cutoff is 05:00 PM. 14 students currently marked on leave.', time: '45 mins ago', read: false },
+    { id: '3', title: '📢 New Menu Schedule Published', body: 'Weekly timetable has been synchronized with the dining hall portal.', time: '2 hours ago', read: true },
+    { id: '4', title: '💳 Monthly Billing Cycle Verified', body: 'Automatic rebates and billing records compiled for all 112 students.', time: '1 day ago', read: true }
+  ]);
+
+  const markAllRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    toast.success('All notifications marked as read');
+  };
+
   const getPageTitle = () => {
     const path = location.pathname;
     if (path.includes('dashboard')) return 'Mess Manager Dashboard';
@@ -101,10 +114,54 @@ export const TopBar: React.FC = () => {
         </button>
 
         {/* Notification Bell */}
-        <button className="relative p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors">
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setIsNotifOpen(!isNotifOpen)}
+            className="relative p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors"
+            title="Operational Notifications"
+          >
+            <Bell className="w-5 h-5 text-gray-700" />
+            {notifications.some(n => !n.read) && (
+              <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white animate-pulse"></span>
+            )}
+          </button>
+
+          {/* Notifications Dropdown Drawer */}
+          {isNotifOpen && (
+            <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-gray-200 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+              <div className="p-4 bg-gradient-to-r from-primary-900 to-primary-800 text-white flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Bell className="w-4 h-4 text-emerald-400" />
+                  <h3 className="font-bold text-sm">Mess Alerts & Notifications</h3>
+                </div>
+                <button
+                  onClick={markAllRead}
+                  className="text-[11px] text-primary-200 hover:text-white underline"
+                >
+                  Mark all read
+                </button>
+              </div>
+
+              <div className="max-h-80 overflow-y-auto divide-y divide-gray-100">
+                {notifications.map((n) => (
+                  <div
+                    key={n.id}
+                    className={`p-3.5 hover:bg-gray-50 transition-colors flex items-start gap-3 ${
+                      !n.read ? 'bg-emerald-50/50' : ''
+                    }`}
+                  >
+                    <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${!n.read ? 'bg-emerald-600' : 'bg-gray-300'}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-gray-900">{n.title}</p>
+                      <p className="text-[11px] text-gray-600 mt-0.5 leading-relaxed">{n.body}</p>
+                      <p className="text-[10px] text-gray-400 mt-1">{n.time}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* User Pill */}
         <div className="hidden sm:flex items-center gap-2 pl-3 border-l border-gray-200">

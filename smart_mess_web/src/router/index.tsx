@@ -13,7 +13,8 @@ import { StudentsPage } from '../pages/admin/StudentsPage';
 import { MessesPage } from '../pages/admin/MessesPage';
 import { HostelsPage } from '../pages/admin/HostelsPage';
 import { EventsPage } from '../pages/admin/EventsPage';
-import { WastagePage, NotificationsPage, FoodPrepPage, SystemAnalyticsPage } from '../pages/manager/OtherPages';
+import { NotificationsPage } from '../pages/manager/NotificationsPage';
+import { WastagePage, FoodPrepPage, SystemAnalyticsPage } from '../pages/manager/OtherPages';
 
 export const router = createBrowserRouter([
   {
