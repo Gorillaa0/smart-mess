@@ -20,8 +20,8 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> with SingleTi
   late final Animation<double> _animation;
 
   bool _isProcessing = false;
-  bool _cameraInitialized = false;
-  String? _cameraErrorMessage;
+  bool _cameraPermissionError = false;
+  String? _errorMessage;
   bool _torchEnabled = false;
   CameraFacing _cameraFacing = CameraFacing.back;
 
@@ -32,6 +32,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> with SingleTi
       detectionSpeed: DetectionSpeed.noDuplicates,
       facing: _cameraFacing,
       torchEnabled: _torchEnabled,
+      autoStart: true,
     );
 
     _animationController = AnimationController(
@@ -51,23 +52,26 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> with SingleTi
     super.dispose();
   }
 
+  // AUTOMATIC VERIFICATION TRIGGERED ONLY WHEN QR CODE IS DETECTED
   void _onDetect(BarcodeCapture capture) {
     if (_isProcessing) return;
 
     final List<Barcode> barcodes = capture.barcodes;
     for (final barcode in barcodes) {
       final code = barcode.rawValue;
-      if (code != null && code.isNotEmpty) {
+      if (code != null && code.trim().isNotEmpty) {
         final now = DateTime.now();
         final activeMeal = WeeklyMenuData.getActiveMealState(now);
         final mealType = activeMeal.meal?.nameEnglish ?? 'Lunch';
-        _verifyAndClaimMeal(mealType, qrToken: code);
+
+        // Automatically verify and claim meal plate
+        _verifyAndClaimMeal(mealType, qrToken: code.trim());
         break;
       }
     }
   }
 
-  void _verifyAndClaimMeal(String mealType, {String? qrToken}) {
+  void _verifyAndClaimMeal(String mealType, {required String qrToken}) {
     if (_isProcessing) return;
 
     final student = ref.read(currentStudentProvider);
@@ -80,7 +84,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> with SingleTi
 
     setState(() => _isProcessing = true);
 
-    Future.delayed(const Duration(milliseconds: 500), () async {
+    Future.delayed(const Duration(milliseconds: 400), () async {
       final success = await attendanceNotifier.recordScan(student, mealType);
       if (mounted) {
         setState(() => _isProcessing = false);
@@ -106,7 +110,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> with SingleTi
     String branch,
     String roomNo,
     String mealType, {
-    String? qrToken,
+    required String qrToken,
   }) {
     final timeStr = DateFormat('hh:mm:ss a').format(DateTime.now());
     final plateToken = 'H4-${mealType.substring(0, 1).toUpperCase()}-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
@@ -242,6 +246,21 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> with SingleTi
     );
   }
 
+  Future<void> _requestCameraPermission() async {
+    setState(() {
+      _cameraPermissionError = false;
+      _errorMessage = null;
+    });
+    try {
+      await _scannerController.start();
+    } catch (e) {
+      setState(() {
+        _cameraPermissionError = true;
+        _errorMessage = e.toString();
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final student = ref.watch(currentStudentProvider);
@@ -295,18 +314,31 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> with SingleTi
                           color: Colors.orange.withOpacity(0.15),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.videocam_off_outlined, color: Colors.orangeAccent, size: 48),
+                        child: const Icon(Icons.videocam_outlined, color: Colors.orangeAccent, size: 52),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 18),
                       const Text(
-                        'Camera Stream Inactive',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                        'Camera Permission Required',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 17),
+                        textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Allow camera permissions in browser settings or use the Quick Verify button below.',
-                        style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                        'Please tap below to allow camera permission in your browser to scan the mess counter QR code.',
+                        style: TextStyle(color: Colors.grey.shade400, fontSize: 12.5, height: 1.4),
                         textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2E7D32),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        icon: const Icon(Icons.camera_alt, size: 18),
+                        label: const Text('ALLOW CAMERA ACCESS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        onPressed: _requestCameraPermission,
                       ),
                     ],
                   ),
@@ -406,13 +438,13 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> with SingleTi
             ),
           ),
 
-          // 4. BOTTOM ACTION PANEL
+          // 4. BOTTOM SCANNING STATUS PANEL (AUTOMATIC SCAN INSTRUCTIONS)
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
             child: Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
               decoration: const BoxDecoration(
                 color: Color(0xFF111827),
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -439,40 +471,46 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> with SingleTi
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF065F46),
+                          color: _isProcessing ? const Color(0xFFE65100) : const Color(0xFF065F46),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Row(
+                        child: Row(
                           children: [
-                            Icon(Icons.camera_alt, size: 12, color: Colors.greenAccent),
-                            SizedBox(width: 4),
-                            Text('CAMERA LIVE', style: TextStyle(color: Colors.greenAccent, fontSize: 10, fontWeight: FontWeight.bold)),
+                            if (_isProcessing) ...[
+                              const SizedBox(width: 10, height: 10, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 1.8)),
+                              const SizedBox(width: 6),
+                              const Text('VERIFYING...', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                            ] else ...[
+                              const Icon(Icons.qr_code_scanner, size: 13, color: Colors.greenAccent),
+                              const SizedBox(width: 4),
+                              const Text('AUTO-SCAN LIVE', style: TextStyle(color: Colors.greenAccent, fontSize: 10, fontWeight: FontWeight.bold)),
+                            ],
                           ],
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
 
-                  // MANUAL / ONE-TAP VERIFY BUTTON
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2E7D32),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        elevation: 3,
-                      ),
-                      icon: _isProcessing
-                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Icon(Icons.qr_code_scanner, size: 20),
-                      label: Text(
-                        _isProcessing ? 'VERIFYING PLATE...' : 'TAP TO VERIFY $activeMealTitle PLATE',
-                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 0.5),
-                      ),
-                      onPressed: _isProcessing ? null : () => _verifyAndClaimMeal(activeMealTitle),
+                  // Clear instruction container
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1F2937),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFF374151)),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.center_focus_strong, color: Colors.greenAccent, size: 18),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Point camera at the Mess Counter QR Code. Your meal plate will be automatically verified upon scanning.',
+                            style: TextStyle(color: Colors.white70, fontSize: 11.5, height: 1.3),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
