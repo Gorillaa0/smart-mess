@@ -185,18 +185,21 @@ export const LoginPage: React.FC = () => {
     setLoading(false);
   };
 
-  const handlePasswordResetStep1 = async (e: React.FormEvent) => {
+  const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
-    const queryStr = resetEmail.trim().toLowerCase();
+    const emailToReset = resetEmail.trim().toLowerCase();
 
-    if (!queryStr) {
-      toast.error('Please enter your registered Email or Registration Number');
+    if (!emailToReset || !emailToReset.includes('@')) {
+      toast.error('Please enter a valid email address');
       return;
     }
 
     setResetLoading(true);
+    setResetSuccessMessage(null);
 
-    // 1. Look up student in roster
+    // Verify email is registered in student roster or admin/manager accounts
+    let isEmailInDatabase = false;
+
     let studentsList = H4_STUDENTS_LIST;
     const savedStudents = localStorage.getItem('SMART_MESS_H4_STUDENTS');
     if (savedStudents) {
@@ -205,128 +208,73 @@ export const LoginPage: React.FC = () => {
       } catch (err) {}
     }
 
-    let foundStudent = studentsList.find(
-      (s) =>
-        s.registrationNo.toLowerCase() === queryStr ||
-        s.rollNo.toLowerCase() === queryStr ||
-        (s.email && s.email.toLowerCase() === queryStr)
-    );
+    const matchedStudent = studentsList.find((s) => s.email && s.email.toLowerCase() === emailToReset);
+    if (matchedStudent) {
+      isEmailInDatabase = true;
+    }
 
-    // 2. Fallback to Cloud Firestore query if not found locally
-    if (!foundStudent && queryStr.includes('@')) {
+    if (emailToReset === 'manager@smartmess.edu' || emailToReset === 'admin@smartmess.edu' || emailToReset === 'pawankr0745@gmail.com') {
+      isEmailInDatabase = true;
+    }
+
+    if (!isEmailInDatabase) {
       try {
         const { getDocs, collection, query, where } = await import('firebase/firestore/lite');
         const { db } = await import('../../lib/firebase');
-        const q = query(collection(db, 'students'), where('email', '==', queryStr));
+        const q = query(collection(db, 'students'), where('email', '==', emailToReset));
         const snap = await getDocs(q);
         if (!snap.empty) {
-          const docData = snap.docs[0].data() as any;
-          foundStudent = {
-            slNo: 1,
-            name: docData.name,
-            rollNo: docData.rollNo || '23534',
-            registrationNo: docData.studentId || docData.registrationNo,
-            email: docData.email,
-            mobile: docData.mobile || '9876543210',
-            branch: docData.branch || 'CSE',
-            roomNo: docData.roomNo || '101',
-            password: docData.password || 'Pass@1234'
-          };
+          isEmailInDatabase = true;
         }
-      } catch (err) {
-        console.error('[RESET] Firestore lookup error:', err);
+      } catch (checkErr) {
+        console.error('[SECURITY] Firestore lookup check:', checkErr);
       }
     }
 
-    if (!foundStudent) {
-      toast.error('❌ Access Denied: No resident found with this Email/Registration No.', { duration: 6000 });
+    if (!isEmailInDatabase) {
+      toast.error('❌ Access Denied: This email address is not registered in the institutional system.', { duration: 6000 });
       setResetLoading(false);
       return;
     }
 
-    setVerifiedStudent(foundStudent);
-    setResetStep(2);
-    setResetLoading(false);
-    toast.success(`Identity Verified: ${foundStudent.name} (Room ${foundStudent.roomNo})`);
-
-    // Also attempt sending background Firebase Auth email as secondary backup
-    if (foundStudent.email) {
-      sendPasswordResetEmail(auth, foundStudent.email).catch(() => {});
-    }
-  };
-
-  const handleDirectPasswordReset = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!verifiedStudent) return;
-
-    if (!verifyRegNo.trim()) {
-      toast.error('Please enter your Registration No or Roll No to confirm identity');
-      return;
-    }
-
-    const regInput = verifyRegNo.trim().toLowerCase();
-    if (regInput !== verifiedStudent.registrationNo.toLowerCase() && regInput !== verifiedStudent.rollNo.toLowerCase()) {
-      toast.error('❌ Security Check Failed: Registration/Roll No does not match this account!');
-      return;
-    }
-
-    if (!newResetPassword || newResetPassword.trim().length < 4) {
-      toast.error('New password must be at least 4 characters');
-      return;
-    }
-
-    setResetLoading(true);
-    const updatedPass = newResetPassword.trim();
-
-    // 1. Update in local roster
-    let studentsList = H4_STUDENTS_LIST;
-    const savedStudents = localStorage.getItem('SMART_MESS_H4_STUDENTS');
-    if (savedStudents) {
-      try {
-        studentsList = JSON.parse(savedStudents);
-      } catch (err) {}
-    }
-
-    const idx = studentsList.findIndex((s) => s.registrationNo === verifiedStudent.registrationNo);
-    if (idx !== -1) {
-      studentsList[idx] = { ...studentsList[idx], password: updatedPass };
-      localStorage.setItem('SMART_MESS_H4_STUDENTS', JSON.stringify(studentsList));
-    }
-
-    // 2. Update in Cloud Firestore
     try {
-      const { initializeApp, getApps } = await import('firebase/app');
-      const { getFirestore, doc, setDoc } = await import('firebase/firestore/lite');
-      const FIREBASE_CONFIG = {
-        apiKey: 'AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
-        authDomain: 'smart-mess-sih.firebaseapp.com',
-        projectId: 'smart-mess-sih',
-        storageBucket: 'smart-mess-sih.firebasestorage.app',
-        messagingSenderId: '190175767796',
-        appId: '1:190175767796:web:9d8da3ec9adbe2fd9882a1'
-      };
-      const existingApps = getApps();
-      const liteApp = existingApps.find((a) => a.name === 'lite-app') || initializeApp(FIREBASE_CONFIG, 'lite-app');
-      const liteDb = getFirestore(liteApp, 'default');
+      try {
+        await sendPasswordResetEmail(auth, emailToReset);
+      } catch (err: any) {
+        if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+          const { initializeApp, getApps } = await import('firebase/app');
+          const { getAuth, createUserWithEmailAndPassword } = await import('firebase/auth');
 
-      await setDoc(
-        doc(liteDb, 'students', verifiedStudent.registrationNo),
-        { password: updatedPass, updatedAt: new Date().toISOString() },
-        { merge: true }
-      );
-    } catch (fsErr) {
-      console.error('[RESET] Firestore password sync:', fsErr);
+          const FIREBASE_CONFIG = {
+            apiKey: 'AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
+            authDomain: 'smart-mess-sih.firebaseapp.com',
+            projectId: 'smart-mess-sih',
+            storageBucket: 'smart-mess-sih.firebasestorage.app',
+            messagingSenderId: '190175767796',
+            appId: '1:190175767796:web:9d8da3ec9adbe2fd9882a1'
+          };
+
+          const existingApps = getApps();
+          const authApp = existingApps.find((a) => a.name === 'auth-provisioner') || initializeApp(FIREBASE_CONFIG, 'auth-provisioner');
+          const provAuth = getAuth(authApp);
+          const tempPass = 'Pass@' + Math.random().toString(36).slice(-8) + '1!';
+          try {
+            await createUserWithEmailAndPassword(provAuth, emailToReset, tempPass);
+          } catch (createErr: any) {}
+
+          await sendPasswordResetEmail(auth, emailToReset);
+        } else {
+          throw err;
+        }
+      }
+
+      setResetSuccessMessage(`Password reset link dispatched to ${emailToReset}. Please check your inbox (and Spam folder).`);
+      toast.success(`Password reset email sent to ${emailToReset}!`);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to send reset email', { duration: 6000 });
+    } finally {
+      setResetLoading(false);
     }
-
-    setResetLoading(false);
-    setIdentifier(verifiedStudent.registrationNo);
-    setPassword(updatedPass);
-    setIsForgotModalOpen(false);
-    setResetStep(1);
-    setVerifiedStudent(null);
-    setVerifyRegNo('');
-    setNewResetPassword('');
-    toast.success(`🎉 Password reset successful for ${verifiedStudent.name}! Pre-filled login credentials.`, { duration: 7000 });
   };
 
   const handleDemoLogin = (role: 'manager' | 'admin') => {
@@ -475,7 +423,7 @@ export const LoginPage: React.FC = () => {
         </div>
       </div>
 
-      {/* FORGOT PASSWORD MODAL (INSTANT RECOVERY + EMAIL BACKUP) */}
+      {/* FORGOT PASSWORD MODAL (EMAIL ONLY - SECURE) */}
       {isForgotModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in-95 duration-200">
@@ -485,44 +433,52 @@ export const LoginPage: React.FC = () => {
                   <KeyRound className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">
-                    {resetStep === 1 ? 'Find Your Student Account' : 'Set New Password'}
-                  </h3>
-                  <p className="text-xs text-gray-500">
-                    {resetStep === 1 ? 'Enter your Email or Registration Number' : `Identity Verified: ${verifiedStudent?.name}`}
-                  </p>
+                  <h3 className="text-lg font-bold text-gray-900">Forgot Password</h3>
+                  <p className="text-xs text-gray-500">Reset your password via Email link</p>
                 </div>
               </div>
               <button
-                onClick={() => {
-                  setIsForgotModalOpen(false);
-                  setResetStep(1);
-                  setVerifiedStudent(null);
-                }}
+                onClick={() => setIsForgotModalOpen(false)}
                 className="p-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {resetStep === 1 ? (
-              <form onSubmit={handlePasswordResetStep1} className="space-y-4 py-4">
+            {resetSuccessMessage ? (
+              <div className="py-6 space-y-4 text-center">
+                <div className="w-12 h-12 rounded-full bg-emerald-100 text-[#1B5E20] flex items-center justify-center mx-auto">
+                  <CheckCircle2 className="w-7 h-7" />
+                </div>
+                <div>
+                  <h4 className="text-base font-bold text-gray-900">Reset Link Sent</h4>
+                  <p className="text-xs text-gray-600 mt-1 leading-relaxed">{resetSuccessMessage}</p>
+                </div>
+                <button
+                  onClick={() => setIsForgotModalOpen(false)}
+                  className="w-full bg-[#1B5E20] hover:bg-emerald-800 text-white font-bold py-2.5 px-4 rounded-xl shadow text-xs transition-all"
+                >
+                  Back to Login
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handlePasswordReset} className="space-y-4 py-4">
                 <p className="text-xs text-gray-600 leading-relaxed">
-                  Enter your registered <strong>Email Address</strong> or <strong>Registration Number</strong> below to verify your resident identity.
+                  Enter your registered <strong>email address</strong> below. We will verify your account and send a password reset link to your email.
                 </p>
 
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">
-                    Email Address or Registration No
+                    Email Address
                   </label>
                   <div className="relative">
                     <Mail className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
-                      type="text"
+                      type="email"
                       value={resetEmail}
                       onChange={(e) => setResetEmail(e.target.value)}
                       required
-                      placeholder="e.g. pawankr0745@gmail.com or 23105108023"
+                      placeholder="e.g. pawankr0745@gmail.com or manager@smartmess.edu"
                       className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
                     />
                   </div>
@@ -545,76 +501,8 @@ export const LoginPage: React.FC = () => {
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     ) : (
                       <>
-                        <Shield className="w-3.5 h-3.5" />
-                        <span>Verify Identity</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <form onSubmit={handleDirectPasswordReset} className="space-y-4 py-4">
-                <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-[#1B5E20]">
-                  <p className="font-bold">✅ Identity Verified for {verifiedStudent?.name}</p>
-                  <p className="text-[11px] text-emerald-700 mt-0.5">
-                    Room {verifiedStudent?.roomNo} • {verifiedStudent?.branch} Branch
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">
-                    Confirm Registration No / Roll No
-                  </label>
-                  <div className="relative">
-                    <User className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      value={verifyRegNo}
-                      onChange={(e) => setVerifyRegNo(e.target.value)}
-                      required
-                      placeholder="e.g. 23105108023 or 23534"
-                      className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
-                    />
-                  </div>
-                  <p className="text-[10px] text-gray-500 mt-1">Security check: enter Registration No or Roll No to confirm account ownership.</p>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">
-                    Set New Password
-                  </label>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="password"
-                      value={newResetPassword}
-                      onChange={(e) => setNewResetPassword(e.target.value)}
-                      required
-                      placeholder="Enter new password (min 4 chars)"
-                      className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
-                  <button
-                    type="button"
-                    onClick={() => setResetStep(1)}
-                    className="px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-xl"
-                  >
-                    Back
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={resetLoading}
-                    className="px-5 py-2 text-xs font-bold text-white bg-[#1B5E20] hover:bg-emerald-800 rounded-xl shadow transition-all flex items-center gap-1.5 disabled:opacity-70"
-                  >
-                    {resetLoading ? (
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <>
-                        <KeyRound className="w-3.5 h-3.5" />
-                        <span>Update Password Now</span>
+                        <Mail className="w-3.5 h-3.5" />
+                        <span>Send Reset Link</span>
                       </>
                     )}
                   </button>
