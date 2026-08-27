@@ -125,7 +125,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final bool matchesLocalDirectory = (student != null && H4StudentDirectory.verifyPassword(student, password));
 
       if (matchesFirestore || matchesLocalDirectory) {
-        // Password matches Firestore! Attempt to sign in or sync with Firebase Auth
+        // Password matches Firestore! Automatically ensure Firebase Auth is synchronized
         try {
           await FirebaseAuth.instance.signInWithEmailAndPassword(
             email: targetEmail,
@@ -133,14 +133,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           );
         } on FirebaseAuthException catch (authErr) {
           if (authErr.code == 'user-not-found') {
+            // User doesn't exist in Firebase Auth yet -> automatically create them!
             try {
               await FirebaseAuth.instance.createUserWithEmailAndPassword(
                 email: targetEmail,
                 password: password,
               );
+              debugPrint('[AUTO-SYNC] Automatically provisioned Firebase Auth account for $targetEmail');
             } catch (_) {}
+          } else if (authErr.code == 'wrong-password' || authErr.code == 'invalid-credential' || authErr.code == 'invalid-login-credentials') {
+            // User has an older password in Auth -> update to the Firestore password
+            final oldStaticPass = H4StudentDirectory.findByRegistrationOrRoll(query)?.password;
+            if (oldStaticPass != null && oldStaticPass != password) {
+              try {
+                final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
+                  email: targetEmail,
+                  password: oldStaticPass,
+                );
+                await cred.user?.updatePassword(password);
+                debugPrint('[AUTO-SYNC] Automatically updated Firebase Auth password to match Firestore!');
+              } catch (_) {}
+            }
           }
-          // If wrong-password in Auth (because admin updated Firestore), Firestore validation is authoritative
         } catch (_) {}
 
         authenticated = true;
@@ -153,7 +167,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           );
           authenticated = true;
 
-          // Sync newly reset password to Firestore
+          // Automatically sync newly reset password back to Firestore
           if (student != null) {
             try {
               await FirebaseFirestore.instance
