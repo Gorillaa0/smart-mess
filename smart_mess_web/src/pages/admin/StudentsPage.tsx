@@ -195,6 +195,11 @@ export const StudentsPage: React.FC = () => {
       return;
     }
 
+    const passwordChanged = editForm.password !== editingStudent.password;
+    const studentEmail = editForm.email.trim()
+      ? editForm.email.trim().toLowerCase()
+      : `${editForm.registrationNo.trim()}@smartmess.edu`;
+
     setStudents((prev) =>
       prev.map((s) =>
         s.registrationNo === editingStudent.registrationNo
@@ -213,39 +218,60 @@ export const StudentsPage: React.FC = () => {
       )
     );
 
-    toast.success(`Updated credentials & email for ${editForm.name}!`);
+    toast.success(`Updated ${editForm.name}!`);
     setEditingStudent(null);
 
-    // Auto-update in Cloud Firestore
+    // Auto-update Firestore (always) + send Auth reset email if password changed
     (async () => {
+      const FIREBASE_CONFIG = {
+        apiKey: 'AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
+        authDomain: 'smart-mess-sih.firebaseapp.com',
+        projectId: 'smart-mess-sih',
+        storageBucket: 'smart-mess-sih.firebasestorage.app',
+        messagingSenderId: '190175767796',
+        appId: '1:190175767796:web:9d8da3ec9adbe2fd9882a1'
+      };
       try {
         const { initializeApp, getApps } = await import('firebase/app');
         const { getFirestore, doc, setDoc } = await import('firebase/firestore/lite');
-        const FIREBASE_CONFIG = {
-          apiKey: 'AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
-          authDomain: 'smart-mess-sih.firebaseapp.com',
-          projectId: 'smart-mess-sih',
-          storageBucket: 'smart-mess-sih.firebasestorage.app',
-          messagingSenderId: '190175767796',
-          appId: '1:190175767796:web:9d8da3ec9adbe2fd9882a1'
-        };
         const existingApps = getApps();
         const liteApp = existingApps.find(a => a.name === 'lite-app') || initializeApp(FIREBASE_CONFIG, 'lite-app');
         const liteDb = getFirestore(liteApp, 'default');
 
+        // ── Step 1: Write updated student data + password to Firestore
         await setDoc(doc(liteDb, 'students', editForm.registrationNo.trim()), {
           studentId: editForm.registrationNo.trim(),
           name: editForm.name.trim(),
           rollNo: editForm.rollNo.trim(),
-          email: editForm.email.trim() || '',
+          email: studentEmail,
           mobile: editForm.mobile.trim(),
           branch: editForm.branch,
           roomNo: editForm.roomNo.trim(),
+          password: editForm.password,    // ← always write latest password
           updatedAt: new Date().toISOString()
         }, { merge: true });
-        console.log(`[FIRESTORE] Auto-updated student ${editForm.name} in Firestore`);
+        console.log(`[FIRESTORE] Updated student ${editForm.name} in Firestore`);
+
+        // ── Step 2: If password changed, send Firebase Auth password reset email
+        // (Client SDK cannot change another user's Auth password directly —
+        //  only Admin SDK can. Sending a reset link is the secure alternative.)
+        if (passwordChanged) {
+          try {
+            const { getAuth, sendPasswordResetEmail } = await import('firebase/auth');
+            const mainApp = getApps().find(a => a.name === '[DEFAULT]');
+            if (mainApp) {
+              const auth = getAuth(mainApp);
+              await sendPasswordResetEmail(auth, studentEmail);
+              toast.success(`🔑 Password reset email sent to ${studentEmail}`);
+              console.log(`[AUTH] Password reset email sent to ${studentEmail}`);
+            }
+          } catch (resetErr: any) {
+            console.error('[AUTH] Could not send reset email:', resetErr);
+          }
+        }
       } catch (err: any) {
-        console.error('[FIRESTORE] Auto-update error:', err);
+        console.error('[FIRESTORE] Update error:', err);
+        toast.error(`❌ Update error: ${err.message}`);
       }
     })();
   };
@@ -258,6 +284,9 @@ export const StudentsPage: React.FC = () => {
 
     const reg = addForm.registrationNo.trim();
     const autoPass = addForm.password.trim() || `Pass@${reg.slice(-4) || '1234'}`;
+    const studentEmail = addForm.email.trim()
+      ? addForm.email.trim().toLowerCase()
+      : `${reg}@smartmess.edu`;
 
     const newStudent: H4Student = {
       slNo: students.length + 1,
@@ -275,7 +304,7 @@ export const StudentsPage: React.FC = () => {
     };
 
     setStudents((prev) => [...prev, newStudent]);
-    toast.success(`Added ${newStudent.name} with password ${autoPass}`);
+    toast.success(`Added ${newStudent.name} — provisioning Firebase account...`);
     setIsAddModalOpen(false);
     setAddForm({
       name: '',
@@ -290,19 +319,46 @@ export const StudentsPage: React.FC = () => {
       password: ''
     });
 
-    // Auto-save new student immediately to Cloud Firestore
+    // Provision Firebase Auth account + save to Firestore (both in parallel)
     (async () => {
+      const FIREBASE_CONFIG = {
+        apiKey: 'AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
+        authDomain: 'smart-mess-sih.firebaseapp.com',
+        projectId: 'smart-mess-sih',
+        storageBucket: 'smart-mess-sih.firebasestorage.app',
+        messagingSenderId: '190175767796',
+        appId: '1:190175767796:web:9d8da3ec9adbe2fd9882a1'
+      };
+
       try {
-        const { initializeApp, getApps } = await import('firebase/app');
+        const { initializeApp, getApps, deleteApp } = await import('firebase/app');
+        const { getAuth, createUserWithEmailAndPassword, signOut } = await import('firebase/auth');
         const { getFirestore, doc, setDoc } = await import('firebase/firestore/lite');
-        const FIREBASE_CONFIG = {
-          apiKey: 'AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
-          authDomain: 'smart-mess-sih.firebaseapp.com',
-          projectId: 'smart-mess-sih',
-          storageBucket: 'smart-mess-sih.firebasestorage.app',
-          messagingSenderId: '190175767796',
-          appId: '1:190175767796:web:9d8da3ec9adbe2fd9882a1'
-        };
+
+        // ── Step 1: Create Firebase Auth account via a secondary app instance
+        // (Using a secondary app so the current admin session is NOT disrupted)
+        const secondaryAppName = `provision-student-${reg}-${Date.now()}`;
+        const secondaryApp = initializeApp(FIREBASE_CONFIG, secondaryAppName);
+        const secondaryAuth = getAuth(secondaryApp);
+
+        try {
+          await createUserWithEmailAndPassword(secondaryAuth, studentEmail, autoPass);
+          console.log(`[AUTH] Firebase Auth account created for ${newStudent.name} (${studentEmail})`);
+          toast.success(`✅ Firebase Auth account created for ${newStudent.name}`);
+        } catch (authErr: any) {
+          if (authErr.code === 'auth/email-already-in-use') {
+            console.log(`[AUTH] Account already exists for ${studentEmail} — skipping creation`);
+          } else {
+            console.error('[AUTH] Failed to create Firebase Auth account:', authErr);
+            toast.error(`⚠️ Auth account error for ${newStudent.name}: ${authErr.message}`);
+          }
+        } finally {
+          // Always sign out and delete the secondary app to clean up
+          await signOut(secondaryAuth);
+          await deleteApp(secondaryApp);
+        }
+
+        // ── Step 2: Write full student record + password to Firestore
         const existingApps = getApps();
         const liteApp = existingApps.find(a => a.name === 'lite-app') || initializeApp(FIREBASE_CONFIG, 'lite-app');
         const liteDb = getFirestore(liteApp, 'default');
@@ -313,21 +369,26 @@ export const StudentsPage: React.FC = () => {
           name: newStudent.name,
           rollNo: newStudent.rollNo,
           mobile: newStudent.mobile,
-          email: newStudent.email || '',
+          email: studentEmail,
           branch: newStudent.branch,
           registrationNo: reg,
           semester: newStudent.semester,
           cgpa: newStudent.cgpa,
           hostel: newStudent.hostel,
           roomNo: newStudent.roomNo,
+          password: autoPass,          // ← stored for admin reference
           messId: 'mess_h4',
           status: 'active',
           role: 'student',
+          createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         }, { merge: true });
-        console.log(`[FIRESTORE] Auto-saved new student ${newStudent.name} (${reg}) to Cloud Firestore`);
+
+        console.log(`[FIRESTORE] Saved ${newStudent.name} (${reg}) with password to Firestore`);
+        toast.success(`✅ ${newStudent.name} fully provisioned in Firebase!`);
       } catch (err: any) {
-        console.error('[FIRESTORE] Auto-save error:', err);
+        console.error('[PROVISION] Error provisioning student:', err);
+        toast.error(`❌ Provisioning error: ${err.message}`);
       }
     })();
   };
