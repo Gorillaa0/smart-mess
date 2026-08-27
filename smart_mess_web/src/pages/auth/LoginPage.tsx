@@ -227,7 +227,7 @@ export const LoginPage: React.FC = () => {
       targetEmail = 'admin@smartmess.edu';
     }
 
-    if (!targetEmail || (!targetEmail.endsWith('@smartmess.edu') && targetEmail !== 'pawankr0745@gmail.com')) {
+    if (!targetEmail || !targetEmail.includes('@')) {
       toast.error('❌ Access Denied: No Admin or Manager account found with this ID/Email.', { duration: 6000 });
       setResetLoading(false);
       return;
@@ -318,7 +318,7 @@ export const LoginPage: React.FC = () => {
             onChange={(e) => setIdentifier(e.target.value)}
             required
             className="w-full pl-10 pr-3.5 py-2.5 bg-gray-50/70 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white text-sm transition-all font-medium"
-            placeholder="Mobile No. (6200432942) / Reg No. / Email"
+            placeholder="Manager Mobile (6200432942) / Staff Email"
           />
         </div>
 
@@ -359,14 +359,11 @@ export const LoginPage: React.FC = () => {
             type="button"
             onClick={() => {
               const cleanId = identifier.trim().toLowerCase();
-              let prefillEmail = cleanId.includes('@') ? cleanId : '';
-              if (!prefillEmail && cleanId) {
-                const student = H4_STUDENTS_LIST.find(
-                  (s) => s.registrationNo.toLowerCase() === cleanId || s.rollNo.toLowerCase() === cleanId
-                );
-                if (student?.email) prefillEmail = student.email;
-              }
-              setResetEmail(prefillEmail || identifier);
+              let prefillEmail = '';
+              if (cleanId.includes('@')) prefillEmail = cleanId;
+              else if (cleanId === '6200432942' || cleanId === 'manager') prefillEmail = 'manager@smartmess.edu';
+              else if (cleanId === 'admin') prefillEmail = 'admin@smartmess.edu';
+              setResetEmail(prefillEmail);
               setResetSuccessMessage(null);
               setIsForgotModalOpen(true);
             }}
@@ -427,7 +424,7 @@ export const LoginPage: React.FC = () => {
         </div>
       </div>
 
-      {/* FORGOT PASSWORD MODAL (EMAIL RESET) */}
+      {/* FORGOT PASSWORD MODAL (MANAGER / ADMIN RESET ONLY) */}
       {isForgotModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in-95 duration-200">
@@ -437,8 +434,8 @@ export const LoginPage: React.FC = () => {
                   <KeyRound className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">Forgot Password</h3>
-                  <p className="text-xs text-gray-500">Reset your password via Email link</p>
+                  <h3 className="text-lg font-bold text-gray-900">Staff Password Recovery</h3>
+                  <p className="text-xs text-gray-500">Reset your Manager or Admin password</p>
                 </div>
               </div>
               <button
@@ -468,21 +465,21 @@ export const LoginPage: React.FC = () => {
             ) : (
               <form onSubmit={handlePasswordReset} className="space-y-4 py-4">
                 <p className="text-xs text-gray-600 leading-relaxed">
-                  Enter your registered <strong>Email Address</strong> or <strong>Roll/Registration No</strong>. We will verify your account and send a reset link to your email.
+                  Enter your registered <strong>Manager or Admin Email Address</strong> below. We will verify your staff account and send a reset link to your email.
                 </p>
 
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">
-                    Email Address or Student ID
+                    Manager / Admin Email Address
                   </label>
                   <div className="relative">
                     <Mail className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
-                      type="text"
+                      type="email"
                       value={resetEmail}
                       onChange={(e) => setResetEmail(e.target.value)}
                       required
-                      placeholder="e.g. pawankr0745@gmail.com, 23534, or 23105108023"
+                      placeholder="e.g. manager@smartmess.edu or admin@smartmess.edu"
                       className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
                     />
                   </div>
