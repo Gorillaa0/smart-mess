@@ -347,48 +347,50 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> with SingleTi
             },
           ),
 
-          // 2. SCANNING RETICLE / VIEWFINDER OVERLAY
-          Center(
-            child: SizedBox(
-              width: 260,
-              height: 260,
-              child: Stack(
-                children: [
-                  // Corner brackets
-                  Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.greenAccent.shade400, width: 2.5),
+          // 2. SCANNING RETICLE / VIEWFINDER OVERLAY (Wrapped in IgnorePointer so taps pass through)
+          IgnorePointer(
+            child: Center(
+              child: SizedBox(
+                width: 260,
+                height: 260,
+                child: Stack(
+                  children: [
+                    // Corner brackets
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.greenAccent.shade400, width: 2.5),
+                      ),
                     ),
-                  ),
 
-                  // Animated Scanning Laser
-                  AnimatedBuilder(
-                    animation: _animation,
-                    builder: (context, child) {
-                      return Positioned(
-                        top: _animation.value * 240,
-                        left: 10,
-                        right: 10,
-                        child: Container(
-                          height: 3,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Colors.transparent, Color(0xFF00E676), Colors.transparent],
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF00E676).withOpacity(0.8),
-                                blurRadius: 10,
-                                spreadRadius: 2,
+                    // Animated Scanning Laser
+                    AnimatedBuilder(
+                      animation: _animation,
+                      builder: (context, child) {
+                        return Positioned(
+                          top: _animation.value * 240,
+                          left: 10,
+                          right: 10,
+                          child: Container(
+                            height: 3,
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Colors.transparent, Color(0xFF00E676), Colors.transparent],
                               ),
-                            ],
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF00E676).withOpacity(0.8),
+                                  blurRadius: 10,
+                                  spreadRadius: 2,
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

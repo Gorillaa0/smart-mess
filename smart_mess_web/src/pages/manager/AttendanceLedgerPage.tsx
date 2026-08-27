@@ -144,42 +144,6 @@ export const AttendanceLedgerPage: React.FC = () => {
   const absentCount = Object.values(attendanceMap).filter((a) => a.status === 'absent').length;
   const turnoutPercent = totalCount > 0 ? ((presentCount / totalCount) * 100).toFixed(1) : '0.0';
 
-  const handleTogglePresent = async (student: H4Student) => {
-    const current = attendanceMap[student.registrationNo]?.status || 'absent';
-    const isNowPresent = current === 'present';
-    const docId = `SCAN_MANUAL_${Date.now()}_${student.rollNo}`;
-
-    if (!isNowPresent) {
-      // Mark present
-      try {
-        await fetch(
-          `https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/mealAttendance/${docId}?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E`,
-          {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              fields: {
-                id: { stringValue: docId },
-                registrationNo: { stringValue: student.registrationNo },
-                studentName: { stringValue: student.name },
-                rollNo: { stringValue: student.rollNo },
-                branch: { stringValue: student.branch },
-                mealType: { stringValue: selectedMeal },
-                scannedAt: { stringValue: new Date().toISOString() },
-                roomNo: { stringValue: student.roomNo },
-                hostelId: { stringValue: 'Hostel Number 4' }
-              }
-            })
-          }
-        );
-        toast.success(`Marked ${student.name} as PRESENT & EATEN`);
-        fetchLiveFirestoreData();
-      } catch (_) {}
-    } else {
-      toast(`Student is already recorded as present`, { icon: 'ℹ️' });
-    }
-  };
-
   const handleExportCSV = () => {
     const headers = 'Sl No,Student Name,Roll No,Registration No,Branch,Room No,Status,Scan Time,Plate Token\n';
     const rows = H4_STUDENTS_LIST.map((s) => {
@@ -410,8 +374,7 @@ export const AttendanceLedgerPage: React.FC = () => {
                 <th className="py-3 px-4">Branch</th>
                 <th className="py-3 px-4">Room</th>
                 <th className="py-3 px-4 text-center">Status</th>
-                <th className="py-3 px-4">Scan Time / Details</th>
-                <th className="py-3 px-4 text-center">Quick Action</th>
+                <th className="py-3 px-4">Verified Scan Time & Counter Token</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
@@ -464,25 +427,13 @@ export const AttendanceLedgerPage: React.FC = () => {
                       {isPresent ? (
                         <div>
                           <span className="text-gray-900 font-bold block">{att.scannedAt}</span>
-                          <span className="text-[10px] font-mono text-gray-400">{att.token}</span>
+                          <span className="text-[10px] font-mono text-gray-500 font-semibold">{att.token}</span>
                         </div>
                       ) : isMessOff ? (
-                        <span className="text-amber-800 text-xs">Exempted (Rebate Credited)</span>
+                        <span className="text-amber-800 text-xs font-semibold">Exempted (Rebate Credited)</span>
                       ) : (
-                        <span className="text-gray-400 text-xs italic">Not scanned</span>
+                        <span className="text-gray-400 text-xs italic">Awaiting Student QR Camera Scan</span>
                       )}
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <button
-                        onClick={() => handleTogglePresent(student)}
-                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                          isPresent
-                            ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                            : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
-                        }`}
-                      >
-                        {isPresent ? 'Verified' : 'Manual Scan'}
-                      </button>
                     </td>
                   </tr>
                 );
