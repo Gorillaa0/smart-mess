@@ -131,18 +131,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
               const SizedBox(height: 6),
               const Text(
-                'Enter your registered email address below and we will send you a link to reset your password.',
+                'Enter your registered Email Address or Registration No. / Roll No. below to receive a password reset link.',
                 style: TextStyle(fontSize: 12.5, color: Colors.black87, height: 1.3),
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: emailController,
-                keyboardType: TextInputType.emailAddress,
+                keyboardType: TextInputType.text,
                 decoration: InputDecoration(
-                  labelText: 'Email Address',
-                  hintText: 'e.g. yourname@gmail.com or student@smartmess.edu',
+                  labelText: 'Email Address or Student ID',
+                  hintText: 'e.g. pawankr0745@gmail.com, 23105108023, or 23534',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF2E7D32)),
+                  prefixIcon: const Icon(Icons.badge_outlined, color: Color(0xFF2E7D32)),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 ),
               ),
@@ -166,29 +166,59 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   onPressed: isSubmitting
                       ? null
                       : () async {
-                          final email = emailController.text.trim().toLowerCase();
-                          if (email.isEmpty || !email.contains('@')) {
+                          final queryStr = emailController.text.trim().toLowerCase();
+                          if (queryStr.isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Please enter a valid email address')),
+                              const SnackBar(content: Text('Please enter your Email Address or Registration / Roll No.')),
                             );
                             return;
                           }
 
                           setSheetState(() => isSubmitting = true);
 
+                          // Resolve student details & email safely with null checks
+                          String targetEmail = queryStr.contains('@') ? queryStr : '';
+                          String studentDisplayName = '';
+
+                          final H4Student? matchedStudent = H4StudentDirectory.findByRegistrationOrRoll(queryStr) ??
+                              H4StudentDirectory.students.cast<H4Student?>().firstWhere(
+                                (s) => (s?.email ?? '').toLowerCase() == queryStr,
+                                orElse: () => null,
+                              );
+
+                          if (matchedStudent != null) {
+                            final studentEmail = (matchedStudent.email ?? '').toLowerCase();
+                            if (studentEmail.isNotEmpty) {
+                              targetEmail = studentEmail;
+                              studentDisplayName = '${matchedStudent.name} (Roll ${matchedStudent.rollNo})';
+                            }
+                          }
+
+                          if (targetEmail.isEmpty) {
+                            setSheetState(() => isSubmitting = false);
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('No student account found with this Registration/Roll No.'),
+                                backgroundColor: Colors.redAccent,
+                              ),
+                            );
+                            return;
+                          }
+
                           try {
                             // 1. Send real password reset email via Firebase Auth
-                            await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+                            await FirebaseAuth.instance.sendPasswordResetEmail(email: targetEmail);
                           } on FirebaseAuthException catch (authErr) {
                             if (authErr.code == 'user-not-found' || authErr.code == 'invalid-credential') {
                               // Auto-provision user account on Firebase Auth if not created yet
                               try {
                                 final tempPass = 'Pass@${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}!';
                                 await FirebaseAuth.instance.createUserWithEmailAndPassword(
-                                  email: email,
+                                  email: targetEmail,
                                   password: tempPass,
                                 );
-                                await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+                                await FirebaseAuth.instance.sendPasswordResetEmail(email: targetEmail);
                               } catch (createErr) {
                                 debugPrint('[AUTH] Auto-provisioning error: $createErr');
                               }
@@ -202,6 +232,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           if (!context.mounted) return;
                           Navigator.pop(bSheetCtx);
 
+                          final recipientInfo = studentDisplayName.isNotEmpty ? '$studentDisplayName at $targetEmail' : targetEmail;
+
                           showDialog(
                             context: context,
                             builder: (dlgCtx) => AlertDialog(
@@ -214,7 +246,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ],
                               ),
                               content: Text(
-                                'A password reset link has been dispatched to $email.\n\nPlease check your Gmail Inbox and Spam folder. Click the link inside the email to set your new password.',
+                                'A password reset link has been dispatched to $recipientInfo.\n\nPlease check your Gmail Inbox and Spam folder. Click the link inside the email to set your new password.',
                                 style: const TextStyle(fontSize: 12.5, height: 1.3),
                               ),
                               actions: [
