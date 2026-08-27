@@ -23,6 +23,7 @@ import '../../features/manager/presentation/manager_wastage_screen.dart';
 import '../../features/manager/presentation/manager_attendance_screen.dart';
 
 import '../constants/h4_students_data.dart';
+import '../widgets/top_notification_overlay.dart';
 
 final authStateProvider = StateProvider<bool>((ref) => false);
 final userRoleProvider = StateProvider<String>((ref) => 'student'); // 'student' or 'manager'
@@ -33,6 +34,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   final role = ref.watch(userRoleProvider);
 
   return GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/login',
     redirect: (context, state) {
       final loggingIn = state.uri.toString() == '/login';
