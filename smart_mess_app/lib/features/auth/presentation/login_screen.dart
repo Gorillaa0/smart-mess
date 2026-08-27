@@ -13,56 +13,106 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _idController = TextEditingController(text: '23105108019'); // Default: Ayush Kumar Singh (Reg No)
-  final _passwordController = TextEditingController(text: 'Pass@8019');
+  final _idController = TextEditingController();
+  final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _isLoading = false;
   String _selectedRole = 'student'; // 'student' or 'manager'
 
   void _login() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
-      await Future.delayed(const Duration(milliseconds: 500));
+    if (!_formKey.currentState!.validate()) return;
 
-      if (_selectedRole == 'student') {
-        final query = _idController.text.trim();
-        final student = H4StudentDirectory.findByRegistrationOrRoll(query);
+    setState(() => _isLoading = true);
 
-        if (student == null) {
-          setState(() => _isLoading = false);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Registration No. / Roll No. not found in Hostel Number 4 record.'),
-                backgroundColor: Colors.redAccent,
-              ),
-            );
-          }
-          return;
+    if (_selectedRole == 'student') {
+      final query = _idController.text.trim().toLowerCase();
+      final password = _passwordController.text.trim();
+
+      final student = H4StudentDirectory.findByRegistrationOrRoll(query) ??
+          H4StudentDirectory.students.cast<H4Student?>().firstWhere(
+            (s) => (s?.email ?? '').toLowerCase() == query,
+            orElse: () => null,
+          );
+
+      if (student == null && !query.contains('@')) {
+        setState(() => _isLoading = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Invalid Email/ID or Password. Please check your credentials.'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
         }
+        return;
+      }
 
-        final isValidPassword = H4StudentDirectory.verifyPassword(student, _passwordController.text.trim());
-        if (!isValidPassword) {
-          setState(() => _isLoading = false);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Incorrect password! Default password for ${student.name} is ${student.password}'),
-                backgroundColor: Colors.orange.shade800,
-              ),
-            );
-          }
-          return;
+      // Determine real-time Firebase Auth target email
+      String targetEmail = '';
+      if (student != null && student.email != null && student.email!.trim().isNotEmpty) {
+        targetEmail = student.email!.trim().toLowerCase();
+      } else if (query.contains('@')) {
+        targetEmail = query;
+      } else if (student != null) {
+        targetEmail = '${student.registrationNo}@smartmess.edu';
+      } else {
+        targetEmail = '${query}@smartmess.edu';
+      }
+
+      // Attempt Real-Time Firebase Authentication
+      try {
+        await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: targetEmail,
+          password: password,
+        );
+
+        // Success! Real-time authenticated against Firebase cloud Auth backend
+        setState(() => _isLoading = false);
+        if (student != null) {
+          ref.read(currentStudentProvider.notifier).state = student;
         }
-
-        ref.read(currentStudentProvider.notifier).state = student;
         ref.read(userRoleProvider.notifier).state = 'student';
         ref.read(authStateProvider.notifier).state = true;
-      } else {
-        // Manager login
-        ref.read(userRoleProvider.notifier).state = 'manager';
-        ref.read(authStateProvider.notifier).state = true;
+        return;
+      } on FirebaseAuthException catch (authErr) {
+        if (authErr.code == 'user-not-found' || authErr.code == 'invalid-credential') {
+          // Check if initial first-time provision is needed with initial roster password
+          if (student != null && H4StudentDirectory.verifyPassword(student, password)) {
+            try {
+              // Auto-provision user account on Firebase Auth with their initial password
+              await FirebaseAuth.instance.createUserWithEmailAndPassword(
+                email: targetEmail,
+                password: password,
+              );
+              setState(() => _isLoading = false);
+              ref.read(currentStudentProvider.notifier).state = student;
+              ref.read(userRoleProvider.notifier).state = 'student';
+              ref.read(authStateProvider.notifier).state = true;
+              return;
+            } catch (createErr) {
+              debugPrint('[AUTH] Auto-provision error: $createErr');
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('[AUTH] Unexpected auth error: $e');
       }
+
+      // Authentication Failed - Secure Error Message (Zero leaks)
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Invalid Email/ID or Password. Please try again.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } else {
+      // Manager login
+      setState(() => _isLoading = false);
+      ref.read(userRoleProvider.notifier).state = 'manager';
+      ref.read(authStateProvider.notifier).state = true;
     }
   }
 
