@@ -9,6 +9,9 @@ import '../../../core/constants/h4_students_data.dart';
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
+  // ─── Change Password Dialog ──────────────────────────────────────────────
+  // Verifies current password against FIREBASE AUTH (not local data), then
+  // updates Firebase Auth + Firestore + in-memory state simultaneously.
   void _showChangePasswordDialog(BuildContext context, WidgetRef ref, H4Student student) {
     final currentPassController = TextEditingController();
     final newPassController = TextEditingController();
@@ -16,110 +19,112 @@ class ProfileScreen extends ConsumerWidget {
     bool obscureCurrent = true;
     bool obscureNew = true;
     bool obscureConfirm = true;
-    final formKey = GlobalKey<FormState>();
+    bool isUpdating = false;
+    String? errorMessage;
 
     showDialog(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) {
+        builder: (ctx, setDialogState) {
           return AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: const Row(
               children: [
                 Icon(Icons.lock_reset, color: Color(0xFF1B5E20), size: 26),
                 SizedBox(width: 10),
-                Text('Change Password', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: Color(0xFF1B5E20))),
+                Text('Change Password',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: Color(0xFF1B5E20))),
               ],
             ),
-            content: Form(
-              key: formKey,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Update your password for Registration No: ${student.registrationNo}',
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
-                    ),
-                    const SizedBox(height: 16),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Your current password is verified securely against Firebase.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 16),
 
-                    // Current Password
-                    TextFormField(
-                      controller: currentPassController,
-                      obscureText: obscureCurrent,
-                      decoration: InputDecoration(
-                        labelText: 'Current Password',
-                        hintText: 'Enter current password',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        prefixIcon: const Icon(Icons.lock_outline, size: 20),
-                        suffixIcon: IconButton(
-                          icon: Icon(obscureCurrent ? Icons.visibility_off : Icons.visibility, size: 20),
-                          onPressed: () => setDialogState(() => obscureCurrent = !obscureCurrent),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  if (errorMessage != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        border: Border.all(color: Colors.red.shade200),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      validator: (val) {
-                        if (val == null || val.isEmpty) return 'Enter current password';
-                        if (val.trim() != student.password && val.trim() != '12345678') {
-                          return 'Incorrect current password';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 14),
-
-                    // New Password
-                    TextFormField(
-                      controller: newPassController,
-                      obscureText: obscureNew,
-                      decoration: InputDecoration(
-                        labelText: 'New Password',
-                        hintText: 'Enter your new strong password',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        prefixIcon: const Icon(Icons.key, size: 20),
-                        suffixIcon: IconButton(
-                          icon: Icon(obscureNew ? Icons.visibility_off : Icons.visibility, size: 20),
-                          onPressed: () => setDialogState(() => obscureNew = !obscureNew),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline, color: Colors.red, size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(errorMessage!, style: const TextStyle(fontSize: 12, color: Colors.red))),
+                        ],
                       ),
-                      validator: (val) {
-                        if (val == null || val.isEmpty) return 'Enter new password';
-                        if (val.length < 4) return 'Password must be at least 4 characters';
-                        return null;
-                      },
                     ),
-                    const SizedBox(height: 14),
-
-                    // Confirm New Password
-                    TextFormField(
-                      controller: confirmPassController,
-                      obscureText: obscureConfirm,
-                      decoration: InputDecoration(
-                        labelText: 'Confirm New Password',
-                        hintText: 'Re-enter your new password',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        prefixIcon: const Icon(Icons.check_circle_outline, size: 20),
-                        suffixIcon: IconButton(
-                          icon: Icon(obscureConfirm ? Icons.visibility_off : Icons.visibility, size: 20),
-                          onPressed: () => setDialogState(() => obscureConfirm = !obscureConfirm),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                      ),
-                      validator: (val) {
-                        if (val != newPassController.text) return 'Passwords do not match';
-                        return null;
-                      },
-                    ),
+                    const SizedBox(height: 12),
                   ],
-                ),
+
+                  // Current Password — verified against Firebase Auth via re-auth
+                  TextField(
+                    controller: currentPassController,
+                    obscureText: obscureCurrent,
+                    decoration: InputDecoration(
+                      labelText: 'Current Password',
+                      hintText: 'Enter your current password',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                      suffixIcon: IconButton(
+                        icon: Icon(obscureCurrent ? Icons.visibility_off : Icons.visibility, size: 20),
+                        onPressed: () => setDialogState(() => obscureCurrent = !obscureCurrent),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // New Password
+                  TextField(
+                    controller: newPassController,
+                    obscureText: obscureNew,
+                    decoration: InputDecoration(
+                      labelText: 'New Password',
+                      hintText: 'At least 6 characters',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      prefixIcon: const Icon(Icons.key, size: 20),
+                      suffixIcon: IconButton(
+                        icon: Icon(obscureNew ? Icons.visibility_off : Icons.visibility, size: 20),
+                        onPressed: () => setDialogState(() => obscureNew = !obscureNew),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Confirm New Password
+                  TextField(
+                    controller: confirmPassController,
+                    obscureText: obscureConfirm,
+                    decoration: InputDecoration(
+                      labelText: 'Confirm New Password',
+                      hintText: 'Re-enter your new password',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      prefixIcon: const Icon(Icons.check_circle_outline, size: 20),
+                      suffixIcon: IconButton(
+                        icon: Icon(obscureConfirm ? Icons.visibility_off : Icons.visibility, size: 20),
+                        onPressed: () => setDialogState(() => obscureConfirm = !obscureConfirm),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    ),
+                  ),
+                ],
               ),
             ),
             actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
+                onPressed: isUpdating ? null : () => Navigator.pop(dialogContext),
                 child: Text('CANCEL', style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.bold)),
               ),
               ElevatedButton(
@@ -129,59 +134,105 @@ class ProfileScreen extends ConsumerWidget {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                 ),
-                onPressed: () async {
-                  if (formKey.currentState!.validate()) {
-                    final newPass = newPassController.text.trim();
+                onPressed: isUpdating
+                    ? null
+                    : () async {
+                        final currentPass = currentPassController.text.trim();
+                        final newPass = newPassController.text.trim();
+                        final confirmPass = confirmPassController.text.trim();
 
-                    // 1. Real-Time Firebase Auth update
-                    try {
-                      final currentUser = FirebaseAuth.instance.currentUser;
-                      if (currentUser != null) {
-                        await currentUser.updatePassword(newPass);
-                      }
-                    } catch (authErr) {
-                      debugPrint('[AUTH] Firebase Auth updatePassword error: $authErr');
-                    }
+                        // Client-side validations
+                        if (currentPass.isEmpty) {
+                          setDialogState(() => errorMessage = 'Enter your current password.');
+                          return;
+                        }
+                        if (newPass.length < 6) {
+                          setDialogState(() => errorMessage = 'New password must be at least 6 characters.');
+                          return;
+                        }
+                        if (newPass != confirmPass) {
+                          setDialogState(() => errorMessage = 'New passwords do not match.');
+                          return;
+                        }
+                        if (newPass == currentPass) {
+                          setDialogState(() => errorMessage = 'New password must be different from current.');
+                          return;
+                        }
 
-                    // 2. Real-Time Firestore database update
-                    try {
-                      await FirebaseFirestore.instance
-                          .collection('students')
-                          .doc(student.registrationNo)
-                          .set({
-                        'studentId': student.registrationNo,
-                        'name': student.name,
-                        'password': newPass,
-                        'updatedAt': DateTime.now().toIso8601String(),
-                      }, SetOptions(merge: true));
-                    } catch (fsErr) {
-                      debugPrint('[FIRESTORE] Real-time password sync error: $fsErr');
-                    }
+                        setDialogState(() { isUpdating = true; errorMessage = null; });
 
-                    // 3. Update memory directory & Riverpod state
-                    H4StudentDirectory.updateStudentPassword(student.registrationNo, newPass);
-                    final updatedStudent = student.copyWith(password: newPass);
-                    ref.read(currentStudentProvider.notifier).state = updatedStudent;
+                        try {
+                          final firebaseUser = FirebaseAuth.instance.currentUser;
+                          if (firebaseUser == null || firebaseUser.email == null) {
+                            setDialogState(() { isUpdating = false; errorMessage = 'Session expired. Please log in again.'; });
+                            return;
+                          }
 
-                    if (!context.mounted) return;
-                    Navigator.pop(dialogContext);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Row(
-                          children: [
-                            Icon(Icons.check_circle, color: Colors.white, size: 20),
-                            SizedBox(width: 10),
-                            Expanded(child: Text('Password updated in real-time database!')),
-                          ],
-                        ),
-                        backgroundColor: const Color(0xFF2E7D32),
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                    );
-                  }
-                },
-                child: const Text('UPDATE PASSWORD', style: TextStyle(fontWeight: FontWeight.bold)),
+                          // STEP 1: Re-authenticate with Firebase Auth.
+                          // This validates currentPass against the live Firebase cloud
+                          // — NOT against local memory. This is the correct way.
+                          final credential = EmailAuthProvider.credential(
+                            email: firebaseUser.email!,
+                            password: currentPass,
+                          );
+                          await firebaseUser.reauthenticateWithCredential(credential);
+
+                          // STEP 2: Update password in Firebase Auth (cloud)
+                          await firebaseUser.updatePassword(newPass);
+
+                          // STEP 3: Sync new password to Firestore database (real-time)
+                          await FirebaseFirestore.instance
+                              .collection('students')
+                              .doc(student.registrationNo)
+                              .set({
+                            'studentId': student.registrationNo,
+                            'name': student.name,
+                            'email': firebaseUser.email,
+                            'password': newPass,
+                            'updatedAt': DateTime.now().toIso8601String(),
+                          }, SetOptions(merge: true));
+
+                          // STEP 4: Sync to in-memory roster and Riverpod state
+                          H4StudentDirectory.updateStudentPassword(student.registrationNo, newPass);
+                          final updatedStudent = student.copyWith(password: newPass);
+                          ref.read(currentStudentProvider.notifier).state = updatedStudent;
+
+                          if (!ctx.mounted) return;
+                          Navigator.pop(dialogContext);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Row(
+                                children: [
+                                  Icon(Icons.check_circle, color: Colors.white, size: 20),
+                                  SizedBox(width: 10),
+                                  Expanded(child: Text('Password updated across all systems in real-time!')),
+                                ],
+                              ),
+                              backgroundColor: const Color(0xFF2E7D32),
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                          );
+                        } on FirebaseAuthException catch (e) {
+                          String msg;
+                          if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+                            msg = 'Current password is incorrect. Please try again.';
+                          } else if (e.code == 'requires-recent-login') {
+                            msg = 'Session expired. Please log out and log in again before changing your password.';
+                          } else if (e.code == 'weak-password') {
+                            msg = 'New password is too weak. Use at least 6 characters.';
+                          } else {
+                            msg = 'Error: ${e.message}';
+                          }
+                          setDialogState(() { isUpdating = false; errorMessage = msg; });
+                        } catch (e) {
+                          setDialogState(() { isUpdating = false; errorMessage = 'An unexpected error occurred. Please try again.'; });
+                          debugPrint('[CHANGE-PASSWORD] Unexpected: $e');
+                        }
+                      },
+                child: isUpdating
+                    ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Text('UPDATE PASSWORD', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
           );
@@ -309,9 +360,10 @@ class ProfileScreen extends ConsumerWidget {
             ),
             icon: const Icon(Icons.logout),
             label: const Text('LOGOUT ACCOUNT', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-            onPressed: () {
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
               ref.read(authStateProvider.notifier).state = false;
-              context.go('/login');
+              if (context.mounted) context.go('/login');
             },
           ),
         ],

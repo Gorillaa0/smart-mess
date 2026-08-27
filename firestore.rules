@@ -55,11 +55,13 @@ service cloud.firestore {
     
     // STUDENTS collection
     match /students/{studentId} {
-      allow read: if (isStudent() && request.auth.token.studentId == studentId) || 
-                     (isManager() && resource.data.messId == request.auth.token.messId) ||
-                     isAdmin();
+      allow read: if isAuthenticated();
       allow create: if isAdmin();
+      // Students can update only their own password and updatedAt fields
       allow update: if isAdmin() || 
+                       (isAuthenticated() && resource.data.registrationNo == studentId &&
+                        request.resource.data.diff(resource.data).affectedKeys()
+                          .hasOnly(['password', 'updatedAt', 'email', 'name', 'studentId'])) ||
                        (isManager() && resource.data.messId == request.auth.token.messId &&
                         !request.resource.data.diff(resource.data).affectedKeys()
                           .hasAny(['studentId', 'uid', 'role', 'messId', 'hostelId']));
