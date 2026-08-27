@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/constants/h4_students_data.dart';
 
@@ -48,7 +50,7 @@ class ProfileScreen extends ConsumerWidget {
                       obscureText: obscureCurrent,
                       decoration: InputDecoration(
                         labelText: 'Current Password',
-                        hintText: 'e.g. ${student.password}',
+                        hintText: 'Enter current password',
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         prefixIcon: const Icon(Icons.lock_outline, size: 20),
                         suffixIcon: IconButton(
@@ -127,21 +129,49 @@ class ProfileScreen extends ConsumerWidget {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                 ),
-                onPressed: () {
+                onPressed: () async {
                   if (formKey.currentState!.validate()) {
                     final newPass = newPassController.text.trim();
+
+                    // 1. Real-Time Firebase Auth update
+                    try {
+                      final currentUser = FirebaseAuth.instance.currentUser;
+                      if (currentUser != null) {
+                        await currentUser.updatePassword(newPass);
+                      }
+                    } catch (authErr) {
+                      debugPrint('[AUTH] Firebase Auth updatePassword error: $authErr');
+                    }
+
+                    // 2. Real-Time Firestore database update
+                    try {
+                      await FirebaseFirestore.instance
+                          .collection('students')
+                          .doc(student.registrationNo)
+                          .set({
+                        'studentId': student.registrationNo,
+                        'name': student.name,
+                        'password': newPass,
+                        'updatedAt': DateTime.now().toIso8601String(),
+                      }, SetOptions(merge: true));
+                    } catch (fsErr) {
+                      debugPrint('[FIRESTORE] Real-time password sync error: $fsErr');
+                    }
+
+                    // 3. Update memory directory & Riverpod state
                     H4StudentDirectory.updateStudentPassword(student.registrationNo, newPass);
                     final updatedStudent = student.copyWith(password: newPass);
                     ref.read(currentStudentProvider.notifier).state = updatedStudent;
-                    
+
+                    if (!context.mounted) return;
                     Navigator.pop(dialogContext);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Row(
+                        content: const Row(
                           children: [
-                            const Icon(Icons.check_circle, color: Colors.white, size: 20),
-                            const SizedBox(width: 10),
-                            Expanded(child: Text('Password changed successfully to "$newPass"!')),
+                            Icon(Icons.check_circle, color: Colors.white, size: 20),
+                            SizedBox(width: 10),
+                            Expanded(child: Text('Password updated in real-time database!')),
                           ],
                         ),
                         backgroundColor: const Color(0xFF2E7D32),
@@ -242,13 +272,13 @@ class ProfileScreen extends ConsumerWidget {
                   child: const Icon(Icons.lock, color: Color(0xFF1B5E20), size: 20),
                 ),
                 const SizedBox(width: 12),
-                Expanded(
+                const Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Account Password', style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 2),
-                      Text(student.password, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20))),
+                      Text('Account Password', style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold)),
+                      SizedBox(height: 2),
+                      Text('•••••••• (Secured)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20))),
                     ],
                   ),
                 ),

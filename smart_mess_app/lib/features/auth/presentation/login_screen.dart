@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/constants/h4_students_data.dart';
 
@@ -69,7 +70,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         // Success! Real-time authenticated against Firebase cloud Auth backend
         setState(() => _isLoading = false);
         if (student != null) {
-          ref.read(currentStudentProvider.notifier).state = student;
+          H4StudentDirectory.updateStudentPassword(student.registrationNo, password);
+          final updatedStudent = student.copyWith(password: password);
+          ref.read(currentStudentProvider.notifier).state = updatedStudent;
+
+          // Real-Time Firestore Synchronization
+          try {
+            FirebaseFirestore.instance
+                .collection('students')
+                .doc(student.registrationNo)
+                .set({
+              'studentId': student.registrationNo,
+              'name': student.name,
+              'email': targetEmail,
+              'password': password,
+              'updatedAt': DateTime.now().toIso8601String(),
+            }, SetOptions(merge: true));
+          } catch (fsErr) {
+            debugPrint('[FIRESTORE] Real-time sync error: $fsErr');
+          }
         }
         ref.read(userRoleProvider.notifier).state = 'student';
         ref.read(authStateProvider.notifier).state = true;
@@ -84,8 +103,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 email: targetEmail,
                 password: password,
               );
+              H4StudentDirectory.updateStudentPassword(student.registrationNo, password);
+              final updatedStudent = student.copyWith(password: password);
+              ref.read(currentStudentProvider.notifier).state = updatedStudent;
+
+              // Real-Time Firestore Synchronization
+              try {
+                FirebaseFirestore.instance
+                    .collection('students')
+                    .doc(student.registrationNo)
+                    .set({
+                  'studentId': student.registrationNo,
+                  'name': student.name,
+                  'email': targetEmail,
+                  'password': password,
+                  'updatedAt': DateTime.now().toIso8601String(),
+                }, SetOptions(merge: true));
+              } catch (_) {}
+
               setState(() => _isLoading = false);
-              ref.read(currentStudentProvider.notifier).state = student;
               ref.read(userRoleProvider.notifier).state = 'student';
               ref.read(authStateProvider.notifier).state = true;
               return;
