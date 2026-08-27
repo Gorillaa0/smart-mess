@@ -29,10 +29,11 @@ export const Sidebar: React.FC = () => {
   ];
 
   const adminLinks = [
-    { to: '/admin/messes', icon: Building, label: 'Messes' },
+    { to: '/notifications', icon: Bell, label: 'Broadcasts & Notices' },
+    { to: '/admin/events', icon: Calendar, label: 'Events' },
     { to: '/admin/students', icon: Users, label: 'Students' },
     { to: '/admin/hostels', icon: Building, label: 'Hostels' },
-    { to: '/admin/events', icon: Calendar, label: 'Events' },
+    { to: '/admin/messes', icon: Building, label: 'Messes' },
     { to: '/admin/analytics', icon: BarChart3, label: 'System Analytics' },
   ];
 

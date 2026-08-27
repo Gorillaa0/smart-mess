@@ -3,6 +3,8 @@ import { Send, Bell, Megaphone, CheckCircle2, Clock, Users, ShieldAlert, Sparkle
 import toast from 'react-hot-toast';
 import { db } from '../../lib/firebase';
 import { collection, doc, setDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { useAuthStore } from '../../store/authStore';
+import { useMessStore } from '../../store/messStore';
 
 interface BroadcastMessage {
   id: string;
@@ -15,6 +17,8 @@ interface BroadcastMessage {
 }
 
 export const NotificationsPage: React.FC = () => {
+  const { user } = useAuthStore();
+  const { currentMess } = useMessStore();
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [category, setCategory] = useState<'alert' | 'menu' | 'messoff' | 'event'>('messoff');
@@ -143,7 +147,7 @@ export const NotificationsPage: React.FC = () => {
               body: { stringValue: message.trim() },
               category: { stringValue: category },
               target: { stringValue: target },
-              sender: { stringValue: 'Hostel H4 Mess Manager' },
+              sender: { stringValue: user?.role === 'admin' ? 'Institute Administration' : (currentMess?.name ? `${currentMess.name} Manager` : 'Hostel H4 Mess Manager') },
               createdAt: { stringValue: new Date().toISOString() },
               read: { booleanValue: false },
               deliveredCount: { integerValue: '112' }
