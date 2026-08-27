@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/router/app_router.dart';
@@ -219,7 +219,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
                           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13.5),
                         ),
                         Text(
-                          'Reg: ${student.registrationNo} • Room ${student.roomNo} (${student.branch})',
+                          'Reg: ${student.registrationNo} â€¢ Room ${student.roomNo} (${student.branch})',
                           style: TextStyle(color: Colors.grey.shade400, fontSize: 11),
                         ),
                       ],
@@ -245,7 +245,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
                       border: Border.all(color: const Color(0xFF2E7D32), width: 3),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF2E7D32).withValues(alpha: 0.3),
+                          color: const Color(0xFF2E7D32).withOpacity(0.3),
                           blurRadius: 20,
                           spreadRadius: 2,
                         ),

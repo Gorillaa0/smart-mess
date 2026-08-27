@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
@@ -21,7 +21,7 @@ class _EventsScreenState extends State<EventsScreen> {
       endDate: DateTime.now().add(const Duration(days: 12)),
       location: 'Hostel Vacations',
       description: 'Official institute holiday for festival break. Hostel mess operates on minimal staff.',
-      messImpact: 'Full Meal Billing Waiver Applicable (₹125/day saved)',
+      messImpact: 'Full Meal Billing Waiver Applicable (â‚¹125/day saved)',
       impactLevel: 'High',
       tagColor: const Color(0xFFC62828),
       bgColor: const Color(0xFFFFEBEE),
@@ -103,7 +103,7 @@ class _EventsScreenState extends State<EventsScreen> {
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Mess fee will be waived automatically at ₹125/day for approved mess-off dates.',
+                      'Mess fee will be waived automatically at â‚¹125/day for approved mess-off dates.',
                       style: TextStyle(fontSize: 11.5, color: Color(0xFF1B5E20), fontWeight: FontWeight.w600),
                     ),
                   ),
@@ -171,7 +171,7 @@ class _EventsScreenState extends State<EventsScreen> {
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF1B5E20).withValues(alpha: 0.20),
+                  color: const Color(0xFF1B5E20).withOpacity(0.20),
                   blurRadius: 8,
                   offset: const Offset(0, 3),
                 ),
@@ -216,10 +216,10 @@ class _EventsScreenState extends State<EventsScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: item.borderColor.withValues(alpha: 0.6), width: 1.2),
+                border: Border.all(color: item.borderColor.withOpacity(0.6), width: 1.2),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
+                    color: Colors.black.withOpacity(0.04),
                     blurRadius: 8,
                     offset: const Offset(0, 3),
                   ),

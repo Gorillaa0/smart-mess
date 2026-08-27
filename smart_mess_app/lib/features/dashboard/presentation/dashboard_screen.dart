@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -190,8 +190,8 @@ class DashboardScreen extends ConsumerWidget {
                   child: _colorfulSummaryCard(
                     context,
                     title: 'Current Mess Bill',
-                    value: '₹2,450',
-                    subtitle: 'Aug 2026 • 57 meals eaten',
+                    value: 'â‚¹2,450',
+                    subtitle: 'Aug 2026 â€¢ 57 meals eaten',
                     icon: Icons.receipt_long,
                     startColor: const Color(0xFFFFF8E1),
                     endColor: const Color(0xFFFFECB3),
@@ -227,7 +227,7 @@ class DashboardScreen extends ConsumerWidget {
                 border: Border.all(color: Colors.orange.shade200, width: 1),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.orange.withValues(alpha: 0.05),
+                    color: Colors.orange.withOpacity(0.05),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -254,7 +254,7 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
-                subtitle: const Text('Complaint #1023 • Manager reviewed 2h ago', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                subtitle: const Text('Complaint #1023 â€¢ Manager reviewed 2h ago', style: TextStyle(fontSize: 11, color: Colors.grey)),
                 trailing: const Icon(Icons.chevron_right, color: Colors.grey, size: 18),
                 onTap: () => context.push('/complaints'),
               ),
@@ -281,10 +281,10 @@ class DashboardScreen extends ConsumerWidget {
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFF81C784).withValues(alpha: 0.4), width: 1.2),
+          border: Border.all(color: const Color(0xFF81C784).withOpacity(0.4), width: 1.2),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF1B5E20).withValues(alpha: 0.20),
+              color: const Color(0xFF1B5E20).withOpacity(0.20),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
@@ -301,7 +301,7 @@ class DashboardScreen extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
+                    color: Colors.white.withOpacity(0.18),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: Colors.white30, width: 0.8),
                   ),
@@ -310,7 +310,7 @@ class DashboardScreen extends ConsumerWidget {
                       const Icon(Icons.wb_sunny_outlined, size: 13, color: Colors.amberAccent),
                       const SizedBox(width: 5),
                       Text(
-                        '${todayMenu.dayHindi.toUpperCase()} • ${todayMenu.dayEnglish.toUpperCase()}',
+                        '${todayMenu.dayHindi.toUpperCase()} â€¢ ${todayMenu.dayEnglish.toUpperCase()}',
                         style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 0.5),
                       ),
                     ],
@@ -324,7 +324,7 @@ class DashboardScreen extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(14),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
+                        color: Colors.black.withOpacity(0.1),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),
@@ -335,7 +335,7 @@ class DashboardScreen extends ConsumerWidget {
                       Icon(Icons.manage_accounts, size: 14, color: Color(0xFF1B5E20)),
                       SizedBox(width: 4),
                       Text(
-                        'Profile & Password ➔',
+                        'Profile & Password âž”',
                         style: TextStyle(color: Color(0xFF1B5E20), fontWeight: FontWeight.w800, fontSize: 11),
                       ),
                     ],
@@ -360,13 +360,13 @@ class DashboardScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Hello, ${student.name} 👋',
+                        'Hello, ${student.name} ðŸ‘‹',
                         style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w800),
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Reg: ${student.registrationNo} • Room ${student.roomNo} (${student.branch})',
+                        'Reg: ${student.registrationNo} â€¢ Room ${student.roomNo} (${student.branch})',
                         style: const TextStyle(color: Colors.white70, fontSize: 11.5, fontWeight: FontWeight.w500),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -380,14 +380,14 @@ class DashboardScreen extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.15),
+                color: Colors.black.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Hostel Number 4 • $dateString',
+                    'Hostel Number 4 â€¢ $dateString',
                     style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w500),
                   ),
                   const Text(
@@ -413,8 +413,8 @@ class DashboardScreen extends ConsumerWidget {
       children: [
         // Breakfast Pill
         _mealSchedulePill(
-          mealName: 'नाश्ता (Breakfast)',
-          priceText: todayMenu.breakfast.isAvailable ? '₹${todayMenu.breakfast.price}' : 'CLOSED',
+          mealName: 'à¤¨à¤¾à¤¶à¥à¤¤à¤¾ (Breakfast)',
+          priceText: todayMenu.breakfast.isAvailable ? 'â‚¹${todayMenu.breakfast.price}' : 'CLOSED',
           itemsText: todayMenu.breakfast.isAvailable ? todayMenu.breakfast.itemsHindi : 'No Breakfast',
           status: isBreakfastPassed ? 'Taken' : (todayMenu.breakfast.isAvailable ? 'Upcoming' : 'Closed'),
           isPassed: isBreakfastPassed,
@@ -427,8 +427,8 @@ class DashboardScreen extends ConsumerWidget {
 
         // Lunch Pill
         _mealSchedulePill(
-          mealName: 'दोपहर (Lunch)',
-          priceText: '₹${todayMenu.lunch.price}',
+          mealName: 'à¤¦à¥‹à¤ªà¤¹à¤° (Lunch)',
+          priceText: 'â‚¹${todayMenu.lunch.price}',
           itemsText: todayMenu.lunch.itemsHindi,
           status: isLunchPassed ? 'Taken' : (isBreakfastPassed ? 'Serving Now' : 'Upcoming'),
           isPassed: isLunchPassed,
@@ -442,8 +442,8 @@ class DashboardScreen extends ConsumerWidget {
 
         // Dinner Pill
         _mealSchedulePill(
-          mealName: 'रात (Dinner)',
-          priceText: '₹${todayMenu.dinner.price}',
+          mealName: 'à¤°à¤¾à¤¤ (Dinner)',
+          priceText: 'â‚¹${todayMenu.dinner.price}',
           itemsText: todayMenu.dinner.itemsHindi,
           status: 'Upcoming',
           isPassed: false,
@@ -478,7 +478,7 @@ class DashboardScreen extends ConsumerWidget {
           border: Border.all(color: borderColor, width: 1.2),
           boxShadow: [
             BoxShadow(
-              color: themeColor.withValues(alpha: 0.05),
+              color: themeColor.withOpacity(0.05),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -494,7 +494,7 @@ class DashboardScreen extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: highlight ? Colors.amber.shade400 : themeColor.withValues(alpha: 0.15),
+                    color: highlight ? Colors.amber.shade400 : themeColor.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -560,12 +560,12 @@ class DashboardScreen extends ConsumerWidget {
           ),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: const Color(0xFF81C784).withValues(alpha: 0.45),
+            color: const Color(0xFF81C784).withOpacity(0.45),
             width: 1.2,
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF1B5E20).withValues(alpha: 0.20),
+              color: const Color(0xFF1B5E20).withOpacity(0.20),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
@@ -581,7 +581,7 @@ class DashboardScreen extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
+                    color: Colors.white.withOpacity(0.18),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: Colors.white30, width: 0.8),
                   ),
@@ -599,7 +599,7 @@ class DashboardScreen extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: Colors.greenAccent.shade400.withValues(alpha: 0.22),
+                    color: Colors.greenAccent.shade400.withOpacity(0.22),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.greenAccent.shade400, width: 0.8),
                   ),
@@ -620,7 +620,7 @@ class DashboardScreen extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.14),
+                  color: Colors.black.withOpacity(0.14),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.white24, width: 0.8),
                 ),
@@ -652,7 +652,7 @@ class DashboardScreen extends ConsumerWidget {
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
-                            '₹${tomorrowBreakfast.price} • ${tomorrowBreakfast.servingTime}',
+                            'â‚¹${tomorrowBreakfast.price} â€¢ ${tomorrowBreakfast.servingTime}',
                             style: const TextStyle(color: Colors.black87, fontSize: 10, fontWeight: FontWeight.w800),
                           ),
                         ),
@@ -723,7 +723,7 @@ class DashboardScreen extends ConsumerWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: (isSpecial ? Colors.orange : const Color(0xFF2E7D32)).withValues(alpha: 0.15),
+            color: (isSpecial ? Colors.orange : const Color(0xFF2E7D32)).withOpacity(0.15),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -765,7 +765,7 @@ class DashboardScreen extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  '₹${meal.price} / plate',
+                  'â‚¹${meal.price} / plate',
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
@@ -935,7 +935,7 @@ class DashboardScreen extends ConsumerWidget {
               border: Border.all(color: item.borderColor, width: 1.2),
               boxShadow: [
                 BoxShadow(
-                  color: item.iconColor.withValues(alpha: 0.08),
+                  color: item.iconColor.withOpacity(0.08),
                   blurRadius: 6,
                   offset: const Offset(0, 2),
                 ),
@@ -950,7 +950,7 @@ class DashboardScreen extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(10),
                     boxShadow: [
                       BoxShadow(
-                        color: item.iconColor.withValues(alpha: 0.15),
+                        color: item.iconColor.withOpacity(0.15),
                         blurRadius: 4,
                         offset: const Offset(0, 1),
                       ),
@@ -1016,7 +1016,7 @@ class DashboardScreen extends ConsumerWidget {
           border: Border.all(color: borderColor, width: 1.2),
           boxShadow: [
             BoxShadow(
-              color: textColor.withValues(alpha: 0.08),
+              color: textColor.withOpacity(0.08),
               blurRadius: 6,
               offset: const Offset(0, 2),
             ),
@@ -1027,7 +1027,7 @@ class DashboardScreen extends ConsumerWidget {
           children: [
             Icon(icon, color: textColor, size: 22),
             const SizedBox(height: 10),
-            Text(title, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: textColor.withValues(alpha: 0.8))),
+            Text(title, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: textColor.withOpacity(0.8))),
             const SizedBox(height: 2),
             Text(value, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: textColor)),
             const SizedBox(height: 2),
@@ -1071,7 +1071,7 @@ class DashboardScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('Weekly Mess Timetable', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20))),
-                        Text('Central Dining Facility • Regular Menu', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                        Text('Central Dining Facility â€¢ Regular Menu', style: TextStyle(fontSize: 12, color: Colors.grey)),
                       ],
                     ),
                     IconButton(
@@ -1121,11 +1121,11 @@ class DashboardScreen extends ConsumerWidget {
                             ],
                           ),
                           const Divider(height: 16),
-                          _menuSlotRow('🌅 Breakfast (7 AM)', day.breakfast.itemsHindi, day.breakfast.price, day.breakfast.isAvailable),
+                          _menuSlotRow('ðŸŒ… Breakfast (7 AM)', day.breakfast.itemsHindi, day.breakfast.price, day.breakfast.isAvailable),
                           const SizedBox(height: 6),
-                          _menuSlotRow('☀️ Lunch (11 AM)', day.lunch.itemsHindi, day.lunch.price, true),
+                          _menuSlotRow('â˜€ï¸ Lunch (11 AM)', day.lunch.itemsHindi, day.lunch.price, true),
                           const SizedBox(height: 6),
-                          _menuSlotRow('🌙 Dinner (6 PM)', day.dinner.itemsHindi, day.dinner.price, true),
+                          _menuSlotRow('ðŸŒ™ Dinner (6 PM)', day.dinner.itemsHindi, day.dinner.price, true),
                         ],
                       ),
                     );
@@ -1161,7 +1161,7 @@ class DashboardScreen extends ConsumerWidget {
             border: Border.all(color: price == 100 ? Colors.orange.shade300 : Colors.grey.shade300, width: 0.6),
           ),
           child: Text(
-            isAvailable ? '₹$price' : 'CLOSED',
+            isAvailable ? 'â‚¹$price' : 'CLOSED',
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.bold,

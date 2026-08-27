@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/notifications_provider.dart';
 
@@ -40,7 +40,7 @@ class NotificationsScreen extends ConsumerWidget {
                   '${notif.createdAt.hour}:${notif.createdAt.minute.toString().padLeft(2, '0')}',
                   style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
-                tileColor: notif.isRead ? Colors.transparent : Colors.green.withValues(alpha: 0.05),
+                tileColor: notif.isRead ? Colors.transparent : Colors.green.withOpacity(0.05),
               );
             },
           );

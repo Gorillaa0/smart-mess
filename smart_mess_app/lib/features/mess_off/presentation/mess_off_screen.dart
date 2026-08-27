@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -197,7 +197,7 @@ class _MessOffScreenState extends ConsumerState<MessOffScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
+                        color: Colors.white.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
@@ -316,7 +316,7 @@ class _MessOffScreenState extends ConsumerState<MessOffScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: Colors.black.withOpacity(0.02),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -335,7 +335,7 @@ class _MessOffScreenState extends ConsumerState<MessOffScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.1),
+                      color: color.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
@@ -345,7 +345,7 @@ class _MessOffScreenState extends ConsumerState<MessOffScreen> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    '₹${slot.price}',
+                    'â‚¹${slot.price}',
                     style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: Colors.black87),
                   ),
                 ],
@@ -389,7 +389,7 @@ class _MessOffScreenState extends ConsumerState<MessOffScreen> {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    isOptedOut ? 'Status: Mess-Off Applied (Waiver ₹${slot.price})' : 'Status: Eating in Mess',
+                    isOptedOut ? 'Status: Mess-Off Applied (Waiver â‚¹${slot.price})' : 'Status: Eating in Mess',
                     style: TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.bold,
@@ -455,7 +455,7 @@ class _MessOffScreenState extends ConsumerState<MessOffScreen> {
           SizedBox(width: 10),
           Expanded(
             child: Text(
-              '🌅 Sunday Breakfast is Closed (Mess Holiday). No mess-off required.',
+              'ðŸŒ… Sunday Breakfast is Closed (Mess Holiday). No mess-off required.',
               style: TextStyle(fontSize: 12, color: Colors.black87, fontWeight: FontWeight.w500),
             ),
           ),

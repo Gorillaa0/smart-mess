@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -247,10 +247,10 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0xFF81C784).withValues(alpha: 0.4), width: 1.2),
+                border: Border.all(color: const Color(0xFF81C784).withOpacity(0.4), width: 1.2),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF1B5E20).withValues(alpha: 0.20),
+                    color: const Color(0xFF1B5E20).withOpacity(0.20),
                     blurRadius: 10,
                     offset: const Offset(0, 3),
                   ),
@@ -265,7 +265,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.18),
+                          color: Colors.white.withOpacity(0.18),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: Colors.white30, width: 0.8),
                         ),
@@ -274,7 +274,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                             Icon(Icons.kitchen, size: 13, color: Colors.amberAccent),
                             SizedBox(width: 5),
                             Text(
-                              'CENTRAL MESS • TODAY',
+                              'CENTRAL MESS â€¢ TODAY',
                               style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 0.5),
                             ),
                           ],
@@ -289,7 +289,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: [
-                              BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4, offset: const Offset(0, 2)),
+                              BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2)),
                             ],
                           ),
                           child: const Row(
@@ -317,7 +317,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                       const Icon(Icons.apartment, color: Colors.white70, size: 14),
                       const SizedBox(width: 4),
                       Text(
-                        'Central Mess Unit • ID: 6200432942',
+                        'Central Mess Unit â€¢ ID: 6200432942',
                         style: const TextStyle(color: Colors.white70, fontSize: 11.5, fontWeight: FontWeight.w500),
                       ),
                     ],
@@ -374,7 +374,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
         border: Border.all(color: const Color(0xFF81C784), width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF2E7D32).withValues(alpha: 0.06),
+            color: const Color(0xFF2E7D32).withOpacity(0.06),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -503,7 +503,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
         border: Border.all(color: const Color(0xFF90CAF9), width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: Colors.blue.withValues(alpha: 0.05),
+            color: Colors.blue.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -578,7 +578,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                   Icon(Icons.people_alt_outlined, size: 16, color: Color(0xFF1B5E20)),
                   SizedBox(width: 6),
                   Text(
-                    'View 112 Student Attendance Ledger ➔',
+                    'View 112 Student Attendance Ledger âž”',
                     style: TextStyle(color: Color(0xFF1B5E20), fontWeight: FontWeight.w800, fontSize: 12),
                   ),
                 ],
@@ -672,7 +672,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
               border: Border.all(color: item.borderColor, width: 1.2),
               boxShadow: [
                 BoxShadow(
-                  color: item.iconColor.withValues(alpha: 0.08),
+                  color: item.iconColor.withOpacity(0.08),
                   blurRadius: 6,
                   offset: const Offset(0, 2),
                 ),
@@ -687,7 +687,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                     borderRadius: BorderRadius.circular(10),
                     boxShadow: [
                       BoxShadow(
-                        color: item.iconColor.withValues(alpha: 0.15),
+                        color: item.iconColor.withOpacity(0.15),
                         blurRadius: 4,
                         offset: const Offset(0, 1),
                       ),

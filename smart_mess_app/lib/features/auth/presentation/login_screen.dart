@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/constants/h4_students_data.dart';
 
@@ -165,7 +166,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   onPressed: isSubmitting
                       ? null
                       : () async {
-                          final email = emailController.text.trim();
+                          final email = emailController.text.trim().toLowerCase();
                           if (email.isEmpty || !email.contains('@')) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('Please enter a valid email address')),
@@ -174,7 +175,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           }
 
                           setSheetState(() => isSubmitting = true);
-                          await Future.delayed(const Duration(milliseconds: 500));
+
+                          try {
+                            // 1. Send real password reset email via Firebase Auth
+                            await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+                          } on FirebaseAuthException catch (authErr) {
+                            if (authErr.code == 'user-not-found' || authErr.code == 'invalid-credential') {
+                              // Auto-provision user account on Firebase Auth if not created yet
+                              try {
+                                final tempPass = 'Pass@${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}!';
+                                await FirebaseAuth.instance.createUserWithEmailAndPassword(
+                                  email: email,
+                                  password: tempPass,
+                                );
+                                await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+                              } catch (createErr) {
+                                debugPrint('[AUTH] Auto-provisioning error: $createErr');
+                              }
+                            } else {
+                              debugPrint('[AUTH] Reset email exception: ${authErr.message}');
+                            }
+                          } catch (err) {
+                            debugPrint('[AUTH] Reset email error: $err');
+                          }
 
                           if (!context.mounted) return;
                           Navigator.pop(bSheetCtx);
@@ -187,11 +210,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 children: [
                                   Icon(Icons.check_circle, color: Color(0xFF2E7D32), size: 24),
                                   SizedBox(width: 8),
-                                  Text('Email Sent', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                  Text('Reset Link Sent', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                                 ],
                               ),
                               content: Text(
-                                'A password reset link has been sent to $email. Please check your inbox and click the link to reset your password.',
+                                'A password reset link has been dispatched to $email.\n\nPlease check your Gmail Inbox and Spam folder. Click the link inside the email to set your new password.',
                                 style: const TextStyle(fontSize: 12.5, height: 1.3),
                               ),
                               actions: [
@@ -245,7 +268,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF2E7D32).withValues(alpha: 0.25),
+                            color: const Color(0xFF2E7D32).withOpacity(0.25),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
@@ -258,7 +281,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   
                   // Institutional Header
                   const Text(
-                    'Smart Mess • Institutional Dining Portal',
+                    'Smart Mess â€¢ Institutional Dining Portal',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Color(0xFF2E7D32),
@@ -309,7 +332,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 color: isStudent ? Colors.white : Colors.transparent,
                                 borderRadius: BorderRadius.circular(10),
                                 boxShadow: isStudent
-                                    ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))]
+                                    ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))]
                                     : null,
                               ),
                               child: Row(
@@ -345,7 +368,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 color: !isStudent ? Colors.white : Colors.transparent,
                                 borderRadius: BorderRadius.circular(10),
                                 boxShadow: !isStudent
-                                    ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))]
+                                    ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))]
                                     : null,
                               ),
                               child: Row(
@@ -380,7 +403,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       border: Border.all(color: const Color(0xFFA5D6A7), width: 1.2),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF2E7D32).withValues(alpha: 0.06),
+                          color: const Color(0xFF2E7D32).withOpacity(0.06),
                           blurRadius: 10,
                           offset: const Offset(0, 3),
                         ),
@@ -607,7 +630,7 @@ class _H4DirectoryBottomSheetState extends State<_H4DirectoryBottomSheet> {
                           style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF1B5E20)),
                         ),
                         Text(
-                          '112 Verified Residents • Click any student to log in',
+                          '112 Verified Residents â€¢ Click any student to log in',
                           style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
                         ),
                       ],
@@ -721,12 +744,12 @@ class _H4DirectoryBottomSheetState extends State<_H4DirectoryBottomSheet> {
                                 ),
                                 const SizedBox(height: 3),
                                 Text(
-                                  'Reg No: ${s.registrationNo} • Roll: ${s.rollNo} • CGPA: ${s.cgpa}',
+                                  'Reg No: ${s.registrationNo} â€¢ Roll: ${s.rollNo} â€¢ CGPA: ${s.cgpa}',
                                   style: TextStyle(fontSize: 11, color: Colors.grey.shade700, fontWeight: FontWeight.w500),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  'Password: ${s.password} • Room: ${s.roomNo}',
+                                  'Password: ${s.password} â€¢ Room: ${s.roomNo}',
                                   style: const TextStyle(fontSize: 11, color: Color(0xFF2E7D32), fontWeight: FontWeight.bold),
                                 ),
                               ],

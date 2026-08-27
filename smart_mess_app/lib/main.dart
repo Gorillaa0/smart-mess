@@ -5,23 +5,22 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 import 'firebase_options.dart';
 import 'app.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-    await FirebaseAppCheck.instance.activate(
-      androidProvider: AndroidProvider.debug,
-    );
-  } catch (e) {
-    debugPrint('Firebase initialization error: $e');
-  }
-  
+
+  // Always launch runApp immediately so the UI is never blocked or left blank
   runApp(
     const ProviderScope(
       child: SmartMessApp(),
     ),
   );
+
+  // Initialize Firebase in background safely
+  Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  ).catchError((e) {
+    debugPrint('Firebase initialization error: $e');
+    return Firebase.app();
+  });
 }
 

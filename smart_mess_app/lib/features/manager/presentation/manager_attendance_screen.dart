@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/h4_students_data.dart';
 
@@ -203,7 +203,7 @@ class _ManagerAttendanceScreenState extends ConsumerState<ManagerAttendanceScree
 
                 if (rec.status == 'present') {
                   statusColor = const Color(0xFF2E7D32);
-                  statusLabel = 'PRESENT • EATEN';
+                  statusLabel = 'PRESENT â€¢ EATEN';
                   statusIcon = Icons.check_circle;
                 } else if (rec.status == 'mess-off') {
                   statusColor = Colors.orange.shade800;
@@ -220,12 +220,12 @@ class _ManagerAttendanceScreenState extends ConsumerState<ManagerAttendanceScree
                   elevation: 0.5,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
-                    side: BorderSide(color: statusColor.withValues(alpha: 0.3), width: 1),
+                    side: BorderSide(color: statusColor.withOpacity(0.3), width: 1),
                   ),
                   child: ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     leading: CircleAvatar(
-                      backgroundColor: statusColor.withValues(alpha: 0.12),
+                      backgroundColor: statusColor.withOpacity(0.12),
                       child: Icon(statusIcon, color: statusColor, size: 22),
                     ),
                     title: Row(
@@ -241,7 +241,7 @@ class _ManagerAttendanceScreenState extends ConsumerState<ManagerAttendanceScree
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: statusColor.withValues(alpha: 0.1),
+                            color: statusColor.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
@@ -256,7 +256,7 @@ class _ManagerAttendanceScreenState extends ConsumerState<ManagerAttendanceScree
                       children: [
                         const SizedBox(height: 3),
                         Text(
-                          'Room ${s.roomNo} • ${s.branch} • Roll: ${s.rollNo}',
+                          'Room ${s.roomNo} â€¢ ${s.branch} â€¢ Roll: ${s.rollNo}',
                           style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
                         ),
                         if (rec.status == 'present')
