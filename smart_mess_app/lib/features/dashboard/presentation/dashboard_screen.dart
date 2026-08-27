@@ -716,6 +716,7 @@ class DashboardScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Top Header: Closed Pill + Status Badge
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -750,126 +751,132 @@ class DashboardScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             const Text(
               'Tonight\'s dinner is complete. Kitchen service will resume tomorrow morning at Hostel H4.',
-              style: TextStyle(color: Color(0xFF0D3312), fontSize: 12.5, fontWeight: FontWeight.w700, height: 1.3),
+              style: TextStyle(color: Color(0xFF0D3312), fontSize: 12, fontWeight: FontWeight.w600, height: 1.3),
             ),
-            const SizedBox(height: 14),
-            if (tomorrowBreakfast != null)
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF165024), Color(0xFF2E7D32)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFF81C784).withOpacity(0.4), width: 1.0),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF1B5E20).withOpacity(0.18),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
+            const SizedBox(height: 12),
+
+            // Tomorrow's Breakfast Details
+            if (tomorrowBreakfast != null) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFF81C784)),
                     ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    child: const Row(
                       children: [
-                        const Expanded(
-                          child: Row(
-                            children: [
-                              Icon(Icons.wb_sunny_outlined, size: 14, color: Colors.amberAccent),
-                              SizedBox(width: 6),
-                              Flexible(
-                                child: Text(
-                                  "TOMORROW'S BREAKFAST",
-                                  style: TextStyle(color: Colors.amberAccent, fontSize: 11.5, fontWeight: FontWeight.w800, letterSpacing: 0.5),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: Colors.amber.shade400,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            '₹${tomorrowBreakfast.price} • ${tomorrowBreakfast.servingTime}',
-                            style: const TextStyle(color: Colors.black87, fontSize: 10.5, fontWeight: FontWeight.w800),
+                        Icon(Icons.restaurant, color: Color(0xFF1B5E20), size: 14),
+                        SizedBox(width: 6),
+                        Text(
+                          'TOMORROW BREAKFAST',
+                          style: TextStyle(
+                            color: Color(0xFF1B5E20),
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      tomorrowBreakfast.itemsHindi,
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1B5E20),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      tomorrowBreakfast.itemsEnglish,
-                      style: const TextStyle(color: Colors.white70, fontSize: 11.5),
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(10),
+                    child: Text(
+                      '₹${tomorrowBreakfast.price} / plate',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 11,
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Row(
-                                children: [
-                                  Icon(Icons.event_busy, size: 13, color: Colors.amberAccent),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    'Mess-Off Option Available',
-                                    style: TextStyle(color: Colors.amberAccent, fontSize: 11, fontWeight: FontWeight.bold),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Cutoff: ${tomorrowBreakfast.cutoffTime} tomorrow',
-                                style: const TextStyle(color: Colors.white70, fontSize: 10.5, fontWeight: FontWeight.w500),
-                              ),
-                            ],
-                          ),
-                          ElevatedButton.icon(
-                            onPressed: () => context.push('/mess-off'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: const Color(0xFF1B5E20),
-                              elevation: 2,
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                            icon: const Icon(Icons.event_busy, size: 14, color: Color(0xFFC62828)),
-                            label: const Text(
-                              'OPT OUT',
-                              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w900, color: Color(0xFF1B5E20), letterSpacing: 0.3),
-                            ),
-                          ),
-                        ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                tomorrowBreakfast.itemsHindi,
+                style: const TextStyle(color: Color(0xFF0F3818), fontSize: 16, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                tomorrowBreakfast.itemsEnglish,
+                style: const TextStyle(color: Color(0xFF2E5B35), fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 12),
+
+              // SECONDARY WHITE BOX: Mess-Off Deadline Box
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFA5D6A7), width: 1.0),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.04),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.timer_outlined, color: Color(0xFFE65100), size: 16),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Mess-Off Deadline: ${tomorrowBreakfast.cutoffTime} tomorrow (Strict Enforcement)',
+                        style: const TextStyle(color: Colors.black87, fontSize: 12, fontWeight: FontWeight.w600),
                       ),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(height: 14),
+
+              // ACTION BUTTONS ROW
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1B5E20),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        elevation: 0,
+                      ),
+                      icon: const Icon(Icons.event_busy, size: 18),
+                      label: const Text('MARK MESS-OFF', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      onPressed: () => context.push('/mess-off'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE65100),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      elevation: 0,
+                    ),
+                    icon: const Icon(Icons.qr_code_scanner, size: 18),
+                    label: const Text('SCAN', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    onPressed: () => context.push('/scanner'),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       );
@@ -883,18 +890,21 @@ class DashboardScreen extends ConsumerWidget {
         gradient: LinearGradient(
           colors: isSpecial
               ? [const Color(0xFFFFE0B2), const Color(0xFFFFCC80), const Color(0xFFFFB74D)]
-              : [const Color(0xFFD0EBD2), const Color(0xFFB8E2BC), const Color(0xFFA2D7A7)],
+              : [
+                  const Color(0xFF1B5E20).withOpacity(0.37),
+                  const Color(0xFF2E7D32).withOpacity(0.37),
+                ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: isSpecial ? const Color(0xFFFFA726) : const Color(0xFF66BB6A),
+          color: isSpecial ? const Color(0xFFFFA726) : const Color(0xFF2E7D32).withOpacity(0.55),
           width: 1.3,
         ),
         boxShadow: [
           BoxShadow(
-            color: (isSpecial ? Colors.orange : const Color(0xFF2E7D32)).withOpacity(0.15),
+            color: (isSpecial ? Colors.orange : const Color(0xFF1B5E20)).withOpacity(0.12),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -957,6 +967,8 @@ class DashboardScreen extends ConsumerWidget {
             style: const TextStyle(color: Color(0xFF2E5B35), fontSize: 12, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 12),
+
+          // SECONDARY WHITE BOX: Mess-Off Deadline Box
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
