@@ -51,8 +51,32 @@ export const NotificationsPage: React.FC = () => {
     }
   ]);
 
-  // Real-time Firestore sync
+  // Real-time Firestore & Express API sync
   useEffect(() => {
+    // 1. Fetch from Express API
+    const fetchApi = async () => {
+      try {
+        const res = await fetch('http://localhost:3001/notifications');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.notifications && data.notifications.length > 0) {
+            setHistory(data.notifications.map((d: any) => ({
+              id: d.id,
+              title: d.title || 'Announcement',
+              body: d.body || '',
+              category: d.category || 'alert',
+              target: d.target || 'All Residents',
+              sentAt: d.createdAt ? new Date(d.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now',
+              deliveredCount: d.deliveredCount || 112,
+            })));
+          }
+        }
+      } catch (_) {}
+    };
+    fetchApi();
+    const interval = setInterval(fetchApi, 3000);
+
+    // 2. Firestore listener
     try {
       const notifQuery = query(collection(db, 'notifications'), orderBy('createdAt', 'desc'));
       const unsubscribe = onSnapshot(notifQuery, (snapshot) => {
@@ -72,12 +96,13 @@ export const NotificationsPage: React.FC = () => {
           });
           setHistory(liveList);
         }
-      }, (err) => {
-        console.log('[FIRESTORE] Notifications listener note:', err);
-      });
-      return () => unsubscribe();
+      }, () => {});
+      return () => {
+        clearInterval(interval);
+        unsubscribe();
+      };
     } catch (e) {
-      console.log('[FIRESTORE] Init error:', e);
+      return () => clearInterval(interval);
     }
   }, []);
 
@@ -104,8 +129,22 @@ export const NotificationsPage: React.FC = () => {
     setHistory((prev) => [newBroadcast, ...prev]);
 
     try {
-      // 1. Write live to Cloud Firestore
-      await setDoc(doc(db, 'notifications', notifId), {
+      // 1. Post to Express backend API (immediate live sync to Flutter & Web)
+      fetch('http://localhost:3001/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: notifId,
+          title: title.trim(),
+          body: message.trim(),
+          category,
+          target,
+          createdAt: new Date().toISOString()
+        })
+      }).catch(() => {});
+
+      // 2. Write live to Cloud Firestore
+      setDoc(doc(db, 'notifications', notifId), {
         id: notifId,
         title: title.trim(),
         body: message.trim(),
@@ -115,25 +154,6 @@ export const NotificationsPage: React.FC = () => {
         createdAt: new Date().toISOString(),
         read: false,
         deliveredCount: 112
-      });
-
-      // 2. Direct REST API write fallback
-      fetch(`https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/(default)/documents/notifications/${notifId}?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fields: {
-            id: { stringValue: notifId },
-            title: { stringValue: title.trim() },
-            body: { stringValue: message.trim() },
-            category: { stringValue: category },
-            target: { stringValue: target },
-            sender: { stringValue: 'Hostel H4 Mess Manager' },
-            createdAt: { stringValue: new Date().toISOString() },
-            read: { booleanValue: false },
-            deliveredCount: { integerValue: '112' }
-          }
-        })
       }).catch(() => {});
 
       toast.success(`📢 Broadcast live! Delivered in real-time to all student apps.`);

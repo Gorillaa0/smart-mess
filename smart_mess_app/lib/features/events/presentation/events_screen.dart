@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dio/dio.dart';
 
 class EventsScreen extends StatefulWidget {
   const EventsScreen({super.key});
@@ -67,15 +68,88 @@ class _EventsScreenState extends State<EventsScreen> {
   ];
 
   @override
+  Timer? _eventsTimer;
+
+  @override
   void initState() {
     super.initState();
+    _fetchLiveEvents();
+    _eventsTimer = Timer.periodic(const Duration(seconds: 3), (_) => _fetchLiveEvents());
     _subscribeLiveEvents();
   }
 
   @override
   void dispose() {
+    _eventsTimer?.cancel();
     _eventsSub?.cancel();
     super.dispose();
+  }
+
+  Future<void> _fetchLiveEvents() async {
+    try {
+      final dio = Dio();
+      final res = await dio.get('http://localhost:3001/events').timeout(const Duration(milliseconds: 1500));
+      if (res.statusCode == 200 && res.data != null && res.data['events'] != null) {
+        final rawList = res.data['events'] as List;
+        final liveList = rawList.map((d) {
+          final String title = d['title'] ?? 'Campus Event';
+          final String type = d['type'] ?? 'Holiday';
+          final DateTime start = d['startDate'] != null
+              ? (DateTime.tryParse(d['startDate']) ?? DateTime.now())
+              : DateTime.now();
+          final DateTime? end = d['endDate'] != null ? DateTime.tryParse(d['endDate']) : null;
+          final String impact = d['impactLevel'] ?? 'Medium';
+          final String desc = d['description'] ?? '';
+          final String advisory = d['advisoryForStudents'] ?? d['advisory'] ?? 'Check mess schedule for changes.';
+          final String messImpact = d['expectedMessOffs'] ?? 'Normal dining schedule';
+
+          Color tagCol;
+          Color bgCol;
+          Color borderCol;
+          IconData ic;
+
+          if (type.toLowerCase().contains('exam') || type.toLowerCase().contains('academic')) {
+            tagCol = const Color(0xFF1565C0);
+            bgCol = const Color(0xFFE3F2FD);
+            borderCol = const Color(0xFF90CAF9);
+            ic = Icons.menu_book;
+          } else if (type.toLowerCase().contains('fest') || type.toLowerCase().contains('celebration')) {
+            tagCol = const Color(0xFF6A1B9A);
+            bgCol = const Color(0xFFF3E5F5);
+            borderCol = const Color(0xFFCE93D8);
+            ic = Icons.celebration;
+          } else {
+            tagCol = const Color(0xFFC62828);
+            bgCol = const Color(0xFFFFEBEE);
+            borderCol = const Color(0xFFEF9A9A);
+            ic = Icons.holiday_village;
+          }
+
+          return CollegeEvent(
+            id: d['id'] ?? 'evt_${DateTime.now().millisecondsSinceEpoch}',
+            title: title,
+            category: type,
+            date: start,
+            endDate: end,
+            location: 'Hostel H4 / Campus',
+            description: desc,
+            messImpact: messImpact,
+            impactLevel: impact,
+            tagColor: tagCol,
+            bgColor: bgCol,
+            borderColor: borderCol,
+            icon: ic,
+            advisory: advisory,
+          );
+        }).toList();
+
+        if (mounted && liveList.isNotEmpty) {
+          setState(() {
+            events = liveList;
+          });
+        }
+      }
+    } catch (_) {}
   }
 
   void _subscribeLiveEvents() {

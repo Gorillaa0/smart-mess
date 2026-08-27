@@ -1,4 +1,4 @@
-﻿import 'dotenv/config';
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import * as admin from 'firebase-admin';
@@ -11,6 +11,8 @@ import messoffRoutes from './routes/messoff';
 import predictionRoutes from './routes/prediction';
 import wastageRoutes from './routes/wastage';
 import billingRoutes from './routes/billing';
+import notificationsRoutes from './routes/notifications';
+import eventsRoutes from './routes/events';
 
 // Initialize Firebase Admin SDK
 const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || './service_account.json';
@@ -48,6 +50,8 @@ app.use('/messoff', messoffRoutes);
 app.use('/prediction', predictionRoutes);
 app.use('/wastage', wastageRoutes);
 app.use('/billing', billingRoutes);
+app.use('/notifications', notificationsRoutes);
+app.use('/events', eventsRoutes);
 
 app.use((req, res) => res.status(404).json({ error: `Route ${req.method} ${req.path} not found` }));
 

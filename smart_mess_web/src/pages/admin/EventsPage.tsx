@@ -77,8 +77,24 @@ export const EventsPage: React.FC = () => {
     advisoryForStudents: ''
   });
 
-  // Real-time Firestore sync
+  // Real-time Firestore & Express API sync
   useEffect(() => {
+    // 1. Fetch from Express API
+    const fetchApi = async () => {
+      try {
+        const res = await fetch('http://localhost:3001/events');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.events && data.events.length > 0) {
+            setEvents(data.events);
+          }
+        }
+      } catch (_) {}
+    };
+    fetchApi();
+    const interval = setInterval(fetchApi, 3000);
+
+    // 2. Firestore listener
     try {
       const q = query(collection(db, 'events'), orderBy('startDate', 'asc'));
       const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -98,18 +114,14 @@ export const EventsPage: React.FC = () => {
             };
           });
           setEvents(liveEvents);
-        } else {
-          // Seed default events to Firestore if empty
-          DEFAULT_EVENTS.forEach((devt) => {
-            setDoc(doc(db, 'events', devt.id), devt).catch(() => {});
-          });
         }
-      }, (err) => {
-        console.log('[FIRESTORE] Events listener note:', err);
-      });
-      return () => unsubscribe();
+      }, () => {});
+      return () => {
+        clearInterval(interval);
+        unsubscribe();
+      };
     } catch (e) {
-      console.log('[FIRESTORE] Events error:', e);
+      return () => clearInterval(interval);
     }
   }, []);
 
@@ -174,30 +186,17 @@ export const EventsPage: React.FC = () => {
     }
 
     try {
-      // 1. Write live to Cloud Firestore
-      await setDoc(doc(db, 'events', eventId), {
+      // 1. Post to Express backend API
+      fetch('http://localhost:3001/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(eventPayload)
+      }).catch(() => {});
+
+      // 2. Write live to Cloud Firestore
+      setDoc(doc(db, 'events', eventId), {
         ...eventPayload,
         createdAt: new Date().toISOString()
-      });
-
-      // 2. REST API fallback
-      fetch(`https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/(default)/documents/events/${eventId}?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fields: {
-            id: { stringValue: eventId },
-            title: { stringValue: form.title },
-            type: { stringValue: form.type },
-            startDate: { stringValue: form.startDate },
-            endDate: { stringValue: form.endDate },
-            impactLevel: { stringValue: form.impactLevel },
-            expectedMessOffs: { stringValue: form.expectedMessOffs },
-            description: { stringValue: form.description },
-            advisoryForStudents: { stringValue: form.advisoryForStudents },
-            createdAt: { stringValue: new Date().toISOString() }
-          }
-        })
       }).catch(() => {});
 
       toast.success(`🎉 Event "${form.title}" published live in real-time to student apps!`);
@@ -209,7 +208,8 @@ export const EventsPage: React.FC = () => {
   const handleDelete = async (id: string, title: string) => {
     setEvents((prev) => prev.filter((e) => e.id !== id));
     try {
-      await deleteDoc(doc(db, 'events', id));
+      fetch(`http://localhost:3001/events/${id}`, { method: 'DELETE' }).catch(() => {});
+      deleteDoc(doc(db, 'events', id)).catch(() => {});
     } catch (_) {}
     toast.success(`Removed event "${title}"`);
   };
