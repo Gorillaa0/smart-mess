@@ -691,19 +691,22 @@ class DashboardScreen extends ConsumerWidget {
       final tomorrowBreakfast = activeState.nextMealTomorrow;
       return Container(
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFFE8F5E9), Color(0xFFC8E6C9)],
+          gradient: LinearGradient(
+            colors: [
+              const Color(0xFF1B5E20).withOpacity(0.37),
+              const Color(0xFF2E7D32).withOpacity(0.37),
+            ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: const Color(0xFFA5D6A7),
+            color: const Color(0xFF2E7D32).withOpacity(0.55),
             width: 1.2,
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF2E7D32).withOpacity(0.08),
+              color: const Color(0xFF1B5E20).withOpacity(0.12),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
@@ -721,7 +724,7 @@ class DashboardScreen extends ConsumerWidget {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFA5D6A7), width: 1.0),
+                    border: Border.all(color: const Color(0xFF2E7D32).withOpacity(0.5), width: 1.0),
                   ),
                   child: const Row(
                     children: [
@@ -750,7 +753,7 @@ class DashboardScreen extends ConsumerWidget {
             const SizedBox(height: 10),
             const Text(
               'Tonight\'s dinner is complete. Kitchen service will resume tomorrow morning at Hostel H4.',
-              style: TextStyle(color: Color(0xFF1B5E20), fontSize: 12.5, fontWeight: FontWeight.w600, height: 1.3),
+              style: TextStyle(color: Color(0xFF0D3312), fontSize: 12.5, fontWeight: FontWeight.w700, height: 1.3),
             ),
             const SizedBox(height: 14),
             if (tomorrowBreakfast != null)
