@@ -1,10 +1,13 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/constants/weekly_menu.dart';
 import '../../../core/constants/h4_students_data.dart';
+import '../../../core/models/notification_model.dart';
+import '../../notifications/providers/notifications_provider.dart';
+import '../../events/providers/events_provider.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -15,6 +18,13 @@ class DashboardScreen extends ConsumerWidget {
     final todayMenu = WeeklyMenuData.getTodayMenu(now);
     final activeState = WeeklyMenuData.getActiveMealState(now);
     final dateString = DateFormat('dd MMMM yyyy').format(now);
+
+    final notifsAsync = ref.watch(notificationsListProvider);
+    final notifsList = notifsAsync.valueOrNull ?? [];
+    final unreadNotifsCount = notifsList.where((n) => !n.isRead).length;
+
+    final eventsAsync = ref.watch(eventsListProvider);
+    final eventsList = eventsAsync.valueOrNull ?? [];
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7FAF7),
@@ -63,14 +73,45 @@ class DashboardScreen extends ConsumerWidget {
             onPressed: () => context.push('/profile'),
           ),
           IconButton(
-            icon: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.green.shade50,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.green.shade200, width: 0.8),
-              ),
-              child: const Icon(Icons.notifications_none, color: Color(0xFF1B5E20), size: 18),
+            tooltip: 'Announcements & Notifications',
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: unreadNotifsCount > 0 ? const Color(0xFFFFF3E0) : Colors.green.shade50,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: unreadNotifsCount > 0 ? const Color(0xFFFFB74D) : Colors.green.shade200,
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Icon(
+                    unreadNotifsCount > 0 ? Icons.notifications_active : Icons.notifications_none,
+                    color: unreadNotifsCount > 0 ? const Color(0xFFE65100) : const Color(0xFF1B5E20),
+                    size: 18,
+                  ),
+                ),
+                if (unreadNotifsCount > 0)
+                  Positioned(
+                    right: -2,
+                    top: -2,
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFD32F2F),
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                      child: Text(
+                        '$unreadNotifsCount',
+                        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
             ),
             onPressed: () => context.push('/notifications'),
           ),
@@ -113,7 +154,13 @@ class DashboardScreen extends ConsumerWidget {
           children: [
             // 1. TOP PROFILE & DAY BANNER (HOSTEL NUMBER 4 - REAL STUDENT DATA)
             _buildProfileBanner(context, todayMenu, dateString, ref.watch(currentStudentProvider)),
-            const SizedBox(height: 18),
+            const SizedBox(height: 14),
+
+            // 1.5 REAL-TIME MESS MANAGER BROADCAST ANNOUNCEMENTS
+            if (notifsList.isNotEmpty) ...[
+              _buildLiveBroadcastCard(context, notifsList.first),
+              const SizedBox(height: 16),
+            ],
 
             // 2. TODAY'S MEALS TIMELINE & PRICING ROW
             Row(
@@ -205,8 +252,10 @@ class DashboardScreen extends ConsumerWidget {
                   child: _colorfulSummaryCard(
                     context,
                     title: 'Upcoming Events',
-                    value: '5 Events',
-                    subtitle: 'BCE Tech Fest, Exams & Fests',
+                    value: '${eventsList.length} Events',
+                    subtitle: eventsList.isNotEmpty
+                        ? eventsList.first.title
+                        : 'Exams, Festivals & Holidays',
                     icon: Icons.celebration,
                     startColor: const Color(0xFFE8EAF6),
                     endColor: const Color(0xFFC5CAE9),
@@ -261,6 +310,99 @@ class DashboardScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
           ],
+        ),
+      ),
+    );
+  }
+
+  // 1.5 LIVE BROADCAST CARD (REAL-TIME SYNC FROM MESS MANAGER)
+  Widget _buildLiveBroadcastCard(BuildContext context, NotificationModel notif) {
+    final timeStr = DateFormat('hh:mm a').format(notif.createdAt);
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFFF9C4), Color(0xFFFFF3E0)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFFFB74D), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.orange.withOpacity(0.12),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => context.push('/notifications'),
+          child: Padding(
+            padding: const EdgeInsets.all(14.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE65100),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.campaign, color: Colors.white, size: 13),
+                              SizedBox(width: 4),
+                              Text(
+                                'LIVE ANNOUNCEMENT',
+                                style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.5),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          timeStr,
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
+                        ),
+                      ],
+                    ),
+                    const Row(
+                      children: [
+                        Text(
+                          'View All',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFE65100)),
+                        ),
+                        Icon(Icons.arrow_forward_ios, size: 10, color: Color(0xFFE65100)),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  notif.title,
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF2E1500)),
+                ),
+                if (notif.body.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    notif.body,
+                    style: TextStyle(fontSize: 12, color: Colors.brown.shade800, height: 1.3),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
       ),
     );
