@@ -30,6 +30,7 @@ export const Sidebar: React.FC = () => {
 
   const adminLinks = [
     { to: '/notifications', icon: Bell, label: 'Broadcasts & Notices' },
+    { to: '/admin/complaints', icon: MessageSquare, label: 'Hostel Complaints' },
     { to: '/admin/events', icon: Calendar, label: 'Events' },
     { to: '/admin/students', icon: Users, label: 'Students' },
     { to: '/admin/hostels', icon: Building, label: 'Hostels' },

@@ -13,6 +13,7 @@ import { StudentsPage } from '../pages/admin/StudentsPage';
 import { MessesPage } from '../pages/admin/MessesPage';
 import { HostelsPage } from '../pages/admin/HostelsPage';
 import { EventsPage } from '../pages/admin/EventsPage';
+import { AdminComplaintsPage } from '../pages/admin/AdminComplaintsPage';
 import { NotificationsPage } from '../pages/manager/NotificationsPage';
 import { WastagePage, FoodPrepPage, SystemAnalyticsPage } from '../pages/manager/OtherPages';
 
@@ -43,6 +44,7 @@ export const router = createBrowserRouter([
       { path: 'analytics', element: <AnalyticsPage /> },
       
       // Admin Routes
+      { path: 'admin/complaints', element: <AdminComplaintsPage /> },
       { path: 'admin/messes', element: <MessesPage /> },
       { path: 'admin/students', element: <StudentsPage /> },
       { path: 'admin/hostels', element: <HostelsPage /> },
