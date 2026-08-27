@@ -162,20 +162,35 @@ class ProfileScreen extends ConsumerWidget {
                         setDialogState(() { isUpdating = true; errorMessage = null; });
 
                         try {
-                          final firebaseUser = FirebaseAuth.instance.currentUser;
-                          if (firebaseUser == null || firebaseUser.email == null) {
-                            setDialogState(() { isUpdating = false; errorMessage = 'Session expired. Please log in again.'; });
-                            return;
+                          String studentEmail = '';
+                          if (student.email != null && student.email!.trim().isNotEmpty) {
+                            studentEmail = student.email!.trim().toLowerCase();
+                          } else {
+                            studentEmail = '${student.registrationNo}@smartmess.edu';
                           }
 
-                          // STEP 1: Re-authenticate with Firebase Auth.
-                          // This validates currentPass against the live Firebase cloud
-                          // — NOT against local memory. This is the correct way.
-                          final credential = EmailAuthProvider.credential(
-                            email: firebaseUser.email!,
-                            password: currentPass,
-                          );
-                          await firebaseUser.reauthenticateWithCredential(credential);
+                          User? firebaseUser = FirebaseAuth.instance.currentUser;
+                          if (firebaseUser == null) {
+                            // If current user session is detached, authenticate with currentPass
+                            final userCred = await FirebaseAuth.instance.signInWithEmailAndPassword(
+                              email: studentEmail,
+                              password: currentPass,
+                            );
+                            firebaseUser = userCred.user;
+                          } else {
+                            // STEP 1: Re-authenticate with Firebase Auth using original password.
+                            // Validates currentPass strictly against Firebase Authentication.
+                            final credential = EmailAuthProvider.credential(
+                              email: firebaseUser.email ?? studentEmail,
+                              password: currentPass,
+                            );
+                            await firebaseUser.reauthenticateWithCredential(credential);
+                          }
+
+                          if (firebaseUser == null) {
+                            setDialogState(() { isUpdating = false; errorMessage = 'Authentication failed. Please try again.'; });
+                            return;
+                          }
 
                           // STEP 2: Update password in Firebase Auth (cloud)
                           await firebaseUser.updatePassword(newPass);
@@ -187,7 +202,7 @@ class ProfileScreen extends ConsumerWidget {
                               .set({
                             'studentId': student.registrationNo,
                             'name': student.name,
-                            'email': firebaseUser.email,
+                            'email': firebaseUser.email ?? studentEmail,
                             'password': newPass,
                             'updatedAt': DateTime.now().toIso8601String(),
                           }, SetOptions(merge: true));
