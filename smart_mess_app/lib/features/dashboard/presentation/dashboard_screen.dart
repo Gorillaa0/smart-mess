@@ -8,6 +8,7 @@ import '../../../core/constants/h4_students_data.dart';
 import '../../../core/models/notification_model.dart';
 import '../../notifications/providers/notifications_provider.dart';
 import '../../events/providers/events_provider.dart';
+import '../../attendance/providers/student_attendance_provider.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -25,6 +26,7 @@ class DashboardScreen extends ConsumerWidget {
 
     final eventsAsync = ref.watch(eventsListProvider);
     final eventsList = eventsAsync.valueOrNull ?? [];
+    final attStats = ref.watch(studentAttendanceStatsProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7FAF7),
@@ -224,7 +226,7 @@ class DashboardScreen extends ConsumerWidget {
             _buildColorfulQuickActionsGrid(context),
             const SizedBox(height: 20),
 
-            // 5. BILLING & UPCOMING CAMPUS EVENTS CARDS
+            // 5. BILLING & MEAL ATTENDANCE SUMMARY CARDS
             Row(
               children: [
                 Expanded(
@@ -232,7 +234,7 @@ class DashboardScreen extends ConsumerWidget {
                     context,
                     title: 'Current Mess Bill',
                     value: '₹2,450',
-                    subtitle: 'Aug 2026 • 57 meals eaten',
+                    subtitle: 'Aug 2026 • ${attStats.mealsEaten} meals eaten',
                     icon: Icons.receipt_long,
                     startColor: const Color(0xFFFFF8E1),
                     endColor: const Color(0xFFFFECB3),
@@ -245,21 +247,23 @@ class DashboardScreen extends ConsumerWidget {
                 Expanded(
                   child: _colorfulSummaryCard(
                     context,
-                    title: 'Upcoming Events',
-                    value: '${eventsList.length} Events',
-                    subtitle: eventsList.isNotEmpty
-                        ? eventsList.first.title
-                        : 'Exams, Festivals & Holidays',
-                    icon: Icons.celebration,
-                    startColor: const Color(0xFFE8EAF6),
-                    endColor: const Color(0xFFC5CAE9),
-                    borderColor: const Color(0xFF9FA8DA),
-                    textColor: const Color(0xFF283593),
-                    onTap: () => context.push('/events'),
+                    title: 'Meal Attendance',
+                    value: '${attStats.mealsEaten}/${attStats.mealsEaten + attStats.mealsSkipped} Eaten',
+                    subtitle: '${attStats.attendancePercentage.toStringAsFixed(0)}% Turnout • ${attStats.mealsSkipped} Skipped',
+                    icon: Icons.fact_check_rounded,
+                    startColor: const Color(0xFFE8F5E9),
+                    endColor: const Color(0xFFC8E6C9),
+                    borderColor: const Color(0xFFA5D6A7),
+                    textColor: const Color(0xFF1B5E20),
+                    onTap: () => context.push('/meal-history'),
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: 18),
+
+            // 5.5 LIVE MEAL ATTENDANCE TIMELINE (MEALS EATEN VS SKIPPED BREAKDOWN)
+            _buildLiveAttendanceTimelineCard(context, attStats),
             const SizedBox(height: 16),
 
             // 6. COMPLAINT TRACKER BANNER
@@ -1306,6 +1310,213 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildLiveAttendanceTimelineCard(BuildContext context, StudentAttendanceStats attStats) {
+    final recentRecords = attStats.dailyRecords.take(2).toList(); // Today & Yesterday
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFA5D6A7), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F5E9),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.fact_check, color: Color(0xFF1B5E20), size: 18),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'MY MEAL ATTENDANCE LOG',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                      color: Color(0xFF1B5E20),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+              InkWell(
+                onTap: () => context.push('/meal-history'),
+                child: const Row(
+                  children: [
+                    Text(
+                      'View All Log',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF2E7D32),
+                      ),
+                    ),
+                    Icon(Icons.arrow_forward_ios, size: 10, color: Color(0xFF2E7D32)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Monthly summary badge row
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F8E9),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFC8E6C9)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '✅ ${attStats.mealsEaten} Eaten',
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11.5, color: Color(0xFF1B5E20)),
+                ),
+                Text(
+                  '⏭️ ${attStats.mealsSkipped} Skipped (Mess-Off)',
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11.5, color: Color(0xFFE65100)),
+                ),
+                Text(
+                  '💰 ₹${attStats.totalSavings} Saved',
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11.5, color: Color(0xFF2E7D32)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Day-by-day rows
+          ...recentRecords.map((day) => Padding(
+            padding: const EdgeInsets.only(bottom: 10.0),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFAFAFA),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        day.dayName,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Colors.black87),
+                      ),
+                      Text(
+                        '${day.eatenCount}/3 Meals Eaten',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: day.eatenCount > 0 ? const Color(0xFF1B5E20) : const Color(0xFFE65100),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(child: _buildMealChipCompact('Breakfast', day.breakfast, day.breakfastTime)),
+                      const SizedBox(width: 6),
+                      Expanded(child: _buildMealChipCompact('Lunch', day.lunch, day.lunchTime)),
+                      const SizedBox(width: 6),
+                      Expanded(child: _buildMealChipCompact('Dinner', day.dinner, day.dinnerTime)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          )),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMealChipCompact(String mealName, MealAttendanceStatus status, String? time) {
+    Color bg;
+    Color border;
+    Color textCol;
+    String label;
+    IconData icon;
+
+    switch (status) {
+      case MealAttendanceStatus.eaten:
+        bg = const Color(0xFFE8F5E9);
+        border = const Color(0xFFA5D6A7);
+        textCol = const Color(0xFF1B5E20);
+        label = 'EATEN';
+        icon = Icons.check_circle;
+        break;
+      case MealAttendanceStatus.skipped:
+        bg = const Color(0xFFFFF3E0);
+        border = const Color(0xFFFFCC80);
+        textCol = const Color(0xFFE65100);
+        label = 'SKIPPED';
+        icon = Icons.cancel_outlined;
+        break;
+      case MealAttendanceStatus.scheduled:
+        bg = const Color(0xFFEEEEEE);
+        border = const Color(0xFFE0E0E0);
+        textCol = Colors.grey.shade700;
+        label = 'SCHEDULED';
+        icon = Icons.access_time;
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: border, width: 0.8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 10, color: textCol),
+              const SizedBox(width: 3),
+              Expanded(
+                child: Text(
+                  mealName,
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: textCol),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: textCol),
+          ),
+        ],
+      ),
     );
   }
 }
