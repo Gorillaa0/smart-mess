@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:dio/dio.dart';
 
 class EventsScreen extends StatefulWidget {
@@ -154,7 +155,8 @@ class _EventsScreenState extends State<EventsScreen> {
 
   void _subscribeLiveEvents() {
     try {
-      _eventsSub = FirebaseFirestore.instance
+      final firestore = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'default');
+      _eventsSub = firestore
           .collection('events')
           .snapshots()
           .listen((snapshot) {

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import '../../../core/models/notification_model.dart';
 
 class NotificationsNotifier extends StateNotifier<AsyncValue<List<NotificationModel>>> {
@@ -37,15 +38,27 @@ class NotificationsNotifier extends StateNotifier<AsyncValue<List<NotificationMo
       }
     } catch (_) {}
 
-    // 2. Fallback to Cloud Firestore
+    // 2. Fallback to Cloud Firestore (databaseId: 'default')
     try {
-      final snap = await FirebaseFirestore.instance.collection('notifications').get().timeout(const Duration(milliseconds: 1500));
+      final snap = await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'default')
+          .collection('notifications')
+          .get()
+          .timeout(const Duration(milliseconds: 2000));
       if (snap.docs.isNotEmpty) {
         final list = snap.docs.map((d) => NotificationModel.fromFirestore(d)).toList();
         state = AsyncData(list);
         return;
       }
-    } catch (_) {}
+    } catch (_) {
+      try {
+        final snap = await FirebaseFirestore.instance.collection('notifications').get().timeout(const Duration(milliseconds: 2000));
+        if (snap.docs.isNotEmpty) {
+          final list = snap.docs.map((d) => NotificationModel.fromFirestore(d)).toList();
+          state = AsyncData(list);
+          return;
+        }
+      } catch (_) {}
+    }
 
     // 3. Fallback default data
     if (state is AsyncLoading) {
