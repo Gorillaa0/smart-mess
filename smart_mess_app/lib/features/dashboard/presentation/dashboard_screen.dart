@@ -692,20 +692,20 @@ class DashboardScreen extends ConsumerWidget {
       return Container(
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFF165024), Color(0xFF226730), Color(0xFF2E7D32)],
+            colors: [Color(0xFF1B5E20), Color(0xFF2E7D32)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: const Color(0xFF81C784).withOpacity(0.45),
+            color: const Color(0xFF81C784).withOpacity(0.40),
             width: 1.2,
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF1B5E20).withOpacity(0.20),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
+              color: const Color(0xFF1B5E20).withOpacity(0.25),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -719,7 +719,7 @@ class DashboardScreen extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.18),
+                    color: Colors.white.withOpacity(0.20),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: Colors.white30, width: 0.8),
                   ),
@@ -737,7 +737,7 @@ class DashboardScreen extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: Colors.greenAccent.shade400.withOpacity(0.22),
+                    color: Colors.greenAccent.shade400.withOpacity(0.25),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.greenAccent.shade400, width: 0.8),
                   ),
@@ -753,14 +753,14 @@ class DashboardScreen extends ConsumerWidget {
               'Tonight\'s dinner is complete. Kitchen service will resume tomorrow morning at Hostel H4.',
               style: TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w500, height: 1.3),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             if (tomorrowBreakfast != null)
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.14),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white24, width: 0.8),
+                  color: Colors.black.withOpacity(0.22),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.white.withOpacity(0.25), width: 1.0),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -771,12 +771,12 @@ class DashboardScreen extends ConsumerWidget {
                         const Expanded(
                           child: Row(
                             children: [
-                              Icon(Icons.wb_sunny_outlined, size: 13, color: Colors.amberAccent),
-                              SizedBox(width: 5),
+                              Icon(Icons.wb_sunny_outlined, size: 14, color: Colors.amberAccent),
+                              SizedBox(width: 6),
                               Flexible(
                                 child: Text(
                                   "TOMORROW'S BREAKFAST",
-                                  style: TextStyle(color: Colors.amberAccent, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 0.4),
+                                  style: TextStyle(color: Colors.amberAccent, fontSize: 11.5, fontWeight: FontWeight.w800, letterSpacing: 0.5),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
@@ -784,55 +784,75 @@ class DashboardScreen extends ConsumerWidget {
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
                             color: Colors.amber.shade400,
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
                             '₹${tomorrowBreakfast.price} • ${tomorrowBreakfast.servingTime}',
-                            style: const TextStyle(color: Colors.black87, fontSize: 10, fontWeight: FontWeight.w800),
+                            style: const TextStyle(color: Colors.black87, fontSize: 10.5, fontWeight: FontWeight.w800),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     Text(
                       tomorrowBreakfast.itemsHindi,
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13.5),
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       tomorrowBreakfast.itemsEnglish,
-                      style: const TextStyle(color: Colors.white70, fontSize: 11),
+                      style: const TextStyle(color: Colors.white70, fontSize: 11.5),
                     ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            'Cutoff: ${tomorrowBreakfast.cutoffTime} tomorrow',
-                            style: const TextStyle(color: Colors.orangeAccent, fontSize: 10.5, fontWeight: FontWeight.w600),
-                            overflow: TextOverflow.ellipsis,
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.10),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Row(
+                                children: [
+                                  Icon(Icons.event_busy, size: 13, color: Colors.amberAccent),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Mess-Off Option Available',
+                                    style: TextStyle(color: Colors.amberAccent, fontSize: 11, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Cutoff: ${tomorrowBreakfast.cutoffTime} tomorrow',
+                                style: const TextStyle(color: Colors.white70, fontSize: 10.5, fontWeight: FontWeight.w500),
+                              ),
+                            ],
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        InkWell(
-                          onTap: () => context.push('/mess-off'),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(6),
+                          ElevatedButton.icon(
+                            onPressed: () => context.push('/mess-off'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: const Color(0xFF1B5E20),
+                              elevation: 2,
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                             ),
-                            child: const Text(
+                            icon: const Icon(Icons.event_busy, size: 14, color: Color(0xFFC62828)),
+                            label: const Text(
                               'OPT OUT',
-                              style: TextStyle(color: Color(0xFF1B5E20), fontSize: 10, fontWeight: FontWeight.w800),
+                              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w900, color: Color(0xFF1B5E20), letterSpacing: 0.3),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ],
                 ),
