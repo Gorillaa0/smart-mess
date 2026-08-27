@@ -140,7 +140,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 keyboardType: TextInputType.text,
                 decoration: InputDecoration(
                   labelText: 'Email Address or Student ID',
-                  hintText: 'e.g. pawankr0745@gmail.com, 23105108023, or 23534',
+                  hintText: 'e.g. student@gmail.com or 23105108023',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   prefixIcon: const Icon(Icons.badge_outlined, color: Color(0xFF2E7D32)),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -541,7 +541,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           Icon(Icons.people_alt_outlined, color: Color(0xFF1B5E20), size: 18),
                           SizedBox(width: 8),
                           Text(
-                            'View 112 H4 Students & Generated Passwords',
+                            'View Hostel Resident Directory',
                             style: TextStyle(color: Color(0xFF1B5E20), fontWeight: FontWeight.w800, fontSize: 12),
                           ),
                         ],
@@ -775,13 +775,13 @@ class _H4DirectoryBottomSheetState extends State<_H4DirectoryBottomSheet> {
                                   ],
                                 ),
                                 const SizedBox(height: 3),
-                                Text(
-                                  'Reg No: ${s.registrationNo} â€¢ Roll: ${s.rollNo} â€¢ CGPA: ${s.cgpa}',
+                                 Text(
+                                  'Reg No: ${s.registrationNo} • Roll: ${s.rollNo} • CGPA: ${s.cgpa}',
                                   style: TextStyle(fontSize: 11, color: Colors.grey.shade700, fontWeight: FontWeight.w500),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  'Password: ${s.password} â€¢ Room: ${s.roomNo}',
+                                  'Hostel No: 4 • Room: ${s.roomNo}',
                                   style: const TextStyle(fontSize: 11, color: Color(0xFF2E7D32), fontWeight: FontWeight.bold),
                                 ),
                               ],
