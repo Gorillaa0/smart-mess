@@ -1,55 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+import '../../attendance/providers/attendance_provider.dart';
+import '../../../core/router/app_router.dart';
 
-class BillScreen extends StatefulWidget {
+class BillScreen extends ConsumerStatefulWidget {
   const BillScreen({super.key});
 
   @override
-  State<BillScreen> createState() => _BillScreenState();
+  ConsumerState<BillScreen> createState() => _BillScreenState();
 }
 
-class _BillScreenState extends State<BillScreen> with SingleTickerProviderStateMixin {
+class _BillScreenState extends ConsumerState<BillScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   String _selectedFilter = 'All Days';
-
-  // Sample Month Ledger Data for August 2026 (Days 1 to 24)
-  final List<DailyMealRecord> monthRecords = List.generate(24, (index) {
-    final dayNum = index + 1;
-    final date = DateTime(2026, 8, dayNum);
-    final isSunday = date.weekday == DateTime.sunday;
-    final isWednesday = date.weekday == DateTime.wednesday;
-
-    // 5 mess-offs on specific days (8, 9, 15, 16, 22)
-    final isOffDay = [8, 9, 15, 16, 22].contains(dayNum);
-
-    final breakfastEaten = !isSunday && !isOffDay;
-    final lunchEaten = !isOffDay;
-    final dinnerEaten = !isOffDay;
-
-    final bPrice = isSunday ? 0 : 25;
-    final lPrice = isSunday ? 100 : 50;
-    final dPrice = isWednesday ? 100 : 50;
-
-    final dayTotal = (breakfastEaten ? bPrice : 0) +
-        (lunchEaten ? lPrice : 0) +
-        (dinnerEaten ? dPrice : 0);
-
-    return DailyMealRecord(
-      dayNum: dayNum,
-      date: date,
-      dayHindi: _getDayHindi(date.weekday),
-      dayEnglish: _getDayEnglish(date.weekday),
-      isSunday: isSunday,
-      isWednesday: isWednesday,
-      isMessOffDay: isOffDay,
-      breakfastEaten: breakfastEaten,
-      lunchEaten: lunchEaten,
-      dinnerEaten: dinnerEaten,
-      breakfastPrice: bPrice,
-      lunchPrice: lPrice,
-      dinnerPrice: dPrice,
-      dayTotalCost: dayTotal,
-    );
-  });
 
   static String _getDayHindi(int weekday) {
     switch (weekday) {
@@ -87,8 +51,60 @@ class _BillScreenState extends State<BillScreen> with SingleTickerProviderStateM
     super.dispose();
   }
 
+  List<DailyMealRecord> _computeMonthRecords(List<H4MealScanRecord> scans, String studentRegNo) {
+    final now = DateTime.now();
+    final totalDays = now.day; // Up to current day of current month
+
+    final studentScans = scans.where((s) => s.registrationNo == studentRegNo).toList();
+
+    return List.generate(totalDays, (index) {
+      final dayNum = totalDays - index; // Newest first
+      final date = DateTime(now.year, now.month, dayNum);
+      final isSunday = date.weekday == DateTime.sunday;
+      final isWednesday = date.weekday == DateTime.wednesday;
+
+      final dayScans = studentScans.where((s) =>
+          s.scannedAt.year == date.year &&
+          s.scannedAt.month == date.month &&
+          s.scannedAt.day == date.day).toList();
+
+      final breakfastEaten = dayScans.any((s) => s.mealType.toLowerCase().contains('breakfast'));
+      final lunchEaten = dayScans.any((s) => s.mealType.toLowerCase().contains('lunch'));
+      final dinnerEaten = dayScans.any((s) => s.mealType.toLowerCase().contains('dinner'));
+
+      final bPrice = isSunday ? 0 : 25;
+      final lPrice = isSunday ? 100 : 50;
+      final dPrice = isWednesday ? 100 : 50;
+
+      final dayTotal = (breakfastEaten ? bPrice : 0) +
+          (lunchEaten ? lPrice : 0) +
+          (dinnerEaten ? dPrice : 0);
+
+      return DailyMealRecord(
+        dayNum: dayNum,
+        date: date,
+        dayHindi: _getDayHindi(date.weekday),
+        dayEnglish: _getDayEnglish(date.weekday),
+        isSunday: isSunday,
+        isWednesday: isWednesday,
+        isMessOffDay: false,
+        breakfastEaten: breakfastEaten,
+        lunchEaten: lunchEaten,
+        dinnerEaten: dinnerEaten,
+        breakfastPrice: bPrice,
+        lunchPrice: lPrice,
+        dinnerPrice: dPrice,
+        dayTotalCost: dayTotal,
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final student = ref.watch(currentStudentProvider);
+    final allScans = ref.watch(liveAttendanceProvider);
+    final monthRecords = _computeMonthRecords(allScans, student.registrationNo);
+
     final totalEatenMeals = monthRecords.fold<int>(0, (sum, r) =>
         sum + (r.breakfastEaten ? 1 : 0) + (r.lunchEaten ? 1 : 0) + (r.dinnerEaten ? 1 : 0));
     final totalMessOffDays = monthRecords.where((r) => r.isMessOffDay).length;
@@ -122,7 +138,7 @@ class _BillScreenState extends State<BillScreen> with SingleTickerProviderStateM
           _buildMonthlyStatementTab(totalEatenMeals, totalMessOffDays, totalMonthAmount, totalWaiverSaved),
 
           // TAB 2: DAILY ATTENDANCE & CONSUMPTION CALENDAR LOG
-          _buildDailyAttendanceTab(totalEatenMeals, totalMessOffDays, totalMonthAmount),
+          _buildDailyAttendanceTab(totalEatenMeals, totalMessOffDays, totalMonthAmount, monthRecords),
         ],
       ),
     );
@@ -299,9 +315,9 @@ class _BillScreenState extends State<BillScreen> with SingleTickerProviderStateM
   }
 
   // TAB 2: DAILY ATTENDANCE & CONSUMPTION CALENDAR LOG
-  Widget _buildDailyAttendanceTab(int totalEatenMeals, int totalMessOffDays, int totalAmount) {
+  Widget _buildDailyAttendanceTab(int totalEatenMeals, int totalMessOffDays, int totalAmount, List<DailyMealRecord> monthRecords) {
     final filtered = monthRecords.where((r) {
-      if (_selectedFilter == 'Eaten Only') return !r.isMessOffDay;
+      if (_selectedFilter == 'Eaten Only') return !r.isMessOffDay && (r.breakfastEaten || r.lunchEaten || r.dinnerEaten);
       if (_selectedFilter == 'Mess-Off Only') return r.isMessOffDay;
       return true;
     }).toList();

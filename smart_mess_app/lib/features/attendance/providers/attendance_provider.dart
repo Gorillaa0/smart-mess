@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/h4_students_data.dart';
 import '../../../core/models/attendance_model.dart';
@@ -32,10 +34,73 @@ class H4MealScanRecord {
       status: 'present',
     );
   }
+
+  Map<String, dynamic> toFirestoreFields() {
+    return {
+      'id': {'stringValue': id},
+      'registrationNo': {'stringValue': registrationNo},
+      'studentName': {'stringValue': studentName},
+      'rollNo': {'stringValue': rollNo},
+      'branch': {'stringValue': branch},
+      'mealType': {'stringValue': mealType},
+      'scannedAt': {'stringValue': scannedAt.toIso8601String()},
+      'roomNo': {'stringValue': roomNo},
+      'hostelId': {'stringValue': 'Hostel Number 4'},
+    };
+  }
+
+  factory H4MealScanRecord.fromFirestoreJson(Map<String, dynamic> fields) {
+    return H4MealScanRecord(
+      id: fields['id']?['stringValue'] ?? '',
+      registrationNo: fields['registrationNo']?['stringValue'] ?? '',
+      studentName: fields['studentName']?['stringValue'] ?? '',
+      rollNo: fields['rollNo']?['stringValue'] ?? '',
+      branch: fields['branch']?['stringValue'] ?? '',
+      mealType: fields['mealType']?['stringValue'] ?? '',
+      scannedAt: DateTime.tryParse(fields['scannedAt']?['stringValue'] ?? '') ?? DateTime.now(),
+      roomNo: fields['roomNo']?['stringValue'] ?? '',
+    );
+  }
 }
 
 class AttendanceNotifier extends StateNotifier<List<H4MealScanRecord>> {
-  AttendanceNotifier() : super([]);
+  Timer? _pollTimer;
+
+  AttendanceNotifier() : super([]) {
+    _fetchLiveScans();
+    _pollTimer = Timer.periodic(const Duration(seconds: 4), (_) => _fetchLiveScans());
+  }
+
+  Future<void> _fetchLiveScans() async {
+    try {
+      final dio = Dio();
+      final res = await dio.post(
+        'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents:runQuery?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
+        data: {
+          'structuredQuery': {
+            'from': [{'collectionId': 'mealAttendance'}]
+          }
+        },
+        options: Options(headers: {'Content-Type': 'application/json'}),
+      ).timeout(const Duration(seconds: 3));
+
+      if (res.statusCode == 200 && res.data is List) {
+        final List results = res.data;
+        final list = <H4MealScanRecord>[];
+
+        for (final item in results) {
+          if (item is Map && item['document'] != null) {
+            final doc = item['document'] as Map;
+            final fields = (doc['fields'] as Map?) ?? {};
+            list.add(H4MealScanRecord.fromFirestoreJson(Map<String, dynamic>.from(fields)));
+          }
+        }
+
+        list.sort((a, b) => b.scannedAt.compareTo(a.scannedAt));
+        state = list;
+      }
+    } catch (_) {}
+  }
 
   bool hasScanned(String registrationNo, String mealType) {
     final today = DateTime.now();
@@ -47,7 +112,7 @@ class AttendanceNotifier extends StateNotifier<List<H4MealScanRecord>> {
         record.scannedAt.year == today.year);
   }
 
-  bool recordScan(H4Student student, String mealType) {
+  Future<bool> recordScan(H4Student student, String mealType) async {
     if (hasScanned(student.registrationNo, mealType)) {
       return false; // Already scanned
     }
@@ -63,7 +128,19 @@ class AttendanceNotifier extends StateNotifier<List<H4MealScanRecord>> {
       roomNo: student.roomNo,
     );
 
+    // Optimistic update
     state = [newRecord, ...state];
+
+    // Save permanently to Firestore
+    try {
+      final dio = Dio();
+      await dio.patch(
+        'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/mealAttendance/${newRecord.id}?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
+        data: {'fields': newRecord.toFirestoreFields()},
+        options: Options(headers: {'Content-Type': 'application/json'}),
+      );
+    } catch (_) {}
+
     return true;
   }
 
@@ -80,6 +157,12 @@ class AttendanceNotifier extends StateNotifier<List<H4MealScanRecord>> {
             r.scannedAt.month == today.month &&
             r.scannedAt.year == today.year)
         .length;
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
   }
 }
 

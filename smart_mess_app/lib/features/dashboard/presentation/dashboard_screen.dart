@@ -233,8 +233,8 @@ class DashboardScreen extends ConsumerWidget {
                   child: _colorfulSummaryCard(
                     context,
                     title: 'Current Mess Bill',
-                    value: '₹2,450',
-                    subtitle: 'Aug 2026 • 58 meals eaten',
+                    value: '₹${attStats.mealsEaten * 50}',
+                    subtitle: 'Aug 2026 • ${attStats.mealsEaten} meals recorded',
                     icon: Icons.receipt_long,
                     startColor: const Color(0xFFFFF8E1),
                     endColor: const Color(0xFFFFECB3),
@@ -248,8 +248,8 @@ class DashboardScreen extends ConsumerWidget {
                   child: _colorfulSummaryCard(
                     context,
                     title: 'Meal Attendance Log',
-                    value: '58 Eaten / 14 Off',
-                    subtitle: '81% Turnout • View dining log in Bill',
+                    value: '${attStats.mealsEaten} Meals Eaten',
+                    subtitle: 'Live Attendance • View dining log in Bill',
                     icon: Icons.fact_check_outlined,
                     startColor: const Color(0xFFE8F5E9),
                     endColor: const Color(0xFFC8E6C9),

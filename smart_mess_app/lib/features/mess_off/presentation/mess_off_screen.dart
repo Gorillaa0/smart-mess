@@ -1,8 +1,10 @@
-﻿import 'dart:async';
+import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/constants/weekly_menu.dart';
+import '../../../core/router/app_router.dart';
 
 class MessOffScreen extends ConsumerStatefulWidget {
   const MessOffScreen({super.key});
@@ -16,17 +18,51 @@ class _MessOffScreenState extends ConsumerState<MessOffScreen> {
   Timer? _timer;
 
   // Map of (Date string YYYY-MM-DD + mealType) -> isMessOff
-  final Map<String, bool> _messOffMap = {
-    // Demo presets
-    '${DateFormat('yyyy-MM-dd').format(DateTime.now())}_lunch': true,
-  };
+  final Map<String, bool> _messOffMap = {};
 
   @override
   void initState() {
     super.initState();
+    _fetchLiveMessOffs();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) setState(() {});
     });
+  }
+
+  Future<void> _fetchLiveMessOffs() async {
+    try {
+      final student = ref.read(currentStudentProvider);
+      final dio = Dio();
+      final res = await dio.post(
+        'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents:runQuery?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
+        data: {
+          'structuredQuery': {
+            'from': [{'collectionId': 'messOffs'}]
+          }
+        },
+        options: Options(headers: {'Content-Type': 'application/json'}),
+      ).timeout(const Duration(seconds: 3));
+
+      if (res.statusCode == 200 && res.data is List) {
+        final List results = res.data;
+        for (final item in results) {
+          if (item is Map && item['document'] != null) {
+            final doc = item['document'] as Map;
+            final fields = (doc['fields'] as Map?) ?? {};
+            final reg = fields['registrationNo']?['stringValue'];
+            if (reg == student.registrationNo) {
+              final dateStr = fields['date']?['stringValue'] ?? '';
+              final meal = fields['mealType']?['stringValue']?.toLowerCase() ?? '';
+              if (dateStr.isNotEmpty && meal.isNotEmpty) {
+                setState(() {
+                  _messOffMap['${dateStr}_$meal'] = true;
+                });
+              }
+            }
+          }
+        }
+      }
+    } catch (_) {}
   }
 
   @override
@@ -43,12 +79,48 @@ class _MessOffScreenState extends ConsumerState<MessOffScreen> {
     return _messOffMap[_getKey(date, mealType)] ?? false;
   }
 
-  void _toggleMealOff(DateTime date, String mealType) {
+  Future<void> _toggleMealOff(DateTime date, String mealType) async {
     final key = _getKey(date, mealType);
     final current = _messOffMap[key] ?? false;
+    final next = !current;
+    final student = ref.read(currentStudentProvider);
+    final dateStr = DateFormat('yyyy-MM-dd').format(date);
+    final docId = 'MO_${student.rollNo}_${dateStr}_$mealType';
+
     setState(() {
-      _messOffMap[key] = !current;
+      _messOffMap[key] = next;
     });
+
+    try {
+      final dio = Dio();
+      if (next) {
+        // Save to Firestore
+        await dio.patch(
+          'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/messOffs/$docId?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
+          data: {
+            'fields': {
+              'id': {'stringValue': docId},
+              'studentName': {'stringValue': student.name},
+              'rollNo': {'stringValue': student.rollNo},
+              'registrationNo': {'stringValue': student.registrationNo},
+              'roomNo': {'stringValue': student.roomNo},
+              'branch': {'stringValue': student.branch},
+              'mealType': {'stringValue': mealType},
+              'date': {'stringValue': dateStr},
+              'requestedAt': {'stringValue': DateTime.now().toIso8601String()},
+              'status': {'stringValue': 'Approved'},
+              'refundCredited': {'integerValue': '50'},
+            }
+          },
+          options: Options(headers: {'Content-Type': 'application/json'}),
+        );
+      } else {
+        // Delete from Firestore
+        await dio.delete(
+          'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/messOffs/$docId?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
+        );
+      }
+    } catch (_) {}
   }
 
   bool _isCutoffPassed(DateTime date, int cutoffHour, int cutoffMinute) {

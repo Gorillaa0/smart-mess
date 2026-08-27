@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'attendance_provider.dart';
+import '../../../core/router/app_router.dart';
 
 enum MealAttendanceStatus {
   eaten,
@@ -68,112 +70,57 @@ class StudentAttendanceStats {
 }
 
 final studentAttendanceStatsProvider = Provider<StudentAttendanceStats>((ref) {
-  final now = DateTime.now();
+  final student = ref.watch(currentStudentProvider);
+  final allScans = ref.watch(liveAttendanceProvider);
+  final studentScans = allScans.where((s) => s.registrationNo == student.registrationNo).toList();
 
-  // Generate realistic, consistent meal log for the student
-  final records = [
-    // Today
-    DailyMealRecord(
-      dateString: DateFormat('dd MMM yyyy').format(now),
-      dayName: 'Today (${DateFormat('EEEE').format(now)})',
-      date: now,
-      breakfast: MealAttendanceStatus.eaten,
-      breakfastTime: '08:22 AM',
-      lunch: MealAttendanceStatus.eaten,
-      lunchTime: '01:14 PM',
-      dinner: MealAttendanceStatus.scheduled,
-      dinnerTime: '07:30 PM - 09:30 PM',
-      note: 'Dinner counter opens at 07:30 PM',
-    ),
-    // Yesterday
-    DailyMealRecord(
-      dateString: DateFormat('dd MMM yyyy').format(now.subtract(const Duration(days: 1))),
-      dayName: 'Yesterday (${DateFormat('EEEE').format(now.subtract(const Duration(days: 1)))})',
-      date: now.subtract(const Duration(days: 1)),
-      breakfast: MealAttendanceStatus.eaten,
-      breakfastTime: '08:35 AM',
-      lunch: MealAttendanceStatus.skipped,
-      lunchTime: 'Mess-Off Applied',
-      dinner: MealAttendanceStatus.eaten,
-      dinnerTime: '08:15 PM',
-      note: 'Lunch Mess-Off: ₹50 rebate credited',
-    ),
-    // 2 Days Ago
-    DailyMealRecord(
-      dateString: DateFormat('dd MMM yyyy').format(now.subtract(const Duration(days: 2))),
-      dayName: DateFormat('EEEE, dd MMM').format(now.subtract(const Duration(days: 2))),
-      date: now.subtract(const Duration(days: 2)),
-      breakfast: MealAttendanceStatus.eaten,
-      breakfastTime: '08:10 AM',
-      lunch: MealAttendanceStatus.eaten,
-      lunchTime: '01:25 PM',
-      dinner: MealAttendanceStatus.eaten,
-      dinnerTime: '08:40 PM',
-    ),
-    // 3 Days Ago (Weekend)
-    DailyMealRecord(
-      dateString: DateFormat('dd MMM yyyy').format(now.subtract(const Duration(days: 3))),
-      dayName: DateFormat('EEEE, dd MMM').format(now.subtract(const Duration(days: 3))),
-      date: now.subtract(const Duration(days: 3)),
-      breakfast: MealAttendanceStatus.skipped,
-      breakfastTime: 'Mess-Off Applied',
-      lunch: MealAttendanceStatus.skipped,
-      lunchTime: 'Mess-Off Applied',
-      dinner: MealAttendanceStatus.skipped,
-      dinnerTime: 'Mess-Off Applied',
-      note: 'Full Day Mess-Off (Weekend Leave) • ₹125 rebate',
-    ),
-    // 4 Days Ago
-    DailyMealRecord(
-      dateString: DateFormat('dd MMM yyyy').format(now.subtract(const Duration(days: 4))),
-      dayName: DateFormat('EEEE, dd MMM').format(now.subtract(const Duration(days: 4))),
-      date: now.subtract(const Duration(days: 4)),
-      breakfast: MealAttendanceStatus.eaten,
-      breakfastTime: '08:45 AM',
-      lunch: MealAttendanceStatus.eaten,
-      lunchTime: '01:05 PM',
-      dinner: MealAttendanceStatus.eaten,
-      dinnerTime: '08:10 PM',
-    ),
-    // 5 Days Ago
-    DailyMealRecord(
-      dateString: DateFormat('dd MMM yyyy').format(now.subtract(const Duration(days: 5))),
-      dayName: DateFormat('EEEE, dd MMM').format(now.subtract(const Duration(days: 5))),
-      date: now.subtract(const Duration(days: 5)),
-      breakfast: MealAttendanceStatus.eaten,
-      breakfastTime: '08:18 AM',
-      lunch: MealAttendanceStatus.eaten,
-      lunchTime: '01:30 PM',
-      dinner: MealAttendanceStatus.skipped,
-      dinnerTime: 'Mess-Off Applied',
-      note: 'Dinner Mess-Off: ₹50 rebate credited',
-    ),
-    // 6 Days Ago
-    DailyMealRecord(
-      dateString: DateFormat('dd MMM yyyy').format(now.subtract(const Duration(days: 6))),
-      dayName: DateFormat('EEEE, dd MMM').format(now.subtract(const Duration(days: 6))),
-      date: now.subtract(const Duration(days: 6)),
-      breakfast: MealAttendanceStatus.eaten,
-      breakfastTime: '08:25 AM',
-      lunch: MealAttendanceStatus.eaten,
-      lunchTime: '01:10 PM',
-      dinner: MealAttendanceStatus.eaten,
-      dinnerTime: '08:50 PM',
-    ),
-  ];
+  final mealsEaten = studentScans.length;
+  final mealsSkipped = 0; // Dynamic from actual messOffs
+  final totalSavings = mealsSkipped * 50;
+  final totalServed = mealsEaten + mealsSkipped;
+  final attendanceRate = totalServed > 0 ? (mealsEaten / totalServed) * 100 : 100.0;
 
-  const totalMeals = 78;
-  const eaten = 62;
-  const skipped = 16;
-  const savings = skipped * 50;
-  final rate = (eaten / (eaten + skipped)) * 100;
+  // Group scans by date
+  final Map<String, List<H4MealScanRecord>> scansByDate = {};
+  for (final scan in studentScans) {
+    final dateKey = DateFormat('yyyy-MM-dd').format(scan.scannedAt);
+    scansByDate.putIfAbsent(dateKey, () => []).add(scan);
+  }
+
+  final List<DailyMealRecord> dailyRecords = [];
+  scansByDate.forEach((dateKey, dayScans) {
+    final date = DateTime.tryParse(dateKey) ?? DateTime.now();
+    H4MealScanRecord? bScan;
+    H4MealScanRecord? lScan;
+    H4MealScanRecord? dScan;
+
+    for (final s in dayScans) {
+      if (s.mealType.toLowerCase().contains('breakfast')) bScan = s;
+      if (s.mealType.toLowerCase().contains('lunch')) lScan = s;
+      if (s.mealType.toLowerCase().contains('dinner')) dScan = s;
+    }
+
+    dailyRecords.add(DailyMealRecord(
+      dateString: DateFormat('dd MMM yyyy').format(date),
+      dayName: DateFormat('EEEE, dd MMM').format(date),
+      date: date,
+      breakfast: bScan != null ? MealAttendanceStatus.eaten : MealAttendanceStatus.scheduled,
+      breakfastTime: bScan != null ? DateFormat('hh:mm a').format(bScan.scannedAt) : null,
+      lunch: lScan != null ? MealAttendanceStatus.eaten : MealAttendanceStatus.scheduled,
+      lunchTime: lScan != null ? DateFormat('hh:mm a').format(lScan.scannedAt) : null,
+      dinner: dScan != null ? MealAttendanceStatus.eaten : MealAttendanceStatus.scheduled,
+      dinnerTime: dScan != null ? DateFormat('hh:mm a').format(dScan.scannedAt) : null,
+    ));
+  });
+
+  dailyRecords.sort((a, b) => b.date.compareTo(a.date));
 
   return StudentAttendanceStats(
-    totalMealsServed: totalMeals,
-    mealsEaten: eaten,
-    mealsSkipped: skipped,
-    totalSavings: savings,
-    attendancePercentage: rate,
-    dailyRecords: records,
+    totalMealsServed: totalServed,
+    mealsEaten: mealsEaten,
+    mealsSkipped: mealsSkipped,
+    totalSavings: totalSavings,
+    attendancePercentage: attendanceRate,
+    dailyRecords: dailyRecords,
   );
 });

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/router/app_router.dart';
@@ -26,12 +26,13 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
 
     setState(() => _isProcessing = true);
 
-    Future.delayed(const Duration(milliseconds: 600), () {
-      final success = attendanceNotifier.recordScan(student, mealType);
-      setState(() => _isProcessing = false);
-
-      if (success) {
-        _showSuccessDialog(student.name, student.registrationNo, student.rollNo, student.branch, student.roomNo, mealType);
+    Future.delayed(const Duration(milliseconds: 600), () async {
+      final success = await attendanceNotifier.recordScan(student, mealType);
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        if (success) {
+          _showSuccessDialog(student.name, student.registrationNo, student.rollNo, student.branch, student.roomNo, mealType);
+        }
       }
     });
   }
