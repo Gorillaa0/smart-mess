@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/constants/weekly_menu.dart';
 import '../providers/attendance_provider.dart';
@@ -12,10 +14,62 @@ class QRScannerScreen extends ConsumerStatefulWidget {
   ConsumerState<QRScannerScreen> createState() => _QRScannerScreenState();
 }
 
-class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
-  bool _isProcessing = false;
+class _QRScannerScreenState extends ConsumerState<QRScannerScreen> with SingleTickerProviderStateMixin {
+  late final MobileScannerController _scannerController;
+  late final AnimationController _animationController;
+  late final Animation<double> _animation;
 
-  void _verifyAndClaimMeal(String mealType) {
+  bool _isProcessing = false;
+  bool _cameraInitialized = false;
+  String? _cameraErrorMessage;
+  bool _torchEnabled = false;
+  CameraFacing _cameraFacing = CameraFacing.back;
+
+  @override
+  void initState() {
+    super.initState();
+    _scannerController = MobileScannerController(
+      detectionSpeed: DetectionSpeed.noDuplicates,
+      facing: _cameraFacing,
+      torchEnabled: _torchEnabled,
+    );
+
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+
+    _animation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _scannerController.dispose();
+    super.dispose();
+  }
+
+  void _onDetect(BarcodeCapture capture) {
+    if (_isProcessing) return;
+
+    final List<Barcode> barcodes = capture.barcodes;
+    for (final barcode in barcodes) {
+      final code = barcode.rawValue;
+      if (code != null && code.isNotEmpty) {
+        final now = DateTime.now();
+        final activeMeal = WeeklyMenuData.getActiveMealState(now);
+        final mealType = activeMeal.meal?.nameEnglish ?? 'Lunch';
+        _verifyAndClaimMeal(mealType, qrToken: code);
+        break;
+      }
+    }
+  }
+
+  void _verifyAndClaimMeal(String mealType, {String? qrToken}) {
+    if (_isProcessing) return;
+
     final student = ref.read(currentStudentProvider);
     final attendanceNotifier = ref.read(liveAttendanceProvider.notifier);
 
@@ -26,18 +80,34 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
 
     setState(() => _isProcessing = true);
 
-    Future.delayed(const Duration(milliseconds: 600), () async {
+    Future.delayed(const Duration(milliseconds: 500), () async {
       final success = await attendanceNotifier.recordScan(student, mealType);
       if (mounted) {
         setState(() => _isProcessing = false);
         if (success) {
-          _showSuccessDialog(student.name, student.registrationNo, student.rollNo, student.branch, student.roomNo, mealType);
+          _showSuccessDialog(
+            student.name,
+            student.registrationNo,
+            student.rollNo,
+            student.branch,
+            student.roomNo,
+            mealType,
+            qrToken: qrToken,
+          );
         }
       }
     });
   }
 
-  void _showSuccessDialog(String name, String regNo, String rollNo, String branch, String roomNo, String mealType) {
+  void _showSuccessDialog(
+    String name,
+    String regNo,
+    String rollNo,
+    String branch,
+    String roomNo,
+    String mealType, {
+    String? qrToken,
+  }) {
     final timeStr = DateFormat('hh:mm:ss a').format(DateTime.now());
     final plateToken = 'H4-${mealType.substring(0, 1).toUpperCase()}-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
 
@@ -51,16 +121,16 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 72,
-              height: 72,
+              width: 68,
+              height: 68,
               decoration: BoxDecoration(
                 color: const Color(0xFFE8F5E9),
                 shape: BoxShape.circle,
                 border: Border.all(color: const Color(0xFF4CAF50), width: 2),
               ),
-              child: const Icon(Icons.check_circle, color: Color(0xFF2E7D32), size: 48),
+              child: const Icon(Icons.check_circle, color: Color(0xFF2E7D32), size: 44),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             const Text(
               'MEAL PLATE VERIFIED!',
               style: TextStyle(color: Color(0xFF1B5E20), fontWeight: FontWeight.w900, fontSize: 18, letterSpacing: 0.5),
@@ -70,7 +140,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
               'Hostel Number 4 Kitchen Counter',
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12, fontWeight: FontWeight.w600),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
             // Token Container
             Container(
@@ -87,7 +157,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
 
             // Details Box
             Container(
@@ -108,7 +178,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
 
             SizedBox(
               width: double.infinity,
@@ -176,52 +246,157 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
   Widget build(BuildContext context) {
     final student = ref.watch(currentStudentProvider);
     final now = DateTime.now();
-    final todayMenu = WeeklyMenuData.getTodayMenu(now);
     final activeMeal = WeeklyMenuData.getActiveMealState(now);
     final activeMealTitle = activeMeal.meal?.nameEnglish ?? 'Lunch';
 
     return Scaffold(
-      backgroundColor: const Color(0xFF111827),
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('Meal QR Scanner', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.transparent,
+        title: const Text('Live Meal Scanner', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+        backgroundColor: const Color(0xFF111827),
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          IconButton(
+            icon: Icon(_torchEnabled ? Icons.flash_on : Icons.flash_off, color: Colors.white),
+            onPressed: () {
+              setState(() => _torchEnabled = !_torchEnabled);
+              _scannerController.toggleTorch();
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.cameraswitch, color: Colors.white),
+            onPressed: () {
+              setState(() {
+                _cameraFacing = _cameraFacing == CameraFacing.back ? CameraFacing.front : CameraFacing.back;
+              });
+              _scannerController.switchCamera();
+            },
+          ),
+        ],
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Top Student Info Pill
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      body: Stack(
+        children: [
+          // 1. LIVE CAMERA SCANNER VIEW
+          MobileScanner(
+            controller: _scannerController,
+            onDetect: _onDetect,
+            errorBuilder: (context, error, child) {
+              return Container(
+                color: const Color(0xFF111827),
+                padding: const EdgeInsets.all(24),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withOpacity(0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.videocam_off_outlined, color: Colors.orangeAccent, size: 48),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Camera Stream Inactive',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Allow camera permissions in browser settings or use the Quick Verify button below.',
+                        style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+
+          // 2. SCANNING RETICLE / VIEWFINDER OVERLAY
+          Center(
+            child: SizedBox(
+              width: 260,
+              height: 260,
+              child: Stack(
+                children: [
+                  // Corner brackets
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.greenAccent.shade400, width: 2.5),
+                    ),
+                  ),
+
+                  // Animated Scanning Laser
+                  AnimatedBuilder(
+                    animation: _animation,
+                    builder: (context, child) {
+                      return Positioned(
+                        top: _animation.value * 240,
+                        left: 10,
+                        right: 10,
+                        child: Container(
+                          height: 3,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Colors.transparent, Color(0xFF00E676), Colors.transparent],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF00E676).withOpacity(0.8),
+                                blurRadius: 10,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // 3. TOP STUDENT INFO BADGE
+          Positioned(
+            top: 16,
+            left: 16,
+            right: 16,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: const Color(0xFF1F2937),
+                color: Colors.black.withOpacity(0.75),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFF374151)),
+                border: Border.all(color: Colors.white24),
               ),
               child: Row(
                 children: [
                   CircleAvatar(
-                    radius: 18,
+                    radius: 16,
                     backgroundColor: const Color(0xFF2E7D32),
                     child: Text(
                       student.name.isNotEmpty ? student.name[0] : 'S',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           student.name,
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13.5),
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                          overflow: TextOverflow.ellipsis,
                         ),
                         Text(
                           'Reg: ${student.registrationNo} • Room ${student.roomNo} (${student.branch})',
-                          style: TextStyle(color: Colors.grey.shade400, fontSize: 11),
+                          style: const TextStyle(color: Colors.white70, fontSize: 10.5),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
@@ -229,57 +404,21 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
                 ],
               ),
             ),
+          ),
 
-            const Spacer(),
-
-            // Target Scanner Viewport
-            Center(
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Container(
-                    width: 240,
-                    height: 240,
-                    decoration: BoxDecoration(
-                      color: Colors.black45,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: const Color(0xFF2E7D32), width: 3),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF2E7D32).withOpacity(0.3),
-                          blurRadius: 20,
-                          spreadRadius: 2,
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.qr_code_scanner, size: 72, color: Colors.greenAccent.shade400),
-                          const SizedBox(height: 10),
-                          const Text(
-                            'Align Mess Counter QR',
-                            style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const Spacer(),
-
-            // Bottom Scan Trigger Panel
-            Container(
+          // 4. BOTTOM ACTION PANEL
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
               padding: const EdgeInsets.all(20),
               decoration: const BoxDecoration(
-                color: Color(0xFF1F2937),
+                color: Color(0xFF111827),
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -292,8 +431,8 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
                             style: TextStyle(color: Colors.grey.shade400, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.5),
                           ),
                           Text(
-                            activeMealTitle,
-                            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900),
+                            activeMealTitle.toUpperCase(),
+                            style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w900),
                           ),
                         ],
                       ),
@@ -305,16 +444,17 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
                         ),
                         child: const Row(
                           children: [
-                            Icon(Icons.radar, size: 12, color: Colors.greenAccent),
+                            Icon(Icons.camera_alt, size: 12, color: Colors.greenAccent),
                             SizedBox(width: 4),
-                            Text('COUNTER LIVE', style: TextStyle(color: Colors.greenAccent, fontSize: 10, fontWeight: FontWeight.bold)),
+                            Text('CAMERA LIVE', style: TextStyle(color: Colors.greenAccent, fontSize: 10, fontWeight: FontWeight.bold)),
                           ],
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
 
+                  // MANUAL / ONE-TAP VERIFY BUTTON
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
@@ -327,10 +467,10 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
                       ),
                       icon: _isProcessing
                           ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Icon(Icons.qr_code, size: 20),
+                          : const Icon(Icons.qr_code_scanner, size: 20),
                       label: Text(
-                        _isProcessing ? 'VERIFYING PLATE...' : 'SCAN & VERIFY $activeMealTitle PLATE',
-                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13.5, letterSpacing: 0.5),
+                        _isProcessing ? 'VERIFYING PLATE...' : 'TAP TO VERIFY $activeMealTitle PLATE',
+                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 0.5),
                       ),
                       onPressed: _isProcessing ? null : () => _verifyAndClaimMeal(activeMealTitle),
                     ),
@@ -338,8 +478,8 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
                 ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
