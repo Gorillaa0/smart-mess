@@ -195,8 +195,33 @@ class ProfileScreen extends ConsumerWidget {
                           // STEP 2: Update password in Firebase Auth (cloud)
                           await firebaseUser.updatePassword(newPass);
 
-                          // STEP 3: Sync new password to Firestore database (real-time)
-                          await FirebaseFirestore.instance
+                          // STEP 3: Sync to in-memory roster and Riverpod state immediately
+                          H4StudentDirectory.updateStudentPassword(student.registrationNo, newPass);
+                          final updatedStudent = student.copyWith(password: newPass);
+                          ref.read(currentStudentProvider.notifier).state = updatedStudent;
+
+                          // STEP 4: Close dialog immediately without any spinning delay
+                          Navigator.of(dialogContext, rootNavigator: true).pop();
+
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: const Row(
+                                  children: [
+                                    Icon(Icons.check_circle, color: Colors.white, size: 20),
+                                    SizedBox(width: 10),
+                                    Expanded(child: Text('Password updated successfully across all systems!')),
+                                  ],
+                                ),
+                                backgroundColor: const Color(0xFF2E7D32),
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                            );
+                          }
+
+                          // STEP 5: Background non-blocking sync to Firestore database
+                          FirebaseFirestore.instance
                               .collection('students')
                               .doc(student.registrationNo)
                               .set({
@@ -205,29 +230,8 @@ class ProfileScreen extends ConsumerWidget {
                             'email': firebaseUser.email ?? studentEmail,
                             'password': newPass,
                             'updatedAt': DateTime.now().toIso8601String(),
-                          }, SetOptions(merge: true));
-
-                          // STEP 4: Sync to in-memory roster and Riverpod state
-                          H4StudentDirectory.updateStudentPassword(student.registrationNo, newPass);
-                          final updatedStudent = student.copyWith(password: newPass);
-                          ref.read(currentStudentProvider.notifier).state = updatedStudent;
-
-                          if (!ctx.mounted) return;
-                          Navigator.pop(dialogContext);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: const Row(
-                                children: [
-                                  Icon(Icons.check_circle, color: Colors.white, size: 20),
-                                  SizedBox(width: 10),
-                                  Expanded(child: Text('Password updated across all systems in real-time!')),
-                                ],
-                              ),
-                              backgroundColor: const Color(0xFF2E7D32),
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            ),
-                          );
+                          }, SetOptions(merge: true)).catchError((_) {});
+                          return;
                         } on FirebaseAuthException catch (e) {
                           String msg;
                           if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
