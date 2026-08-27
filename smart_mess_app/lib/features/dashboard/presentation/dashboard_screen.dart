@@ -692,20 +692,20 @@ class DashboardScreen extends ConsumerWidget {
       return Container(
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFF1B5E20), Color(0xFF2E7D32)],
+            colors: [Color(0xFFE8F5E9), Color(0xFFC8E6C9)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: const Color(0xFF81C784).withOpacity(0.40),
+            color: const Color(0xFFA5D6A7),
             width: 1.2,
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF1B5E20).withOpacity(0.25),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+              color: const Color(0xFF2E7D32).withOpacity(0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
@@ -719,31 +719,30 @@ class DashboardScreen extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.20),
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white30, width: 0.8),
+                    border: Border.all(color: const Color(0xFFA5D6A7), width: 1.0),
                   ),
                   child: const Row(
                     children: [
-                      Icon(Icons.nightlight_round, color: Colors.amberAccent, size: 14),
+                      Icon(Icons.nightlight_round, color: Color(0xFFE65100), size: 14),
                       SizedBox(width: 5),
                       Text(
                         'MESS CLOSED FOR TODAY',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 0.4),
+                        style: TextStyle(color: Color(0xFF1B5E20), fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 0.4),
                       ),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.greenAccent.shade400.withOpacity(0.25),
+                    color: const Color(0xFF1B5E20),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.greenAccent.shade400, width: 0.8),
                   ),
                   child: const Text(
                     'All Meals Served',
-                    style: TextStyle(color: Colors.greenAccent, fontSize: 10.5, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
@@ -751,16 +750,27 @@ class DashboardScreen extends ConsumerWidget {
             const SizedBox(height: 10),
             const Text(
               'Tonight\'s dinner is complete. Kitchen service will resume tomorrow morning at Hostel H4.',
-              style: TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w500, height: 1.3),
+              style: TextStyle(color: Color(0xFF1B5E20), fontSize: 12.5, fontWeight: FontWeight.w600, height: 1.3),
             ),
             const SizedBox(height: 14),
             if (tomorrowBreakfast != null)
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.22),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF165024), Color(0xFF2E7D32)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.white.withOpacity(0.25), width: 1.0),
+                  border: Border.all(color: const Color(0xFF81C784).withOpacity(0.4), width: 1.0),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF1B5E20).withOpacity(0.18),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -810,7 +820,7 @@ class DashboardScreen extends ConsumerWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.10),
+                        color: Colors.white.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Row(
