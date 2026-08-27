@@ -226,7 +226,7 @@ class DashboardScreen extends ConsumerWidget {
             _buildColorfulQuickActionsGrid(context),
             const SizedBox(height: 20),
 
-            // 5. BILLING & ATTENDANCE SUMMARY CARDS (UNIFIED IN MESS BILL)
+            // 5. BILLING & EVENTS SUMMARY CARDS
             Row(
               children: [
                 Expanded(
@@ -247,15 +247,17 @@ class DashboardScreen extends ConsumerWidget {
                 Expanded(
                   child: _colorfulSummaryCard(
                     context,
-                    title: 'Meal Attendance Log',
-                    value: '${attStats.mealsEaten} Meals Eaten',
-                    subtitle: 'Live Attendance • View dining log in Bill',
-                    icon: Icons.fact_check_outlined,
-                    startColor: const Color(0xFFE8F5E9),
-                    endColor: const Color(0xFFC8E6C9),
-                    borderColor: const Color(0xFFA5D6A7),
-                    textColor: const Color(0xFF1B5E20),
-                    onTap: () => context.push('/bill'),
+                    title: 'Upcoming Events',
+                    value: '${eventsList.length} Events',
+                    subtitle: eventsList.isNotEmpty
+                        ? eventsList.first.title
+                        : 'Exams, Festivals & Holidays',
+                    icon: Icons.celebration,
+                    startColor: const Color(0xFFE8EAF6),
+                    endColor: const Color(0xFFC5CAE9),
+                    borderColor: const Color(0xFF9FA8DA),
+                    textColor: const Color(0xFF283593),
+                    onTap: () => context.push('/events'),
                   ),
                 ),
               ],
@@ -1013,8 +1015,8 @@ class DashboardScreen extends ConsumerWidget {
         onTap: () => _showWeeklyMenuModal(context),
       ),
       _ActionItem(
-        title: 'Mess Bills & Log',
-        subtitle: 'Monthly attendance tally',
+        title: 'Mess Bills',
+        subtitle: 'Fee & rebate history',
         icon: Icons.receipt_long,
         startColor: const Color(0xFFFFF3E0),
         endColor: const Color(0xFFFFE0B2),
