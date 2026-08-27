@@ -58,6 +58,23 @@ class H4Student {
     'roomNo': roomNo,
     'password': password,
   };
+
+  factory H4Student.fromMap(Map<String, dynamic> data, {String? defaultPassword}) {
+    return H4Student(
+      slNo: data['slNo'] is int ? data['slNo'] : (int.tryParse(data['slNo']?.toString() ?? '') ?? 1),
+      name: data['name']?.toString() ?? 'Student',
+      rollNo: data['rollNo']?.toString() ?? '',
+      mobile: data['mobile']?.toString() ?? '',
+      email: data['email']?.toString(),
+      branch: data['branch']?.toString() ?? 'CSE',
+      registrationNo: (data['registrationNo'] ?? data['studentId'] ?? '').toString(),
+      semester: data['semester']?.toString() ?? '6th',
+      cgpa: (data['cgpa'] is num) ? (data['cgpa'] as num).toDouble() : (double.tryParse(data['cgpa']?.toString() ?? '') ?? 7.5),
+      hostel: data['hostel']?.toString() ?? 'Hostel Number 4',
+      roomNo: data['roomNo']?.toString() ?? '101',
+      password: data['password']?.toString() ?? defaultPassword ?? 'Pass@1234',
+    );
+  }
 }
 
 class H4StudentDirectory {

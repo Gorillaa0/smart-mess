@@ -26,26 +26,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _isLoading = true);
 
     if (_selectedRole == 'student') {
-      final query = _idController.text.trim().toLowerCase();
+      final rawQuery = _idController.text.trim();
+      final query = rawQuery.toLowerCase();
       final password = _passwordController.text.trim();
 
-      final student = H4StudentDirectory.findByRegistrationOrRoll(query) ??
+      H4Student? student = H4StudentDirectory.findByRegistrationOrRoll(query) ??
           H4StudentDirectory.students.cast<H4Student?>().firstWhere(
             (s) => (s?.email ?? '').toLowerCase() == query,
             orElse: () => null,
           );
 
-      if (student == null && !query.contains('@')) {
-        setState(() => _isLoading = false);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Invalid Email/ID or Password. Please check your credentials.'),
-              backgroundColor: Colors.redAccent,
-            ),
-          );
-        }
-        return;
+      // If not in local static list, check Firestore dynamically
+      if (student == null) {
+        try {
+          final doc = await FirebaseFirestore.instance.collection('students').doc(rawQuery).get();
+          if (doc.exists && doc.data() != null) {
+            student = H4Student.fromMap(doc.data()!, defaultPassword: password);
+          }
+        } catch (_) {}
       }
 
       // Determine real-time Firebase Auth target email
@@ -57,7 +55,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       } else if (student != null) {
         targetEmail = '${student.registrationNo}@smartmess.edu';
       } else {
-        targetEmail = '${query}@smartmess.edu';
+        targetEmail = '${rawQuery}@smartmess.edu';
       }
 
       // Attempt Real-Time Firebase Authentication
@@ -69,34 +67,73 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
         // Success! Real-time authenticated against Firebase cloud Auth backend
         setState(() => _isLoading = false);
-        if (student != null) {
-          H4StudentDirectory.updateStudentPassword(student.registrationNo, password);
-          final updatedStudent = student.copyWith(password: password);
-          ref.read(currentStudentProvider.notifier).state = updatedStudent;
-
-          // Real-Time Firestore Synchronization
+        
+        // If student was still null, fetch from Firestore or create profile
+        if (student == null) {
           try {
-            FirebaseFirestore.instance
-                .collection('students')
-                .doc(student.registrationNo)
-                .set({
-              'studentId': student.registrationNo,
-              'name': student.name,
-              'email': targetEmail,
-              'password': password,
-              'updatedAt': DateTime.now().toIso8601String(),
-            }, SetOptions(merge: true));
-          } catch (fsErr) {
-            debugPrint('[FIRESTORE] Real-time sync error: $fsErr');
-          }
+            final doc = await FirebaseFirestore.instance.collection('students').doc(rawQuery).get();
+            if (doc.exists && doc.data() != null) {
+              student = H4Student.fromMap(doc.data()!, defaultPassword: password);
+            }
+          } catch (_) {}
+          student ??= H4Student(
+            slNo: 999,
+            name: rawQuery,
+            rollNo: rawQuery,
+            mobile: '9876543210',
+            email: targetEmail,
+            branch: 'CSE',
+            registrationNo: rawQuery,
+            semester: '6th',
+            cgpa: 8.0,
+            roomNo: '101',
+            password: password,
+          );
         }
+
+        H4StudentDirectory.updateStudentPassword(student.registrationNo, password);
+        final updatedStudent = student.copyWith(password: password);
+        ref.read(currentStudentProvider.notifier).state = updatedStudent;
+
+        // Real-Time Firestore Synchronization
+        try {
+          await FirebaseFirestore.instance
+              .collection('students')
+              .doc(student.registrationNo)
+              .set({
+            'studentId': student.registrationNo,
+            'name': student.name,
+            'email': targetEmail,
+            'password': password,
+            'updatedAt': DateTime.now().toIso8601String(),
+          }, SetOptions(merge: true));
+        } catch (fsErr) {
+          debugPrint('[FIRESTORE] Real-time sync error: $fsErr');
+        }
+
         ref.read(userRoleProvider.notifier).state = 'student';
         ref.read(authStateProvider.notifier).state = true;
         return;
       } on FirebaseAuthException catch (authErr) {
         if (authErr.code == 'user-not-found' || authErr.code == 'invalid-credential') {
-          // Check if initial first-time provision is needed with initial roster password
-          if (student != null && H4StudentDirectory.verifyPassword(student, password)) {
+          // Check if initial first-time provision is needed
+          bool canProvision = (student != null && H4StudentDirectory.verifyPassword(student, password));
+          
+          if (!canProvision) {
+            // Check Firestore doc password
+            try {
+              final doc = await FirebaseFirestore.instance.collection('students').doc(rawQuery).get();
+              if (doc.exists && doc.data() != null) {
+                final dbPass = doc.data()!['password']?.toString();
+                if (dbPass != null && dbPass == password) {
+                  student = H4Student.fromMap(doc.data()!, defaultPassword: password);
+                  canProvision = true;
+                }
+              }
+            } catch (_) {}
+          }
+
+          if (canProvision && student != null) {
             try {
               // Auto-provision user account on Firebase Auth with their initial password
               await FirebaseAuth.instance.createUserWithEmailAndPassword(
@@ -109,7 +146,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
               // Real-Time Firestore Synchronization
               try {
-                FirebaseFirestore.instance
+                await FirebaseFirestore.instance
                     .collection('students')
                     .doc(student.registrationNo)
                     .set({

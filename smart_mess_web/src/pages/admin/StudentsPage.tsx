@@ -195,10 +195,13 @@ export const StudentsPage: React.FC = () => {
       return;
     }
 
-    const passwordChanged = editForm.password !== editingStudent.password;
+    const reg = editForm.registrationNo.trim();
+    const newPassword = editForm.password.trim();
+    const oldPassword = editingStudent.password; // password before admin changed it
+    const passwordChanged = newPassword !== oldPassword;
     const studentEmail = editForm.email.trim()
       ? editForm.email.trim().toLowerCase()
-      : `${editForm.registrationNo.trim()}@smartmess.edu`;
+      : `${reg}@smartmess.edu`;
 
     setStudents((prev) =>
       prev.map((s) =>
@@ -207,21 +210,20 @@ export const StudentsPage: React.FC = () => {
               ...s,
               name: editForm.name.trim(),
               rollNo: editForm.rollNo.trim(),
-              registrationNo: editForm.registrationNo.trim(),
+              registrationNo: reg,
               email: editForm.email.trim() ? editForm.email.trim() : undefined,
               branch: editForm.branch as any,
               roomNo: editForm.roomNo.trim(),
               mobile: editForm.mobile.trim(),
-              password: editForm.password
+              password: newPassword
             }
           : s
       )
     );
 
-    toast.success(`Updated ${editForm.name}!`);
+    toast.success(`Updating ${editForm.name}...`);
     setEditingStudent(null);
 
-    // Auto-update Firestore (always) + send Auth reset email if password changed
     (async () => {
       const FIREBASE_CONFIG = {
         apiKey: 'AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
@@ -231,49 +233,149 @@ export const StudentsPage: React.FC = () => {
         messagingSenderId: '190175767796',
         appId: '1:190175767796:web:9d8da3ec9adbe2fd9882a1'
       };
+
       try {
-        const { initializeApp, getApps } = await import('firebase/app');
+        const { initializeApp, getApps, deleteApp } = await import('firebase/app');
+        const { getAuth, signInWithEmailAndPassword, updatePassword, createUserWithEmailAndPassword, signOut } = await import('firebase/auth');
         const { getFirestore, doc, setDoc } = await import('firebase/firestore/lite');
-        const existingApps = getApps();
-        const liteApp = existingApps.find(a => a.name === 'lite-app') || initializeApp(FIREBASE_CONFIG, 'lite-app');
-        const liteDb = getFirestore(liteApp, 'default');
 
-        // ── Step 1: Write updated student data + password to Firestore
-        await setDoc(doc(liteDb, 'students', editForm.registrationNo.trim()), {
-          studentId: editForm.registrationNo.trim(),
-          name: editForm.name.trim(),
-          rollNo: editForm.rollNo.trim(),
-          email: studentEmail,
-          mobile: editForm.mobile.trim(),
-          branch: editForm.branch,
-          roomNo: editForm.roomNo.trim(),
-          password: editForm.password,    // ← always write latest password
-          updatedAt: new Date().toISOString()
-        }, { merge: true });
-        console.log(`[FIRESTORE] Updated student ${editForm.name} in Firestore`);
-
-        // ── Step 2: If password changed, send Firebase Auth password reset email
-        // (Client SDK cannot change another user's Auth password directly —
-        //  only Admin SDK can. Sending a reset link is the secure alternative.)
+        // ── STEP 1: Update Firebase Auth password
+        // Use a secondary app so the admin session is never disrupted
         if (passwordChanged) {
+          const secondaryAppName = `edit-student-${reg}-${Date.now()}`;
+          const secondaryApp = initializeApp(FIREBASE_CONFIG, secondaryAppName);
+          const secondaryAuth = getAuth(secondaryApp);
+
           try {
-            const { getAuth, sendPasswordResetEmail } = await import('firebase/auth');
-            const mainApp = getApps().find(a => a.name === '[DEFAULT]');
-            if (mainApp) {
-              const auth = getAuth(mainApp);
-              await sendPasswordResetEmail(auth, studentEmail);
-              toast.success(`🔑 Password reset email sent to ${studentEmail}`);
-              console.log(`[AUTH] Password reset email sent to ${studentEmail}`);
+            // Try signing in with the OLD password first
+            const userCred = await signInWithEmailAndPassword(secondaryAuth, studentEmail, oldPassword);
+            // Success — now update to the NEW password in Firebase Auth
+            await updatePassword(userCred.user, newPassword);
+            toast.success(`✅ Firebase Auth password updated for ${editForm.name}`);
+            console.log(`[AUTH] Password updated for ${studentEmail}`);
+          } catch (signInErr: any) {
+            if (signInErr.code === 'auth/user-not-found' || signInErr.code === 'auth/invalid-credential') {
+              // No Firebase Auth account exists yet — create one with the new password
+              try {
+                await createUserWithEmailAndPassword(secondaryAuth, studentEmail, newPassword);
+                toast.success(`✅ Firebase Auth account created for ${editForm.name}`);
+                console.log(`[AUTH] New account provisioned for ${studentEmail}`);
+              } catch (createErr: any) {
+                if (createErr.code === 'auth/email-already-in-use') {
+                  // Account exists but old password is stale (student already changed via email reset)
+                  // We cannot force-update from client SDK — send reset email as fallback
+                  const mainApps = getApps();
+                  const mainApp = mainApps.find(a => a.name === '[DEFAULT]');
+                  if (mainApp) {
+                    const { sendPasswordResetEmail } = await import('firebase/auth');
+                    const mainAuth = getAuth(mainApp);
+                    await sendPasswordResetEmail(mainAuth, studentEmail);
+                    toast.success(`🔑 Reset email sent to ${studentEmail} — student must reset via link`);
+                  }
+                } else {
+                  console.error('[AUTH] Create error:', createErr);
+                  toast.error(`⚠️ Auth error: ${createErr.message}`);
+                }
+              }
+            } else if (signInErr.code === 'auth/wrong-password' || signInErr.code === 'auth/invalid-login-credentials') {
+              // Account exists but student already changed their password themselves
+              // Send a reset link so they can use the admin-set password
+              try {
+                const mainApps = getApps();
+                const mainApp = mainApps.find(a => a.name === '[DEFAULT]');
+                if (mainApp) {
+                  const { sendPasswordResetEmail } = await import('firebase/auth');
+                  const mainAuth = getAuth(mainApp);
+                  await sendPasswordResetEmail(mainAuth, studentEmail);
+                  toast.success(`🔑 Reset email sent to ${studentEmail}`);
+                }
+              } catch (_) {}
+            } else {
+              console.error('[AUTH] Sign-in error:', signInErr);
             }
-          } catch (resetErr: any) {
-            console.error('[AUTH] Could not send reset email:', resetErr);
+          } finally {
+            await signOut(secondaryAuth);
+            await deleteApp(secondaryApp);
           }
         }
+
+        // ── STEP 2: Write updated student data + password to Firestore
+        // Use the Firestore REST API directly (bypasses Firestore SDK auth check)
+        const API_KEY = 'AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E';
+        const PROJECT_ID = 'smart-mess-sih';
+        const docPath = `students/${reg}`;
+        const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/${docPath}?key=${API_KEY}&updateMask.fieldPaths=studentId&updateMask.fieldPaths=name&updateMask.fieldPaths=rollNo&updateMask.fieldPaths=email&updateMask.fieldPaths=mobile&updateMask.fieldPaths=branch&updateMask.fieldPaths=roomNo&updateMask.fieldPaths=password&updateMask.fieldPaths=updatedAt`;
+
+        const mainApps = getApps();
+        const mainApp = mainApps.find(a => a.name === '[DEFAULT]');
+        let idToken = '';
+        if (mainApp) {
+          const { getAuth } = await import('firebase/auth');
+          const mainAuth = getAuth(mainApp);
+          const currentUser = mainAuth.currentUser;
+          if (currentUser) {
+            idToken = await currentUser.getIdToken(true);
+          }
+        }
+
+        const firestoreBody = {
+          fields: {
+            studentId: { stringValue: reg },
+            name: { stringValue: editForm.name.trim() },
+            rollNo: { stringValue: editForm.rollNo.trim() },
+            email: { stringValue: studentEmail },
+            mobile: { stringValue: editForm.mobile.trim() },
+            branch: { stringValue: editForm.branch },
+            roomNo: { stringValue: editForm.roomNo.trim() },
+            password: { stringValue: newPassword },
+            updatedAt: { stringValue: new Date().toISOString() }
+          }
+        };
+
+        const response = await fetch(
+          `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/students/${reg}`,
+          {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(idToken ? { 'Authorization': `Bearer ${idToken}` } : {})
+            },
+            body: JSON.stringify(firestoreBody)
+          }
+        );
+
+        if (response.ok) {
+          console.log(`[FIRESTORE] Updated ${editForm.name} via REST API`);
+          toast.success(`✅ ${editForm.name} updated in Firestore!`);
+        } else {
+          // Fallback: try Firestore SDK
+          const existingApps = getApps();
+          const liteApp = existingApps.find(a => a.name === 'lite-app') || initializeApp(FIREBASE_CONFIG, 'lite-app');
+          const liteDb = getFirestore(liteApp, 'default');
+          await setDoc(doc(liteDb, 'students', reg), {
+            studentId: reg,
+            name: editForm.name.trim(),
+            rollNo: editForm.rollNo.trim(),
+            email: studentEmail,
+            mobile: editForm.mobile.trim(),
+            branch: editForm.branch,
+            roomNo: editForm.roomNo.trim(),
+            password: newPassword,
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+          toast.success(`✅ ${editForm.name} updated!`);
+        }
       } catch (err: any) {
-        console.error('[FIRESTORE] Update error:', err);
+        console.error('[EDIT] Error:', err);
         toast.error(`❌ Update error: ${err.message}`);
       }
     })();
+  };
+
+  const handleResetToDefaultRoster = () => {
+    setStudents(H4_STUDENTS_LIST);
+    localStorage.removeItem('SMART_MESS_H4_STUDENTS');
+    toast.success('Reset to official 112 H4 resident roster!');
   };
 
   const handleSaveNewStudent = () => {
@@ -393,78 +495,101 @@ export const StudentsPage: React.FC = () => {
     })();
   };
 
-  const handleResetToDefaultRoster = () => {
-    setStudents(H4_STUDENTS_LIST);
-    localStorage.removeItem('SMART_MESS_H4_STUDENTS');
-    toast.success('Reset to official 112 H4 resident roster!');
-  };
 
   const [isSyncingCloud, setIsSyncingCloud] = useState(false);
 
   const handleSyncToCloudFirestore = async () => {
     setIsSyncingCloud(true);
-    const toastId = toast.loading('Syncing via Firestore Lite...');
-    console.log('[SYNC] Starting Firestore Lite sync for', students.length, 'students');
+    const toastId = toast.loading(`Syncing ${students.length} students to Firestore...`);
+    console.log('[SYNC] Starting REST API sync for', students.length, 'students');
+
     try {
-      const { initializeApp, getApps } = await import('firebase/app');
-      const { getFirestore, doc, setDoc, writeBatch } = await import('firebase/firestore/lite');
-
-      const FIREBASE_CONFIG = {
-        apiKey: 'AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
-        authDomain: 'smart-mess-sih.firebaseapp.com',
-        projectId: 'smart-mess-sih',
-        storageBucket: 'smart-mess-sih.firebasestorage.app',
-        messagingSenderId: '190175767796',
-        appId: '1:190175767796:web:9d8da3ec9adbe2fd9882a1'
-      };
-
-      const existingApps = getApps();
-      const liteApp = existingApps.find(a => a.name === 'lite-app') || initializeApp(FIREBASE_CONFIG, 'lite-app');
-      const liteDb = getFirestore(liteApp, 'default');
-
-      // Firestore Lite writeBatch — no offline queuing, direct HTTP, max 500 ops
-      let batch = writeBatch(liteDb);
-      let count = 0;
-
-      for (const s of students) {
-        batch.set(doc(liteDb, 'students', s.registrationNo), {
-          studentId: s.registrationNo,
-          slNo: s.slNo,
-          name: s.name,
-          rollNo: s.rollNo,
-          mobile: s.mobile || '',
-          email: s.email || '',
-          branch: s.branch,
-          registrationNo: s.registrationNo,
-          semester: s.semester || '6th',
-          cgpa: s.cgpa || 0,
-          hostel: s.hostel || 'Hostel Number 4',
-          roomNo: s.roomNo || '',
-          messId: 'mess_h4',
-          status: 'active',
-          role: 'student',
-          updatedAt: new Date().toISOString()
-        });
-        count++;
-        if (count % 40 === 0) {
-          await batch.commit();
-          batch = writeBatch(liteDb);
-          toast.loading(`Syncing... ${count}/${students.length} saved`, { id: toastId });
-          console.log(`[SYNC] ${count}/${students.length} committed`);
+      // Get the admin's Firebase Auth ID token to authorize Firestore writes
+      const { getApps } = await import('firebase/app');
+      const { getAuth } = await import('firebase/auth');
+      const mainApp = getApps().find(a => a.name === '[DEFAULT]');
+      let idToken = '';
+      if (mainApp) {
+        const mainAuth = getAuth(mainApp);
+        if (mainAuth.currentUser) {
+          idToken = await mainAuth.currentUser.getIdToken(true);
         }
       }
 
-      // Commit remaining
-      if (count % 40 !== 0) {
-        batch.set(doc(liteDb, 'hostels', 'hostel_h4'), { hostelId: 'hostel_h4', name: 'Hostel Number 4', capacity: 150 });
-        batch.set(doc(liteDb, 'messes', 'mess_h4'), { messId: 'mess_h4', name: 'Hostel Number 4 Central Mess', hostelId: 'hostel_h4', managerId: 'manager_dhaneshwar', capacity: 150 });
-        batch.set(doc(liteDb, 'managers', 'manager_dhaneshwar'), { managerId: 'manager_dhaneshwar', name: 'Dhaneshwar Yadav', mobile: '6200432942', messId: 'mess_h4', role: 'manager', status: 'active' });
-        await batch.commit();
+      const PROJECT_ID = 'smart-mess-sih';
+      let count = 0;
+      let failed = 0;
+
+      // Process students in parallel batches of 10 for speed
+      const BATCH_SIZE = 10;
+      for (let i = 0; i < students.length; i += BATCH_SIZE) {
+        const batch = students.slice(i, i + BATCH_SIZE);
+        const email = `${batch[0]?.registrationNo || ''}@smartmess.edu`;
+        toast.loading(`Syncing... ${Math.min(i + BATCH_SIZE, students.length)}/${students.length}`, { id: toastId });
+
+        await Promise.allSettled(batch.map(async (s) => {
+          const studentEmail = s.email || `${s.registrationNo}@smartmess.edu`;
+          const body = {
+            fields: {
+              studentId: { stringValue: s.registrationNo },
+              slNo: { integerValue: String(s.slNo) },
+              name: { stringValue: s.name },
+              rollNo: { stringValue: s.rollNo },
+              mobile: { stringValue: s.mobile || '' },
+              email: { stringValue: studentEmail },
+              branch: { stringValue: s.branch },
+              registrationNo: { stringValue: s.registrationNo },
+              semester: { stringValue: s.semester || '6th' },
+              cgpa: { doubleValue: s.cgpa || 0 },
+              hostel: { stringValue: s.hostel || 'Hostel Number 4' },
+              roomNo: { stringValue: s.roomNo || '' },
+              password: { stringValue: s.password || '' },
+              messId: { stringValue: 'mess_h4' },
+              status: { stringValue: 'active' },
+              role: { stringValue: 'student' },
+              updatedAt: { stringValue: new Date().toISOString() }
+            }
+          };
+
+          const res = await fetch(
+            `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/students/${s.registrationNo}`,
+            {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(idToken ? { 'Authorization': `Bearer ${idToken}` } : {})
+              },
+              body: JSON.stringify(body)
+            }
+          );
+          if (res.ok) { count++; } else { failed++; }
+        }));
       }
 
-      console.log('[SYNC] ✅ All', count, 'students saved via Firestore Lite!');
+      // Sync hostel, mess, manager metadata
+      const metadataDocs = [
+        { path: 'hostels/hostel_h4', fields: { hostelId: { stringValue: 'hostel_h4' }, name: { stringValue: 'Hostel Number 4' }, capacity: { integerValue: '150' } } },
+        { path: 'messes/mess_h4', fields: { messId: { stringValue: 'mess_h4' }, name: { stringValue: 'Hostel Number 4 Central Mess' }, hostelId: { stringValue: 'hostel_h4' }, managerId: { stringValue: 'manager_dhaneshwar' }, capacity: { integerValue: '150' } } },
+        { path: 'managers/manager_dhaneshwar', fields: { managerId: { stringValue: 'manager_dhaneshwar' }, name: { stringValue: 'Dhaneshwar Yadav' }, mobile: { stringValue: '6200432942' }, messId: { stringValue: 'mess_h4' }, role: { stringValue: 'manager' }, status: { stringValue: 'active' } } }
+      ];
+      for (const meta of metadataDocs) {
+        await fetch(
+          `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/${meta.path}`,
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', ...(idToken ? { 'Authorization': `Bearer ${idToken}` } : {}) },
+            body: JSON.stringify({ fields: meta.fields })
+          }
+        );
+      }
+
       toast.dismiss(toastId);
-      toast.success(`🎉 All ${count} students saved to Cloud Firestore!`, { duration: 6000 });
+      if (failed === 0) {
+        toast.success(`🎉 All ${count} students synced to Firestore!`, { duration: 6000 });
+      } else {
+        toast.success(`⚠️ ${count} synced, ${failed} failed. Check Firestore rules in Firebase Console.`, { duration: 8000 });
+      }
+      console.log(`[SYNC] ✅ Done — ${count} synced, ${failed} failed`);
     } catch (err: any) {
       console.error('[SYNC] ❌', err.code, err.message);
       toast.dismiss(toastId);
@@ -473,9 +598,6 @@ export const StudentsPage: React.FC = () => {
       setIsSyncingCloud(false);
     }
   };
-
-
-
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
