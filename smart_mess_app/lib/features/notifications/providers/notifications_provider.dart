@@ -15,49 +15,56 @@ class NotificationsNotifier extends StateNotifier<AsyncValue<List<NotificationMo
   }
 
   Future<void> _fetchLive() async {
+    // 1. Direct Google Cloud Firestore runQuery (Real-Time Cloud Sync)
     try {
-      // 1. Fetch from Express Backend API (Instant real-time sync)
       final dio = Dio();
-      final res = await dio.get('http://localhost:3001/notifications').timeout(const Duration(milliseconds: 1500));
-      if (res.statusCode == 200 && res.data != null && res.data['notifications'] != null) {
-        final rawList = res.data['notifications'] as List;
-        final list = rawList.map((n) {
-          DateTime parsedDate = DateTime.tryParse(n['createdAt']?.toString() ?? '') ?? DateTime.now();
-          return NotificationModel(
-            id: n['id'] ?? 'n_${DateTime.now().millisecondsSinceEpoch}',
-            title: n['title'] ?? 'Announcement',
-            body: n['body'] ?? '',
-            isRead: n['read'] == true,
-            createdAt: parsedDate,
-            deepLink: n['category'],
-          );
-        }).toList();
+      final res = await dio.post(
+        'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents:runQuery?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
+        data: {
+          'structuredQuery': {
+            'from': [{'collectionId': 'notifications'}]
+          }
+        },
+        options: Options(headers: {'Content-Type': 'application/json'}),
+      ).timeout(const Duration(seconds: 3));
 
-        state = AsyncData(list);
-        return;
-      }
-    } catch (_) {}
+      if (res.statusCode == 200 && res.data is List) {
+        final List results = res.data;
+        final notifs = <NotificationModel>[];
 
-    // 2. Fallback to Cloud Firestore (databaseId: 'default')
-    try {
-      final snap = await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'default')
-          .collection('notifications')
-          .get()
-          .timeout(const Duration(milliseconds: 2000));
-      if (snap.docs.isNotEmpty) {
-        final list = snap.docs.map((d) => NotificationModel.fromFirestore(d)).toList();
-        state = AsyncData(list);
-        return;
-      }
-    } catch (_) {
-      try {
-        final snap = await FirebaseFirestore.instance.collection('notifications').get().timeout(const Duration(milliseconds: 2000));
-        if (snap.docs.isNotEmpty) {
-          final list = snap.docs.map((d) => NotificationModel.fromFirestore(d)).toList();
-          state = AsyncData(list);
+        for (final item in results) {
+          if (item is Map && item['document'] != null) {
+            final doc = item['document'] as Map;
+            final fields = (doc['fields'] as Map?) ?? {};
+
+            final id = fields['id']?['stringValue'] ?? (doc['name']?.toString().split('/').last ?? 'notif');
+            final title = fields['title']?['stringValue'] ?? 'Announcement';
+            final body = fields['body']?['stringValue'] ?? '';
+            final category = fields['category']?['stringValue'] ?? 'alert';
+            final read = fields['read']?['booleanValue'] ?? false;
+            final createdAtStr = fields['createdAt']?['stringValue'] ?? '';
+            final parsedDate = DateTime.tryParse(createdAtStr) ?? DateTime.now();
+
+            notifs.add(NotificationModel(
+              id: id,
+              title: title,
+              body: body,
+              isRead: read,
+              createdAt: parsedDate,
+              deepLink: category,
+            ));
+          }
+        }
+
+        if (notifs.isNotEmpty) {
+          // Sort newest first
+          notifs.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          state = AsyncData(notifs);
           return;
         }
-      } catch (_) {}
+      }
+    } catch (e) {
+      debugPrint('[NOTIFS FETCH ERROR]: $e');
     }
 
     // 3. Fallback default data

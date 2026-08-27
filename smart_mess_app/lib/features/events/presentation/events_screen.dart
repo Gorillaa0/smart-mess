@@ -89,62 +89,81 @@ class _EventsScreenState extends State<EventsScreen> {
   Future<void> _fetchLiveEvents() async {
     try {
       final dio = Dio();
-      final res = await dio.get('http://localhost:3001/events').timeout(const Duration(milliseconds: 1500));
-      if (res.statusCode == 200 && res.data != null && res.data['events'] != null) {
-        final rawList = res.data['events'] as List;
-        final liveList = rawList.map((d) {
-          final String title = d['title'] ?? 'Campus Event';
-          final String type = d['type'] ?? 'Holiday';
-          final DateTime start = d['startDate'] != null
-              ? (DateTime.tryParse(d['startDate']) ?? DateTime.now())
-              : DateTime.now();
-          final DateTime? end = d['endDate'] != null ? DateTime.tryParse(d['endDate']) : null;
-          final String impact = d['impactLevel'] ?? 'Medium';
-          final String desc = d['description'] ?? '';
-          final String advisory = d['advisoryForStudents'] ?? d['advisory'] ?? 'Check mess schedule for changes.';
-          final String messImpact = d['expectedMessOffs'] ?? 'Normal dining schedule';
-
-          Color tagCol;
-          Color bgCol;
-          Color borderCol;
-          IconData ic;
-
-          if (type.toLowerCase().contains('exam') || type.toLowerCase().contains('academic')) {
-            tagCol = const Color(0xFF1565C0);
-            bgCol = const Color(0xFFE3F2FD);
-            borderCol = const Color(0xFF90CAF9);
-            ic = Icons.menu_book;
-          } else if (type.toLowerCase().contains('fest') || type.toLowerCase().contains('celebration')) {
-            tagCol = const Color(0xFF6A1B9A);
-            bgCol = const Color(0xFFF3E5F5);
-            borderCol = const Color(0xFFCE93D8);
-            ic = Icons.celebration;
-          } else {
-            tagCol = const Color(0xFFC62828);
-            bgCol = const Color(0xFFFFEBEE);
-            borderCol = const Color(0xFFEF9A9A);
-            ic = Icons.holiday_village;
+      final res = await dio.post(
+        'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents:runQuery?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
+        data: {
+          'structuredQuery': {
+            'from': [{'collectionId': 'events'}]
           }
+        },
+        options: Options(headers: {'Content-Type': 'application/json'}),
+      ).timeout(const Duration(seconds: 3));
 
-          return CollegeEvent(
-            id: d['id'] ?? 'evt_${DateTime.now().millisecondsSinceEpoch}',
-            title: title,
-            category: type,
-            date: start,
-            endDate: end,
-            location: 'Hostel H4 / Campus',
-            description: desc,
-            messImpact: messImpact,
-            impactLevel: impact,
-            tagColor: tagCol,
-            bgColor: bgCol,
-            borderColor: borderCol,
-            icon: ic,
-            advisory: advisory,
-          );
-        }).toList();
+      if (res.statusCode == 200 && res.data is List) {
+        final List results = res.data;
+        final liveList = <CollegeEvent>[];
+
+        for (final item in results) {
+          if (item is Map && item['document'] != null) {
+            final doc = item['document'] as Map;
+            final fields = (doc['fields'] as Map?) ?? {};
+
+            final id = fields['id']?['stringValue'] ?? (doc['name']?.toString().split('/').last ?? 'evt');
+            final title = fields['title']?['stringValue'] ?? 'Campus Event';
+            final type = fields['type']?['stringValue'] ?? 'Holiday';
+            final startStr = fields['startDate']?['stringValue'] ?? '';
+            final endStr = fields['endDate']?['stringValue'];
+            final impact = fields['impactLevel']?['stringValue'] ?? 'Medium';
+            final desc = fields['description']?['stringValue'] ?? '';
+            final advisory = fields['advisoryForStudents']?['stringValue'] ?? fields['advisory']?['stringValue'] ?? '';
+            final messImpact = fields['expectedMessOffs']?['stringValue'] ?? 'Normal dining schedule';
+
+            final start = DateTime.tryParse(startStr) ?? DateTime.now();
+            final end = endStr != null ? DateTime.tryParse(endStr) : null;
+
+            Color tagCol;
+            Color bgCol;
+            Color borderCol;
+            IconData ic;
+
+            if (type.toLowerCase().contains('exam') || type.toLowerCase().contains('academic')) {
+              tagCol = const Color(0xFF1565C0);
+              bgCol = const Color(0xFFE3F2FD);
+              borderCol = const Color(0xFF90CAF9);
+              ic = Icons.menu_book;
+            } else if (type.toLowerCase().contains('fest') || type.toLowerCase().contains('celebration')) {
+              tagCol = const Color(0xFF6A1B9A);
+              bgCol = const Color(0xFFF3E5F5);
+              borderCol = const Color(0xFFCE93D8);
+              ic = Icons.celebration;
+            } else {
+              tagCol = const Color(0xFFC62828);
+              bgCol = const Color(0xFFFFEBEE);
+              borderCol = const Color(0xFFEF9A9A);
+              ic = Icons.holiday_village;
+            }
+
+            liveList.add(CollegeEvent(
+              id: id,
+              title: title,
+              category: type,
+              date: start,
+              endDate: end,
+              location: 'Hostel H4 / Campus',
+              description: desc,
+              messImpact: messImpact,
+              impactLevel: impact,
+              tagColor: tagCol,
+              bgColor: bgCol,
+              borderColor: borderCol,
+              icon: ic,
+              advisory: advisory,
+            ));
+          }
+        }
 
         if (mounted && liveList.isNotEmpty) {
+          liveList.sort((a, b) => a.date.compareTo(b.date));
           setState(() {
             events = liveList;
           });
