@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'core/router/app_router.dart';
+import 'core/widgets/in_app_notification_banner.dart';
 
 class SmartMessApp extends ConsumerWidget {
   const SmartMessApp({super.key});
@@ -18,6 +19,7 @@ class SmartMessApp extends ConsumerWidget {
         colorSchemeSeed: const Color(0xFF2E7D32),
         fontFamily: GoogleFonts.inter().fontFamily,
       ),
+      builder: (context, child) => InAppNotificationWrapper(child: child ?? const SizedBox()),
       routerConfig: router,
     );
   }
