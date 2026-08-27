@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dio/dio.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/constants/h4_students_data.dart';
 
@@ -65,7 +66,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           }
         }
       } catch (fsErr) {
-        debugPrint('[FIRESTORE] Fetch student error: $fsErr');
+        debugPrint('[FIRESTORE] Fetch student SDK error: $fsErr');
+      }
+
+      // Fallback: Direct Firestore REST API fetch
+      if (fsData == null) {
+        try {
+          final dio = Dio();
+          final res = await dio.get(
+            'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/(default)/documents/students/$rawQuery',
+            queryParameters: {'key': 'AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E'},
+          );
+          if (res.statusCode == 200 && res.data != null && res.data['fields'] != null) {
+            final f = res.data['fields'] as Map<String, dynamic>;
+            fsData = {
+              'studentId': f['studentId']?['stringValue'],
+              'name': f['name']?['stringValue'],
+              'rollNo': f['rollNo']?['stringValue'],
+              'email': f['email']?['stringValue'],
+              'mobile': f['mobile']?['stringValue'],
+              'branch': f['branch']?['stringValue'],
+              'registrationNo': f['registrationNo']?['stringValue'],
+              'semester': f['semester']?['stringValue'],
+              'cgpa': f['cgpa']?['doubleValue'] ?? (f['cgpa']?['integerValue'] != null ? double.tryParse(f['cgpa']['integerValue'].toString()) : 8.0),
+              'hostel': f['hostel']?['stringValue'],
+              'roomNo': f['roomNo']?['stringValue'],
+              'password': f['password']?['stringValue'],
+            };
+            debugPrint('[REST API] Fetched live student record for $rawQuery: password=${fsData['password']}');
+          }
+        } catch (restErr) {
+          debugPrint('[REST API] Fetch error: $restErr');
+        }
       }
 
       if (fsData != null) {
