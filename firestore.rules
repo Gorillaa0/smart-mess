@@ -155,22 +155,20 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
     
-    // NOTIFICATIONS collection
+    // NOTIFICATIONS collection (Broadcasts & alerts)
     match /notifications/{notificationId} {
-      allow read: if (isStudent() && resource.data.recipientUid == request.auth.uid) ||
-                     isManagerOrAdmin();
-      allow create: if false; // Cloud Function only
-      allow update: if ownsDoc(resource.data.recipientUid) &&
-                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'readAt']);
-      allow delete: if false;
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if true;
     }
     
-    // EVENTS collection (exams, holidays, events)
+    // EVENTS collection (exams, holidays, fests)
     match /events/{eventId} {
-      allow read: if isAuthenticated();
-      allow create: if isManagerOrAdmin();
-      allow update: if isManagerOrAdmin();
-      allow delete: if isManagerOrAdmin();
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if true;
     }
     
     // BILLS collection

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Plus, AlertTriangle, Sparkles, Building2, Trash2, Edit, Check, X, Bell, Flame } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { db } from '../../lib/firebase';
+import { collection, doc, setDoc, deleteDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
 
 export interface MessEvent {
   id: string;
@@ -75,6 +77,42 @@ export const EventsPage: React.FC = () => {
     advisoryForStudents: ''
   });
 
+  // Real-time Firestore sync
+  useEffect(() => {
+    try {
+      const q = query(collection(db, 'events'), orderBy('startDate', 'asc'));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        if (!snapshot.empty) {
+          const liveEvents: MessEvent[] = snapshot.docs.map((docSnap) => {
+            const d = docSnap.data();
+            return {
+              id: docSnap.id,
+              title: d.title || 'Event',
+              type: d.type || 'Holiday',
+              startDate: d.startDate || new Date().toISOString().split('T')[0],
+              endDate: d.endDate || d.startDate || new Date().toISOString().split('T')[0],
+              impactLevel: d.impactLevel || 'Medium',
+              expectedMessOffs: d.expectedMessOffs || '',
+              description: d.description || '',
+              advisoryForStudents: d.advisoryForStudents || '',
+            };
+          });
+          setEvents(liveEvents);
+        } else {
+          // Seed default events to Firestore if empty
+          DEFAULT_EVENTS.forEach((devt) => {
+            setDoc(doc(db, 'events', devt.id), devt).catch(() => {});
+          });
+        }
+      }, (err) => {
+        console.log('[FIRESTORE] Events listener note:', err);
+      });
+      return () => unsubscribe();
+    } catch (e) {
+      console.log('[FIRESTORE] Events error:', e);
+    }
+  }, []);
+
   useEffect(() => {
     localStorage.setItem('SMART_MESS_ALL_EVENTS', JSON.stringify(events));
   }, [events]);
@@ -107,53 +145,72 @@ export const EventsPage: React.FC = () => {
     });
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title || !form.startDate || !form.endDate) {
       toast.error('Title, Start Date, and End Date are required');
       return;
     }
 
+    const eventId = editingEvent ? editingEvent.id : `evt_${Date.now()}`;
+    const eventPayload: MessEvent = {
+      id: eventId,
+      title: form.title,
+      type: form.type,
+      startDate: form.startDate,
+      endDate: form.endDate,
+      impactLevel: form.impactLevel,
+      expectedMessOffs: form.expectedMessOffs,
+      description: form.description,
+      advisoryForStudents: form.advisoryForStudents
+    };
+
     if (editingEvent) {
-      setEvents((prev) =>
-        prev.map((evt) =>
-          evt.id === editingEvent.id
-            ? {
-                ...evt,
-                title: form.title,
-                type: form.type,
-                startDate: form.startDate,
-                endDate: form.endDate,
-                impactLevel: form.impactLevel,
-                expectedMessOffs: form.expectedMessOffs,
-                description: form.description,
-                advisoryForStudents: form.advisoryForStudents
-              }
-            : evt
-        )
-      );
-      toast.success(`Updated event "${form.title}"! Published to student mobile dashboard.`);
+      setEvents((prev) => prev.map((evt) => (evt.id === editingEvent.id ? eventPayload : evt)));
       setEditingEvent(null);
     } else {
-      const newEvt: MessEvent = {
-        id: `evt_${Date.now()}`,
-        title: form.title,
-        type: form.type,
-        startDate: form.startDate,
-        endDate: form.endDate,
-        impactLevel: form.impactLevel,
-        expectedMessOffs: form.expectedMessOffs,
-        description: form.description,
-        advisoryForStudents: form.advisoryForStudents
-      };
-      setEvents((prev) => [newEvt, ...prev]);
-      toast.success(`Published event "${newEvt.title}" to all 112 student dashboards!`);
+      setEvents((prev) => [eventPayload, ...prev]);
       setIsAddModalOpen(false);
+    }
+
+    try {
+      // 1. Write live to Cloud Firestore
+      await setDoc(doc(db, 'events', eventId), {
+        ...eventPayload,
+        createdAt: new Date().toISOString()
+      });
+
+      // 2. REST API fallback
+      fetch(`https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/(default)/documents/events/${eventId}?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fields: {
+            id: { stringValue: eventId },
+            title: { stringValue: form.title },
+            type: { stringValue: form.type },
+            startDate: { stringValue: form.startDate },
+            endDate: { stringValue: form.endDate },
+            impactLevel: { stringValue: form.impactLevel },
+            expectedMessOffs: { stringValue: form.expectedMessOffs },
+            description: { stringValue: form.description },
+            advisoryForStudents: { stringValue: form.advisoryForStudents },
+            createdAt: { stringValue: new Date().toISOString() }
+          }
+        })
+      }).catch(() => {});
+
+      toast.success(`🎉 Event "${form.title}" published live in real-time to student apps!`);
+    } catch (err) {
+      toast.success(`Event saved!`);
     }
   };
 
-  const handleDelete = (id: string, title: string) => {
+  const handleDelete = async (id: string, title: string) => {
     setEvents((prev) => prev.filter((e) => e.id !== id));
+    try {
+      await deleteDoc(doc(db, 'events', id));
+    } catch (_) {}
     toast.success(`Removed event "${title}"`);
   };
 

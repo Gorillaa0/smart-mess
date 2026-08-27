@@ -18,14 +18,22 @@ class NotificationModel {
   });
 
   factory NotificationModel.fromFirestore(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    Map<String, dynamic> data = (doc.data() as Map<String, dynamic>?) ?? {};
+    DateTime parsedDate;
+    if (data['createdAt'] is Timestamp) {
+      parsedDate = (data['createdAt'] as Timestamp).toDate();
+    } else if (data['createdAt'] is String) {
+      parsedDate = DateTime.tryParse(data['createdAt']) ?? DateTime.now();
+    } else {
+      parsedDate = DateTime.now();
+    }
     return NotificationModel(
       id: doc.id,
-      title: data['title'] ?? '',
-      body: data['body'] ?? '',
-      isRead: data['isRead'] ?? false,
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
-      deepLink: data['deepLink'],
+      title: data['title'] ?? 'Mess Notification',
+      body: data['body'] ?? data['message'] ?? '',
+      isRead: data['read'] == true || data['isRead'] == true,
+      createdAt: parsedDate,
+      deepLink: data['deepLink'] ?? data['category'],
     );
   }
 

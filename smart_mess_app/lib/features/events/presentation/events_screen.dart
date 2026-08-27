@@ -1,6 +1,8 @@
-﻿import 'package:flutter/material.dart';
+import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class EventsScreen extends StatefulWidget {
   const EventsScreen({super.key});
@@ -11,8 +13,9 @@ class EventsScreen extends StatefulWidget {
 
 class _EventsScreenState extends State<EventsScreen> {
   String selectedFilter = 'All';
+  StreamSubscription? _eventsSub;
 
-  final List<CollegeEvent> events = [
+  List<CollegeEvent> events = [
     CollegeEvent(
       id: 'e1',
       title: 'Diwali & Chhath Puja Semester Break',
@@ -62,6 +65,92 @@ class _EventsScreenState extends State<EventsScreen> {
       advisory: 'Special feast menu will be served. Day scholars and guests can purchase coupons.',
     ),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _subscribeLiveEvents();
+  }
+
+  @override
+  void dispose() {
+    _eventsSub?.cancel();
+    super.dispose();
+  }
+
+  void _subscribeLiveEvents() {
+    try {
+      _eventsSub = FirebaseFirestore.instance
+          .collection('events')
+          .snapshots()
+          .listen((snapshot) {
+        if (snapshot.docs.isNotEmpty) {
+          final liveList = snapshot.docs.map((doc) {
+            final d = doc.data();
+            final String title = d['title'] ?? 'Campus Event';
+            final String type = d['type'] ?? 'Holiday';
+            final DateTime start = d['startDate'] != null
+                ? (DateTime.tryParse(d['startDate']) ?? DateTime.now())
+                : DateTime.now();
+            final DateTime? end = d['endDate'] != null ? DateTime.tryParse(d['endDate']) : null;
+            final String impact = d['impactLevel'] ?? 'Medium';
+            final String desc = d['description'] ?? '';
+            final String advisory = d['advisoryForStudents'] ?? d['advisory'] ?? 'Check mess schedule for changes.';
+            final String messImpact = d['expectedMessOffs'] ?? 'Normal dining schedule';
+
+            Color tagCol;
+            Color bgCol;
+            Color borderCol;
+            IconData ic;
+
+            if (type.toLowerCase().contains('exam') || type.toLowerCase().contains('academic')) {
+              tagCol = const Color(0xFF1565C0);
+              bgCol = const Color(0xFFE3F2FD);
+              borderCol = const Color(0xFF90CAF9);
+              ic = Icons.menu_book;
+            } else if (type.toLowerCase().contains('fest') || type.toLowerCase().contains('celebration')) {
+              tagCol = const Color(0xFF6A1B9A);
+              bgCol = const Color(0xFFF3E5F5);
+              borderCol = const Color(0xFFCE93D8);
+              ic = Icons.celebration;
+            } else {
+              tagCol = const Color(0xFFC62828);
+              bgCol = const Color(0xFFFFEBEE);
+              borderCol = const Color(0xFFEF9A9A);
+              ic = Icons.holiday_village;
+            }
+
+            return CollegeEvent(
+              id: doc.id,
+              title: title,
+              category: type,
+              date: start,
+              endDate: end,
+              location: 'Hostel H4 / Campus',
+              description: desc,
+              messImpact: messImpact,
+              impactLevel: impact,
+              tagColor: tagCol,
+              bgColor: bgCol,
+              borderColor: borderCol,
+              icon: ic,
+              advisory: advisory,
+            );
+          }).toList();
+
+          if (mounted) {
+            setState(() {
+              events = liveList;
+            });
+          }
+        }
+      }, onError: (err) {
+        debugPrint('[EVENTS FIRESTORE] Stream notice: $err');
+      });
+    } catch (e) {
+      debugPrint('[EVENTS FIRESTORE] Init error: $e');
+    }
+  }
 
   void _applyMessOffForEvent(BuildContext context, CollegeEvent event) {
     final startStr = DateFormat('dd MMM yyyy').format(event.date);
