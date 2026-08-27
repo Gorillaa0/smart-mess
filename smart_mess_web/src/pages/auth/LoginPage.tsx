@@ -187,18 +187,19 @@ export const LoginPage: React.FC = () => {
 
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
-    const emailToReset = resetEmail.trim().toLowerCase();
+    const queryStr = resetEmail.trim().toLowerCase();
 
-    if (!emailToReset || !emailToReset.includes('@')) {
-      toast.error('Please enter a valid email address');
+    if (!queryStr) {
+      toast.error('Please enter your registered Email, Roll No, or Registration No');
       return;
     }
 
     setResetLoading(true);
     setResetSuccessMessage(null);
 
-    // Verify email is registered in student roster or admin/manager accounts
-    let isEmailInDatabase = false;
+    // 1. Resolve student/user email from input (accepts Email, Roll No, or Reg No)
+    let targetEmail = queryStr.includes('@') ? queryStr : '';
+    let targetStudentName = '';
 
     let studentsList = H4_STUDENTS_LIST;
     const savedStudents = localStorage.getItem('SMART_MESS_H4_STUDENTS');
@@ -208,38 +209,51 @@ export const LoginPage: React.FC = () => {
       } catch (err) {}
     }
 
-    const matchedStudent = studentsList.find((s) => s.email && s.email.toLowerCase() === emailToReset);
+    const matchedStudent = studentsList.find(
+      (s) =>
+        (s.email && s.email.toLowerCase() === queryStr) ||
+        s.registrationNo.toLowerCase() === queryStr ||
+        s.rollNo.toLowerCase() === queryStr
+    );
+
     if (matchedStudent) {
-      isEmailInDatabase = true;
+      if (matchedStudent.email) {
+        targetEmail = matchedStudent.email.toLowerCase();
+      }
+      targetStudentName = matchedStudent.name;
     }
 
-    if (emailToReset === 'manager@smartmess.edu' || emailToReset === 'admin@smartmess.edu' || emailToReset === 'pawankr0745@gmail.com') {
-      isEmailInDatabase = true;
+    if (!targetEmail && (queryStr === 'manager@smartmess.edu' || queryStr === 'admin@smartmess.edu' || queryStr === 'pawankr0745@gmail.com')) {
+      targetEmail = queryStr;
     }
 
-    if (!isEmailInDatabase) {
+    // 2. Query Cloud Firestore if email not found locally
+    if (!targetEmail) {
       try {
         const { getDocs, collection, query, where } = await import('firebase/firestore/lite');
         const { db } = await import('../../lib/firebase');
-        const q = query(collection(db, 'students'), where('email', '==', emailToReset));
+        const fieldName = queryStr.includes('@') ? 'email' : 'registrationNo';
+        const q = query(collection(db, 'students'), where(fieldName, '==', queryStr));
         const snap = await getDocs(q);
         if (!snap.empty) {
-          isEmailInDatabase = true;
+          const docData = snap.docs[0].data();
+          if (docData.email) targetEmail = docData.email.toLowerCase();
+          targetStudentName = docData.name || '';
         }
       } catch (checkErr) {
         console.error('[SECURITY] Firestore lookup check:', checkErr);
       }
     }
 
-    if (!isEmailInDatabase) {
-      toast.error('❌ Access Denied: This email address is not registered in the institutional system.', { duration: 6000 });
+    if (!targetEmail) {
+      toast.error('❌ Access Denied: No account found with this ID/Email.', { duration: 6000 });
       setResetLoading(false);
       return;
     }
 
     try {
       try {
-        await sendPasswordResetEmail(auth, emailToReset);
+        await sendPasswordResetEmail(auth, targetEmail);
       } catch (err: any) {
         if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
           const { initializeApp, getApps } = await import('firebase/app');
@@ -259,17 +273,18 @@ export const LoginPage: React.FC = () => {
           const provAuth = getAuth(authApp);
           const tempPass = 'Pass@' + Math.random().toString(36).slice(-8) + '1!';
           try {
-            await createUserWithEmailAndPassword(provAuth, emailToReset, tempPass);
+            await createUserWithEmailAndPassword(provAuth, targetEmail, tempPass);
           } catch (createErr: any) {}
 
-          await sendPasswordResetEmail(auth, emailToReset);
+          await sendPasswordResetEmail(auth, targetEmail);
         } else {
           throw err;
         }
       }
 
-      setResetSuccessMessage(`Password reset link dispatched to ${emailToReset}. Please check your inbox (and Spam folder).`);
-      toast.success(`Password reset email sent to ${emailToReset}!`);
+      const recipientText = targetStudentName ? `${targetStudentName} (${targetEmail})` : targetEmail;
+      setResetSuccessMessage(`Password reset link dispatched to ${recipientText}. Please check your inbox and Spam folder.`);
+      toast.success(`Password reset email sent to ${targetEmail}!`);
     } catch (err: any) {
       toast.error(err.message || 'Failed to send reset email', { duration: 6000 });
     } finally {
@@ -362,7 +377,15 @@ export const LoginPage: React.FC = () => {
           <button 
             type="button"
             onClick={() => {
-              setResetEmail(identifier.includes('@') ? identifier : '');
+              const cleanId = identifier.trim().toLowerCase();
+              let prefillEmail = cleanId.includes('@') ? cleanId : '';
+              if (!prefillEmail && cleanId) {
+                const student = H4_STUDENTS_LIST.find(
+                  (s) => s.registrationNo.toLowerCase() === cleanId || s.rollNo.toLowerCase() === cleanId
+                );
+                if (student?.email) prefillEmail = student.email;
+              }
+              setResetEmail(prefillEmail || identifier);
               setResetSuccessMessage(null);
               setIsForgotModalOpen(true);
             }}
@@ -423,7 +446,7 @@ export const LoginPage: React.FC = () => {
         </div>
       </div>
 
-      {/* FORGOT PASSWORD MODAL (EMAIL ONLY - SECURE) */}
+      {/* FORGOT PASSWORD MODAL (EMAIL RESET) */}
       {isForgotModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in-95 duration-200">
@@ -464,21 +487,21 @@ export const LoginPage: React.FC = () => {
             ) : (
               <form onSubmit={handlePasswordReset} className="space-y-4 py-4">
                 <p className="text-xs text-gray-600 leading-relaxed">
-                  Enter your registered <strong>email address</strong> below. We will verify your account and send a password reset link to your email.
+                  Enter your registered <strong>Email Address</strong> or <strong>Roll/Registration No</strong>. We will verify your account and send a reset link to your email.
                 </p>
 
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">
-                    Email Address
+                    Email Address or Student ID
                   </label>
                   <div className="relative">
                     <Mail className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
-                      type="email"
+                      type="text"
                       value={resetEmail}
                       onChange={(e) => setResetEmail(e.target.value)}
                       required
-                      placeholder="e.g. pawankr0745@gmail.com or manager@smartmess.edu"
+                      placeholder="e.g. pawankr0745@gmail.com, 23534, or 23105108023"
                       className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
                     />
                   </div>
