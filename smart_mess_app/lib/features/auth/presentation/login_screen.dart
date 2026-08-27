@@ -156,7 +156,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                           setSheetState(() => isSubmitting = true);
 
-                          // Resolve student details & email safely with null checks
+                          // Resolve student details & email safely
                           String targetEmail = queryStr.contains('@') ? queryStr : '';
                           String studentDisplayName = '';
 
@@ -167,11 +167,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               );
 
                           if (matchedStudent != null) {
-                            final studentEmail = (matchedStudent.email ?? '').toLowerCase();
+                            final studentEmail = (matchedStudent.email ?? '').trim().toLowerCase();
                             if (studentEmail.isNotEmpty) {
                               targetEmail = studentEmail;
-                              studentDisplayName = '${matchedStudent.name} (Roll ${matchedStudent.rollNo})';
+                            } else {
+                              // Institutional email format for students without custom Gmail
+                              targetEmail = '${matchedStudent.registrationNo}@smartmess.edu';
                             }
+                            studentDisplayName = '${matchedStudent.name} (Roll ${matchedStudent.rollNo})';
                           }
 
                           if (targetEmail.isEmpty) {
