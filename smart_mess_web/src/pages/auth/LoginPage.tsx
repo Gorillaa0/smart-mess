@@ -190,17 +190,14 @@ export const LoginPage: React.FC = () => {
     const queryStr = resetEmail.trim().toLowerCase();
 
     if (!queryStr) {
-      toast.error('Please enter your registered Email, Roll No, or Registration No');
+      toast.error('Please enter your registered Manager/Admin Email or Staff ID');
       return;
     }
 
     setResetLoading(true);
     setResetSuccessMessage(null);
 
-    // 1. Resolve student/user email from input (accepts Email, Roll No, or Reg No)
-    let targetEmail = queryStr.includes('@') ? queryStr : '';
-    let targetStudentName = '';
-
+    // 🛡️ SECURITY CHECK: Web portal is restricted strictly to Admins and Mess Managers
     let studentsList = H4_STUDENTS_LIST;
     const savedStudents = localStorage.getItem('SMART_MESS_H4_STUDENTS');
     if (savedStudents) {
@@ -209,44 +206,29 @@ export const LoginPage: React.FC = () => {
       } catch (err) {}
     }
 
-    const matchedStudent = studentsList.find(
+    const isStudentAccount = studentsList.some(
       (s) =>
         (s.email && s.email.toLowerCase() === queryStr) ||
         s.registrationNo.toLowerCase() === queryStr ||
         s.rollNo.toLowerCase() === queryStr
     );
 
-    if (matchedStudent) {
-      if (matchedStudent.email) {
-        targetEmail = matchedStudent.email.toLowerCase();
-      }
-      targetStudentName = matchedStudent.name;
+    if (isStudentAccount) {
+      toast.error('❌ Access Denied: This web portal is restricted to Admins and Mess Managers. Students must reset their password on the Student Mobile App.', { duration: 7000 });
+      setResetLoading(false);
+      return;
     }
 
-    if (!targetEmail && (queryStr === 'manager@smartmess.edu' || queryStr === 'admin@smartmess.edu' || queryStr === 'pawankr0745@gmail.com')) {
-      targetEmail = queryStr;
+    // Resolve Manager / Admin Email
+    let targetEmail = queryStr.includes('@') ? queryStr : '';
+    if (queryStr === '6200432942' || queryStr === 'manager') {
+      targetEmail = 'manager@smartmess.edu';
+    } else if (queryStr === 'admin') {
+      targetEmail = 'admin@smartmess.edu';
     }
 
-    // 2. Query Cloud Firestore if email not found locally
-    if (!targetEmail) {
-      try {
-        const { getDocs, collection, query, where } = await import('firebase/firestore/lite');
-        const { db } = await import('../../lib/firebase');
-        const fieldName = queryStr.includes('@') ? 'email' : 'registrationNo';
-        const q = query(collection(db, 'students'), where(fieldName, '==', queryStr));
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-          const docData = snap.docs[0].data();
-          if (docData.email) targetEmail = docData.email.toLowerCase();
-          targetStudentName = docData.name || '';
-        }
-      } catch (checkErr) {
-        console.error('[SECURITY] Firestore lookup check:', checkErr);
-      }
-    }
-
-    if (!targetEmail) {
-      toast.error('❌ Access Denied: No account found with this ID/Email.', { duration: 6000 });
+    if (!targetEmail || (!targetEmail.endsWith('@smartmess.edu') && targetEmail !== 'pawankr0745@gmail.com')) {
+      toast.error('❌ Access Denied: No Admin or Manager account found with this ID/Email.', { duration: 6000 });
       setResetLoading(false);
       return;
     }
@@ -282,8 +264,7 @@ export const LoginPage: React.FC = () => {
         }
       }
 
-      const recipientText = targetStudentName ? `${targetStudentName} (${targetEmail})` : targetEmail;
-      setResetSuccessMessage(`Password reset link dispatched to ${recipientText}. Please check your inbox and Spam folder.`);
+      setResetSuccessMessage(`Password reset link dispatched to ${targetEmail}. Please check your inbox and Spam folder.`);
       toast.success(`Password reset email sent to ${targetEmail}!`);
     } catch (err: any) {
       toast.error(err.message || 'Failed to send reset email', { duration: 6000 });
