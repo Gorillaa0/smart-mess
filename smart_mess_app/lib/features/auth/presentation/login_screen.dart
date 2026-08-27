@@ -118,102 +118,86 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         targetEmail = '${rawQuery}@smartmess.edu';
       }
 
-      bool authenticated = false;
-
-      // Step 3: Check if entered password matches Cloud Firestore real-time password
-      final bool matchesFirestore = (fsPassword != null && fsPassword.trim() == password);
-      final bool matchesLocalDirectory = (student != null && H4StudentDirectory.verifyPassword(student, password));
-
-      if (matchesFirestore || matchesLocalDirectory) {
-        // Password matches Firestore! Automatically ensure Firebase Auth is synchronized
-        try {
-          await FirebaseAuth.instance.signInWithEmailAndPassword(
-            email: targetEmail,
-            password: password,
-          );
-        } on FirebaseAuthException catch (authErr) {
-          if (authErr.code == 'user-not-found') {
-            // User doesn't exist in Firebase Auth yet -> automatically create them!
-            try {
-              await FirebaseAuth.instance.createUserWithEmailAndPassword(
-                email: targetEmail,
-                password: password,
-              );
-              debugPrint('[AUTO-SYNC] Automatically provisioned Firebase Auth account for $targetEmail');
-            } catch (_) {}
-          } else if (authErr.code == 'wrong-password' || authErr.code == 'invalid-credential' || authErr.code == 'invalid-login-credentials') {
-            // User has an older password in Auth -> update to the Firestore password
-            final oldStaticPass = H4StudentDirectory.findByRegistrationOrRoll(query)?.password;
-            if (oldStaticPass != null && oldStaticPass != password) {
-              try {
-                final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
-                  email: targetEmail,
-                  password: oldStaticPass,
-                );
-                await cred.user?.updatePassword(password);
-                debugPrint('[AUTO-SYNC] Automatically updated Firebase Auth password to match Firestore!');
-              } catch (_) {}
-            }
-          }
-        } catch (_) {}
-
-        authenticated = true;
-      } else {
-        // If password didn't match Firestore, try Firebase Auth directly (e.g. user just reset password via email link)
-        try {
-          await FirebaseAuth.instance.signInWithEmailAndPassword(
-            email: targetEmail,
-            password: password,
-          );
-          authenticated = true;
-
-          // Automatically sync newly reset password back to Firestore
-          if (student != null) {
-            try {
-              await FirebaseFirestore.instance
-                  .collection('students')
-                  .doc(student.registrationNo)
-                  .set({
-                'studentId': student.registrationNo,
-                'name': student.name,
-                'email': targetEmail,
-                'password': password,
-                'updatedAt': DateTime.now().toIso8601String(),
-              }, SetOptions(merge: true));
-            } catch (_) {}
-          }
-        } catch (_) {
-          authenticated = false;
-        }
-      }
-
-      if (authenticated) {
-        setState(() => _isLoading = false);
-
-        student ??= H4Student(
-          slNo: 999,
-          name: rawQuery,
-          rollNo: rawQuery,
-          mobile: '9876543210',
+      // ── STRICT FIREBASE AUTHENTICATION ──────────────────────────────────────────
+      // Authentication is handled exclusively by Google Firebase Authentication
+      try {
+        final userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
           email: targetEmail,
-          branch: 'CSE',
-          registrationNo: rawQuery,
-          semester: '6th',
-          cgpa: 8.0,
-          roomNo: '101',
           password: password,
         );
 
-        H4StudentDirectory.updateStudentPassword(student.registrationNo, password);
-        final updatedStudent = student.copyWith(password: password);
-        ref.read(currentStudentProvider.notifier).state = updatedStudent;
+        // Verification Succeeded! Firebase Auth verified the credentials
+        if (userCredential.user != null) {
+          setState(() => _isLoading = false);
 
-        ref.read(userRoleProvider.notifier).state = 'student';
-        ref.read(authStateProvider.notifier).state = true;
-        return;
+          student ??= H4Student(
+            slNo: 999,
+            name: rawQuery,
+            rollNo: rawQuery,
+            mobile: '9876543210',
+            email: targetEmail,
+            branch: 'CSE',
+            registrationNo: rawQuery,
+            semester: '6th',
+            cgpa: 8.0,
+            roomNo: '101',
+            password: password,
+          );
+
+          H4StudentDirectory.updateStudentPassword(student.registrationNo, password);
+          final updatedStudent = student.copyWith(password: password);
+          ref.read(currentStudentProvider.notifier).state = updatedStudent;
+
+          // Real-time synchronization of latest verified password to Cloud Firestore
+          try {
+            await FirebaseFirestore.instance
+                .collection('students')
+                .doc(student.registrationNo)
+                .set({
+              'studentId': student.registrationNo,
+              'name': student.name,
+              'email': targetEmail,
+              'password': password,
+              'updatedAt': DateTime.now().toIso8601String(),
+            }, SetOptions(merge: true));
+          } catch (_) {}
+
+          ref.read(userRoleProvider.notifier).state = 'student';
+          ref.read(authStateProvider.notifier).state = true;
+          return;
+        }
+      } on FirebaseAuthException catch (authErr) {
+        debugPrint('[FIREBASE AUTH] Sign-in error: ${authErr.code} - ${authErr.message}');
+
+        // First-time provision: if account not yet created on Firebase Auth
+        if (authErr.code == 'user-not-found') {
+          final isInitialMatch = (student != null && H4StudentDirectory.verifyPassword(student, password));
+          if (isInitialMatch) {
+            try {
+              final newCred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+                email: targetEmail,
+                password: password,
+              );
+              if (newCred.user != null) {
+                setState(() => _isLoading = false);
+                H4StudentDirectory.updateStudentPassword(student.registrationNo, password);
+                final updatedStudent = student.copyWith(password: password);
+                ref.read(currentStudentProvider.notifier).state = updatedStudent;
+
+                ref.read(userRoleProvider.notifier).state = 'student';
+                ref.read(authStateProvider.notifier).state = true;
+                return;
+              }
+            } catch (createErr) {
+              debugPrint('[FIREBASE AUTH] Auto-provision error: $createErr');
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('[FIREBASE AUTH] Unexpected error: $e');
       }
 
-      // Authentication Failed - Secure Error Message (Zero leaks)
+      // Authentication Failed - Strictly verified by Firebase Authentication
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
