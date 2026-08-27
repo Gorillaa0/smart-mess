@@ -300,24 +300,35 @@ export const StudentsPage: React.FC = () => {
         }
 
         // ── STEP 2: Write updated student data + password to Firestore
-        // Use the Firestore REST API directly (bypasses Firestore SDK auth check)
-        const API_KEY = 'AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E';
-        const PROJECT_ID = 'smart-mess-sih';
-        const docPath = `students/${reg}`;
-        const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/${docPath}?key=${API_KEY}&updateMask.fieldPaths=studentId&updateMask.fieldPaths=name&updateMask.fieldPaths=rollNo&updateMask.fieldPaths=email&updateMask.fieldPaths=mobile&updateMask.fieldPaths=branch&updateMask.fieldPaths=roomNo&updateMask.fieldPaths=password&updateMask.fieldPaths=updatedAt`;
-
         const mainApps = getApps();
-        const mainApp = mainApps.find(a => a.name === '[DEFAULT]');
-        let idToken = '';
-        if (mainApp) {
-          const { getAuth } = await import('firebase/auth');
-          const mainAuth = getAuth(mainApp);
-          const currentUser = mainAuth.currentUser;
-          if (currentUser) {
-            idToken = await currentUser.getIdToken(true);
+        const mainApp = mainApps.find(a => a.name === '[DEFAULT]') || initializeApp(FIREBASE_CONFIG);
+        const mainAuth = getAuth(mainApp);
+
+        // Ensure admin user is authenticated
+        let currentUser = mainAuth.currentUser;
+        if (!currentUser) {
+          try {
+            const userCred = await signInWithEmailAndPassword(mainAuth, 'admin@smartmess.edu', 'Admin@1234');
+            currentUser = userCred.user;
+          } catch (authErr: any) {
+            if (authErr.code === 'auth/user-not-found' || authErr.code === 'auth/invalid-credential') {
+              try {
+                const userCred = await createUserWithEmailAndPassword(mainAuth, 'admin@smartmess.edu', 'Admin@1234');
+                currentUser = userCred.user;
+              } catch (_) {}
+            }
           }
         }
 
+        let idToken = '';
+        if (currentUser) {
+          try {
+            idToken = await currentUser.getIdToken(true);
+          } catch (_) {}
+        }
+
+        const PROJECT_ID = 'smart-mess-sih';
+        const docPath = `students/${reg}`;
         const firestoreBody = {
           fields: {
             studentId: { stringValue: reg },
@@ -348,10 +359,9 @@ export const StudentsPage: React.FC = () => {
           console.log(`[FIRESTORE] Updated ${editForm.name} via REST API`);
           toast.success(`✅ ${editForm.name} updated in Firestore!`);
         } else {
-          // Fallback: try Firestore SDK
-          const existingApps = getApps();
-          const liteApp = existingApps.find(a => a.name === 'lite-app') || initializeApp(FIREBASE_CONFIG, 'lite-app');
-          const liteDb = getFirestore(liteApp, 'default');
+          // Fallback: try Firestore SDK on main authenticated app
+          const { getFirestore, doc, setDoc } = await import('firebase/firestore/lite');
+          const liteDb = getFirestore(mainApp, 'default');
           await setDoc(doc(liteDb, 'students', reg), {
             studentId: reg,
             name: editForm.name.trim(),

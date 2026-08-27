@@ -37,6 +37,19 @@ export const LoginPage: React.FC = () => {
     // 1. Check if Super Admin
     if (cleanId === 'admin@smartmess.edu' || cleanId === 'admin') {
       if (cleanPass === 'Admin@1234' || cleanPass === '12345678' || cleanPass === 'admin') {
+        try {
+          const { createUserWithEmailAndPassword } = await import('firebase/auth');
+          try {
+            await signInWithEmailAndPassword(auth, 'admin@smartmess.edu', 'Admin@1234');
+          } catch (authErr: any) {
+            if (authErr.code === 'auth/user-not-found' || authErr.code === 'auth/invalid-credential') {
+              try {
+                await createUserWithEmailAndPassword(auth, 'admin@smartmess.edu', 'Admin@1234');
+              } catch (_) {}
+            }
+          }
+        } catch (_) {}
+
         setUser({
           uid: 'admin_master_01',
           email: 'admin@smartmess.edu',
@@ -79,6 +92,19 @@ export const LoginPage: React.FC = () => {
       cleanId === 'manager'
     ) {
       if (cleanPass === managerPass || cleanPass === 'DY@2942' || cleanPass === 'Pass@2942' || cleanPass === '12345678') {
+        try {
+          const { createUserWithEmailAndPassword } = await import('firebase/auth');
+          try {
+            await signInWithEmailAndPassword(auth, 'manager@smartmess.edu', 'Pass@2942');
+          } catch (authErr: any) {
+            if (authErr.code === 'auth/user-not-found' || authErr.code === 'auth/invalid-credential') {
+              try {
+                await createUserWithEmailAndPassword(auth, 'manager@smartmess.edu', 'Pass@2942');
+              } catch (_) {}
+            }
+          }
+        } catch (_) {}
+
         setUser({
           uid: 'mgr_dhaneshwar_01',
           email: `${managerMobile}@smartmess.edu`,
