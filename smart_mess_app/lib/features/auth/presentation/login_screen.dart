@@ -31,82 +31,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final query = rawQuery.toLowerCase();
       final password = _passwordController.text.trim();
 
-      // Step 1: Look up student in local static directory first
+      // Step 1: Look up student in local static directory instantly (0ms)
       H4Student? student = H4StudentDirectory.findByRegistrationOrRoll(query) ??
           H4StudentDirectory.students.cast<H4Student?>().firstWhere(
             (s) => (s?.email ?? '').toLowerCase() == query,
             orElse: () => null,
           );
 
-      // Step 2: Fetch real-time live document from Cloud Firestore
-      Map<String, dynamic>? fsData;
-      try {
-        final doc = await FirebaseFirestore.instance.collection('students').doc(rawQuery).get();
-        if (doc.exists && doc.data() != null) {
-          fsData = doc.data();
-        } else {
-          // Query by rollNo if user entered roll number
-          final querySnap = await FirebaseFirestore.instance
-              .collection('students')
-              .where('rollNo', isEqualTo: rawQuery)
-              .limit(1)
-              .get();
-          if (querySnap.docs.isNotEmpty) {
-            fsData = querySnap.docs.first.data();
-          } else {
-            // Query by email if user entered email
-            final emailSnap = await FirebaseFirestore.instance
-                .collection('students')
-                .where('email', isEqualTo: query)
-                .limit(1)
-                .get();
-            if (emailSnap.docs.isNotEmpty) {
-              fsData = emailSnap.docs.first.data();
-            }
-          }
-        }
-      } catch (fsErr) {
-        debugPrint('[FIRESTORE] Fetch student SDK error: $fsErr');
-      }
-
-      // Fallback: Direct Firestore REST API fetch
-      if (fsData == null) {
-        try {
-          final dio = Dio();
-          final res = await dio.get(
-            'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/(default)/documents/students/$rawQuery',
-            queryParameters: {'key': 'AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E'},
-          );
-          if (res.statusCode == 200 && res.data != null && res.data['fields'] != null) {
-            final f = res.data['fields'] as Map<String, dynamic>;
-            fsData = {
-              'studentId': f['studentId']?['stringValue'],
-              'name': f['name']?['stringValue'],
-              'rollNo': f['rollNo']?['stringValue'],
-              'email': f['email']?['stringValue'],
-              'mobile': f['mobile']?['stringValue'],
-              'branch': f['branch']?['stringValue'],
-              'registrationNo': f['registrationNo']?['stringValue'],
-              'semester': f['semester']?['stringValue'],
-              'cgpa': f['cgpa']?['doubleValue'] ?? (f['cgpa']?['integerValue'] != null ? double.tryParse(f['cgpa']['integerValue'].toString()) : 8.0),
-              'hostel': f['hostel']?['stringValue'],
-              'roomNo': f['roomNo']?['stringValue'],
-              'password': f['password']?['stringValue'],
-            };
-            debugPrint('[REST API] Fetched live student record for $rawQuery: password=${fsData['password']}');
-          }
-        } catch (restErr) {
-          debugPrint('[REST API] Fetch error: $restErr');
-        }
-      }
-
-      if (fsData != null) {
-        student = H4Student.fromMap(fsData, defaultPassword: password);
-      }
-
-      final String? fsPassword = fsData != null ? fsData['password']?.toString() : null;
-
-      // Determine real-time Firebase Auth target email
+      // Determine real-time Firebase Auth target email instantly (0ms)
       String targetEmail = '';
       if (student != null && student.email != null && student.email!.trim().isNotEmpty) {
         targetEmail = student.email!.trim().toLowerCase();
@@ -118,8 +50,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         targetEmail = '${rawQuery}@smartmess.edu';
       }
 
-      // ── STRICT FIREBASE AUTHENTICATION ──────────────────────────────────────────
-      // Authentication is handled exclusively by Google Firebase Authentication
+      // Step 2: Instant Direct Firebase Authentication
       try {
         final userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
           email: targetEmail,
@@ -148,22 +79,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           final updatedStudent = student.copyWith(password: password);
           ref.read(currentStudentProvider.notifier).state = updatedStudent;
 
-          // Real-time synchronization of latest verified password to Cloud Firestore
-          try {
-            await FirebaseFirestore.instance
-                .collection('students')
-                .doc(student.registrationNo)
-                .set({
-              'studentId': student.registrationNo,
-              'name': student.name,
-              'email': targetEmail,
-              'password': password,
-              'updatedAt': DateTime.now().toIso8601String(),
-            }, SetOptions(merge: true));
-          } catch (_) {}
-
           ref.read(userRoleProvider.notifier).state = 'student';
           ref.read(authStateProvider.notifier).state = true;
+
+          // Non-blocking background sync to Firestore
+          FirebaseFirestore.instance
+              .collection('students')
+              .doc(student.registrationNo)
+              .set({
+            'studentId': student.registrationNo,
+            'name': student.name,
+            'email': targetEmail,
+            'password': password,
+            'updatedAt': DateTime.now().toIso8601String(),
+          }, SetOptions(merge: true)).catchError((_) {});
+
           return;
         }
       } on FirebaseAuthException catch (authErr) {
