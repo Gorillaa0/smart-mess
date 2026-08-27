@@ -274,7 +274,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                             Icon(Icons.kitchen, size: 13, color: Colors.amberAccent),
                             SizedBox(width: 5),
                             Text(
-                              'CENTRAL MESS â€¢ TODAY',
+                              'CENTRAL MESS • TODAY',
                               style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 0.5),
                             ),
                           ],
@@ -317,7 +317,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                       const Icon(Icons.apartment, color: Colors.white70, size: 14),
                       const SizedBox(width: 4),
                       Text(
-                        'Central Mess Unit â€¢ ID: 6200432942',
+                        'Central Mess Unit • ID: 6200432942',
                         style: const TextStyle(color: Colors.white70, fontSize: 11.5, fontWeight: FontWeight.w500),
                       ),
                     ],
@@ -578,7 +578,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                   Icon(Icons.people_alt_outlined, size: 16, color: Color(0xFF1B5E20)),
                   SizedBox(width: 6),
                   Text(
-                    'View 112 Student Attendance Ledger âž”',
+                    'View 112 Student Attendance Ledger ➔',
                     style: TextStyle(color: Color(0xFF1B5E20), fontWeight: FontWeight.w800, fontSize: 12),
                   ),
                 ],

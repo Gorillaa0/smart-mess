@@ -345,7 +345,7 @@ class _MessOffScreenState extends ConsumerState<MessOffScreen> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'â‚¹${slot.price}',
+                    '₹${slot.price}',
                     style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: Colors.black87),
                   ),
                 ],
@@ -389,7 +389,7 @@ class _MessOffScreenState extends ConsumerState<MessOffScreen> {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    isOptedOut ? 'Status: Mess-Off Applied (Waiver â‚¹${slot.price})' : 'Status: Eating in Mess',
+                    isOptedOut ? 'Status: Mess-Off Applied (Waiver ₹${slot.price})' : 'Status: Eating in Mess',
                     style: TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.bold,
@@ -455,7 +455,7 @@ class _MessOffScreenState extends ConsumerState<MessOffScreen> {
           SizedBox(width: 10),
           Expanded(
             child: Text(
-              'ðŸŒ… Sunday Breakfast is Closed (Mess Holiday). No mess-off required.',
+              '🌅 Sunday Breakfast is Closed (Mess Holiday). No mess-off required.',
               style: TextStyle(fontSize: 12, color: Colors.black87, fontWeight: FontWeight.w500),
             ),
           ),

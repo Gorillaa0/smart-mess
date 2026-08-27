@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 class BillScreen extends StatefulWidget {
   const BillScreen({super.key});
@@ -53,13 +53,13 @@ class _BillScreenState extends State<BillScreen> with SingleTickerProviderStateM
 
   static String _getDayHindi(int weekday) {
     switch (weekday) {
-      case 1: return 'à¤¸à¥‹à¤®à¤µà¤¾à¤°';
-      case 2: return 'à¤®à¤‚à¤—à¤²à¤µà¤¾à¤°';
-      case 3: return 'à¤¬à¥à¤§à¤µà¤¾à¤°';
-      case 4: return 'à¤—à¥à¤°à¥à¤µà¤¾à¤°';
-      case 5: return 'à¤¶à¥à¤•à¥à¤°à¤µà¤¾à¤°';
-      case 6: return 'à¤¶à¤¨à¤¿à¤µà¤¾à¤°';
-      default: return 'à¤°à¤µà¤¿à¤µà¤¾à¤°';
+      case 1: return 'सोमवार';
+      case 2: return 'मंगलवार';
+      case 3: return 'बुधवार';
+      case 4: return 'गुरुवार';
+      case 5: return 'शुक्रवार';
+      case 6: return 'शनिवार';
+      default: return 'रविवार';
     }
   }
 
@@ -93,7 +93,7 @@ class _BillScreenState extends State<BillScreen> with SingleTickerProviderStateM
         sum + (r.breakfastEaten ? 1 : 0) + (r.lunchEaten ? 1 : 0) + (r.dinnerEaten ? 1 : 0));
     final totalMessOffDays = monthRecords.where((r) => r.isMessOffDay).length;
     final totalMonthAmount = monthRecords.fold<int>(0, (sum, r) => sum + r.dayTotalCost);
-    final totalWaiverSaved = totalMessOffDays * 125; // â‚¹125/day saved
+    final totalWaiverSaved = totalMessOffDays * 125; // ₹125/day saved
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7F4),
@@ -176,7 +176,7 @@ class _BillScreenState extends State<BillScreen> with SingleTickerProviderStateM
               ),
               const SizedBox(height: 10),
               Text(
-                'â‚¹$totalMonthAmount',
+                '₹$totalMonthAmount',
                 style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 2),
@@ -192,7 +192,7 @@ class _BillScreenState extends State<BillScreen> with SingleTickerProviderStateM
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text('Mess-Off Savings Credited', style: TextStyle(color: Colors.white70, fontSize: 11)),
-                      Text('â‚¹$totalWaiverSaved Saved ($totalMessOffDays Days)', style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 13)),
+                      Text('₹$totalWaiverSaved Saved ($totalMessOffDays Days)', style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 13)),
                     ],
                   ),
                   Container(
@@ -238,17 +238,17 @@ class _BillScreenState extends State<BillScreen> with SingleTickerProviderStateM
                 style: TextStyle(color: Colors.grey.shade600, fontSize: 11.5),
               ),
               const SizedBox(height: 14),
-              _ledgerRow('Initial 6-Month Advance Deposit', 'â‚¹$semesterDeposit', Colors.black87),
-              _ledgerRow('Prior Months Consumed (Mayâ€“Jul)', '-â‚¹$priorMonthsTotal', Colors.red.shade700),
-              _ledgerRow('Current Month Consumed (Aug 2026)', '-â‚¹$totalMonthAmount', Colors.red.shade700),
-              _ledgerRow('Mess-Off Rebate Credits', '+â‚¹$totalWaiverSaved', const Color(0xFF1B5E20)),
+              _ledgerRow('Initial 6-Month Advance Deposit', '₹$semesterDeposit', Colors.black87),
+              _ledgerRow('Prior Months Consumed (Mayâ€“Jul)', '-₹$priorMonthsTotal', Colors.red.shade700),
+              _ledgerRow('Current Month Consumed (Aug 2026)', '-₹$totalMonthAmount', Colors.red.shade700),
+              _ledgerRow('Mess-Off Rebate Credits', '+₹$totalWaiverSaved', const Color(0xFF1B5E20)),
               const Divider(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text('Remaining Deposit Balance', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                   Text(
-                    'â‚¹$remainingBalance',
+                    '₹$remainingBalance',
                     style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Color(0xFF1B5E20)),
                   ),
                 ],
@@ -277,12 +277,12 @@ class _BillScreenState extends State<BillScreen> with SingleTickerProviderStateM
                 ],
               ),
               const SizedBox(height: 10),
-              _tariffRow('ðŸŒ… Breakfast (Monâ€“Sat)', 'â‚¹25 / meal'),
-              _tariffRow('ðŸŒ… Sunday Breakfast', 'No Breakfast (Mess Closed)'),
-              _tariffRow('â˜€ï¸ Regular Lunch (Monâ€“Sat)', 'â‚¹50 / meal'),
-              _tariffRow('â˜€ï¸ Sunday Special Feast Lunch', 'â‚¹100 / meal (Chicken/Mushroom & Sweet)'),
-              _tariffRow('ðŸŒ™ Regular Dinner (6 days)', 'â‚¹50 / meal'),
-              _tariffRow('ðŸŒ™ Wednesday Non-Veg Dinner', 'â‚¹100 / meal (Chicken / Paneer)'),
+              _tariffRow('🌅 Breakfast (Monâ€“Sat)', '₹25 / meal'),
+              _tariffRow('🌅 Sunday Breakfast', 'No Breakfast (Mess Closed)'),
+              _tariffRow('☀️ï¸ Regular Lunch (Monâ€“Sat)', '₹50 / meal'),
+              _tariffRow('☀️ï¸ Sunday Special Feast Lunch', '₹100 / meal (Chicken/Mushroom & Sweet)'),
+              _tariffRow('🌙 Regular Dinner (6 days)', '₹50 / meal'),
+              _tariffRow('🌙 Wednesday Non-Veg Dinner', '₹100 / meal (Chicken / Paneer)'),
             ],
           ),
         ),
@@ -291,9 +291,9 @@ class _BillScreenState extends State<BillScreen> with SingleTickerProviderStateM
         // 4. Previous Monthly Statements Archive
         const Text('Previous Monthly Statements Archive', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
         const SizedBox(height: 10),
-        _historyTile('July 2026', '76 meals consumed â€¢ 4 mess-offs', 'â‚¹3,250', 'Deducted from Deposit'),
-        _historyTile('June 2026', '71 meals consumed â€¢ 6 mess-offs', 'â‚¹3,050', 'Deducted from Deposit'),
-        _historyTile('May 2026', '82 meals consumed â€¢ 2 mess-offs', 'â‚¹3,500', 'Deducted from Deposit'),
+        _historyTile('July 2026', '76 meals consumed • 4 mess-offs', '₹3,250', 'Deducted from Deposit'),
+        _historyTile('June 2026', '71 meals consumed • 6 mess-offs', '₹3,050', 'Deducted from Deposit'),
+        _historyTile('May 2026', '82 meals consumed • 2 mess-offs', '₹3,500', 'Deducted from Deposit'),
       ],
     );
   }
@@ -413,7 +413,7 @@ class _BillScreenState extends State<BillScreen> with SingleTickerProviderStateM
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.orange.shade200)),
-                        child: const Text('MESS-OFF (â‚¹125 Waived)', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 10.5)),
+                        child: const Text('MESS-OFF (₹125 Waived)', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 10.5)),
                       ),
                     ],
                   )
@@ -423,9 +423,9 @@ class _BillScreenState extends State<BillScreen> with SingleTickerProviderStateM
                     runSpacing: 4,
                     children: [
                       if (!r.isSunday)
-                        _mealStatusPill('B: â‚¹${r.breakfastPrice}', r.breakfastEaten),
-                      _mealStatusPill(r.isSunday ? 'L(Feast): â‚¹${r.lunchPrice}' : 'L: â‚¹${r.lunchPrice}', r.lunchEaten),
-                      _mealStatusPill(r.isWednesday ? 'D(NonVeg): â‚¹${r.dinnerPrice}' : 'D: â‚¹${r.dinnerPrice}', r.dinnerEaten),
+                        _mealStatusPill('B: ₹${r.breakfastPrice}', r.breakfastEaten),
+                      _mealStatusPill(r.isSunday ? 'L(Feast): ₹${r.lunchPrice}' : 'L: ₹${r.lunchPrice}', r.lunchEaten),
+                      _mealStatusPill(r.isWednesday ? 'D(NonVeg): ₹${r.dinnerPrice}' : 'D: ₹${r.dinnerPrice}', r.dinnerEaten),
                     ],
                   ),
               ],
@@ -437,7 +437,7 @@ class _BillScreenState extends State<BillScreen> with SingleTickerProviderStateM
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                r.isMessOffDay ? 'â‚¹0' : 'â‚¹${r.dayTotalCost}',
+                r.isMessOffDay ? '₹0' : '₹${r.dayTotalCost}',
                 style: TextStyle(
                   fontWeight: FontWeight.w900,
                   fontSize: 15,

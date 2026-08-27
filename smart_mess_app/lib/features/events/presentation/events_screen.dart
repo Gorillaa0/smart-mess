@@ -21,7 +21,7 @@ class _EventsScreenState extends State<EventsScreen> {
       endDate: DateTime.now().add(const Duration(days: 12)),
       location: 'Hostel Vacations',
       description: 'Official institute holiday for festival break. Hostel mess operates on minimal staff.',
-      messImpact: 'Full Meal Billing Waiver Applicable (â‚¹125/day saved)',
+      messImpact: 'Full Meal Billing Waiver Applicable (₹125/day saved)',
       impactLevel: 'High',
       tagColor: const Color(0xFFC62828),
       bgColor: const Color(0xFFFFEBEE),
@@ -103,7 +103,7 @@ class _EventsScreenState extends State<EventsScreen> {
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Mess fee will be waived automatically at â‚¹125/day for approved mess-off dates.',
+                      'Mess fee will be waived automatically at ₹125/day for approved mess-off dates.',
                       style: TextStyle(fontSize: 11.5, color: Color(0xFF1B5E20), fontWeight: FontWeight.w600),
                     ),
                   ),

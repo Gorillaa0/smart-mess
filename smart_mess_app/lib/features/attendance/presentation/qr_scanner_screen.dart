@@ -219,7 +219,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
                           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13.5),
                         ),
                         Text(
-                          'Reg: ${student.registrationNo} â€¢ Room ${student.roomNo} (${student.branch})',
+                          'Reg: ${student.registrationNo} • Room ${student.roomNo} (${student.branch})',
                           style: TextStyle(color: Colors.grey.shade400, fontSize: 11),
                         ),
                       ],

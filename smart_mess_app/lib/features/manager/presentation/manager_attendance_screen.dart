@@ -203,7 +203,7 @@ class _ManagerAttendanceScreenState extends ConsumerState<ManagerAttendanceScree
 
                 if (rec.status == 'present') {
                   statusColor = const Color(0xFF2E7D32);
-                  statusLabel = 'PRESENT â€¢ EATEN';
+                  statusLabel = 'PRESENT • EATEN';
                   statusIcon = Icons.check_circle;
                 } else if (rec.status == 'mess-off') {
                   statusColor = Colors.orange.shade800;
@@ -256,7 +256,7 @@ class _ManagerAttendanceScreenState extends ConsumerState<ManagerAttendanceScree
                       children: [
                         const SizedBox(height: 3),
                         Text(
-                          'Room ${s.roomNo} â€¢ ${s.branch} â€¢ Roll: ${s.rollNo}',
+                          'Room ${s.roomNo} • ${s.branch} • Roll: ${s.rollNo}',
                           style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
                         ),
                         if (rec.status == 'present')

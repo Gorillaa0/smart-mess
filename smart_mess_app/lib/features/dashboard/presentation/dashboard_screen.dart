@@ -190,8 +190,8 @@ class DashboardScreen extends ConsumerWidget {
                   child: _colorfulSummaryCard(
                     context,
                     title: 'Current Mess Bill',
-                    value: 'â‚¹2,450',
-                    subtitle: 'Aug 2026 â€¢ 57 meals eaten',
+                    value: '₹2,450',
+                    subtitle: 'Aug 2026 • 57 meals eaten',
                     icon: Icons.receipt_long,
                     startColor: const Color(0xFFFFF8E1),
                     endColor: const Color(0xFFFFECB3),
@@ -254,7 +254,7 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
-                subtitle: const Text('Complaint #1023 â€¢ Manager reviewed 2h ago', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                subtitle: const Text('Complaint #1023 • Manager reviewed 2h ago', style: TextStyle(fontSize: 11, color: Colors.grey)),
                 trailing: const Icon(Icons.chevron_right, color: Colors.grey, size: 18),
                 onTap: () => context.push('/complaints'),
               ),
@@ -310,7 +310,7 @@ class DashboardScreen extends ConsumerWidget {
                       const Icon(Icons.wb_sunny_outlined, size: 13, color: Colors.amberAccent),
                       const SizedBox(width: 5),
                       Text(
-                        '${todayMenu.dayHindi.toUpperCase()} â€¢ ${todayMenu.dayEnglish.toUpperCase()}',
+                        '${todayMenu.dayHindi.toUpperCase()} • ${todayMenu.dayEnglish.toUpperCase()}',
                         style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 0.5),
                       ),
                     ],
@@ -335,7 +335,7 @@ class DashboardScreen extends ConsumerWidget {
                       Icon(Icons.manage_accounts, size: 14, color: Color(0xFF1B5E20)),
                       SizedBox(width: 4),
                       Text(
-                        'Profile & Password âž”',
+                        'Profile & Password ➔',
                         style: TextStyle(color: Color(0xFF1B5E20), fontWeight: FontWeight.w800, fontSize: 11),
                       ),
                     ],
@@ -360,13 +360,13 @@ class DashboardScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Hello, ${student.name} ðŸ‘‹',
+                        'Hello, ${student.name} 👋',
                         style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w800),
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Reg: ${student.registrationNo} â€¢ Room ${student.roomNo} (${student.branch})',
+                        'Reg: ${student.registrationNo} • Room ${student.roomNo} (${student.branch})',
                         style: const TextStyle(color: Colors.white70, fontSize: 11.5, fontWeight: FontWeight.w500),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -387,7 +387,7 @@ class DashboardScreen extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Hostel Number 4 â€¢ $dateString',
+                    'Hostel Number 4 • $dateString',
                     style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w500),
                   ),
                   const Text(
@@ -413,8 +413,8 @@ class DashboardScreen extends ConsumerWidget {
       children: [
         // Breakfast Pill
         _mealSchedulePill(
-          mealName: 'à¤¨à¤¾à¤¶à¥à¤¤à¤¾ (Breakfast)',
-          priceText: todayMenu.breakfast.isAvailable ? 'â‚¹${todayMenu.breakfast.price}' : 'CLOSED',
+          mealName: 'नाश्ता (Breakfast)',
+          priceText: todayMenu.breakfast.isAvailable ? '₹${todayMenu.breakfast.price}' : 'CLOSED',
           itemsText: todayMenu.breakfast.isAvailable ? todayMenu.breakfast.itemsHindi : 'No Breakfast',
           status: isBreakfastPassed ? 'Taken' : (todayMenu.breakfast.isAvailable ? 'Upcoming' : 'Closed'),
           isPassed: isBreakfastPassed,
@@ -427,8 +427,8 @@ class DashboardScreen extends ConsumerWidget {
 
         // Lunch Pill
         _mealSchedulePill(
-          mealName: 'à¤¦à¥‹à¤ªà¤¹à¤° (Lunch)',
-          priceText: 'â‚¹${todayMenu.lunch.price}',
+          mealName: 'दोपहर (Lunch)',
+          priceText: '₹${todayMenu.lunch.price}',
           itemsText: todayMenu.lunch.itemsHindi,
           status: isLunchPassed ? 'Taken' : (isBreakfastPassed ? 'Serving Now' : 'Upcoming'),
           isPassed: isLunchPassed,
@@ -442,8 +442,8 @@ class DashboardScreen extends ConsumerWidget {
 
         // Dinner Pill
         _mealSchedulePill(
-          mealName: 'à¤°à¤¾à¤¤ (Dinner)',
-          priceText: 'â‚¹${todayMenu.dinner.price}',
+          mealName: 'रात (Dinner)',
+          priceText: '₹${todayMenu.dinner.price}',
           itemsText: todayMenu.dinner.itemsHindi,
           status: 'Upcoming',
           isPassed: false,
@@ -652,7 +652,7 @@ class DashboardScreen extends ConsumerWidget {
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
-                            'â‚¹${tomorrowBreakfast.price} â€¢ ${tomorrowBreakfast.servingTime}',
+                            '₹${tomorrowBreakfast.price} • ${tomorrowBreakfast.servingTime}',
                             style: const TextStyle(color: Colors.black87, fontSize: 10, fontWeight: FontWeight.w800),
                           ),
                         ),
@@ -765,7 +765,7 @@ class DashboardScreen extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  'â‚¹${meal.price} / plate',
+                  '₹${meal.price} / plate',
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
@@ -1071,7 +1071,7 @@ class DashboardScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('Weekly Mess Timetable', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20))),
-                        Text('Central Dining Facility â€¢ Regular Menu', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                        Text('Central Dining Facility • Regular Menu', style: TextStyle(fontSize: 12, color: Colors.grey)),
                       ],
                     ),
                     IconButton(
@@ -1121,11 +1121,11 @@ class DashboardScreen extends ConsumerWidget {
                             ],
                           ),
                           const Divider(height: 16),
-                          _menuSlotRow('ðŸŒ… Breakfast (7 AM)', day.breakfast.itemsHindi, day.breakfast.price, day.breakfast.isAvailable),
+                          _menuSlotRow('🌅 Breakfast (7 AM)', day.breakfast.itemsHindi, day.breakfast.price, day.breakfast.isAvailable),
                           const SizedBox(height: 6),
-                          _menuSlotRow('â˜€ï¸ Lunch (11 AM)', day.lunch.itemsHindi, day.lunch.price, true),
+                          _menuSlotRow('☀️ï¸ Lunch (11 AM)', day.lunch.itemsHindi, day.lunch.price, true),
                           const SizedBox(height: 6),
-                          _menuSlotRow('ðŸŒ™ Dinner (6 PM)', day.dinner.itemsHindi, day.dinner.price, true),
+                          _menuSlotRow('🌙 Dinner (6 PM)', day.dinner.itemsHindi, day.dinner.price, true),
                         ],
                       ),
                     );
@@ -1161,7 +1161,7 @@ class DashboardScreen extends ConsumerWidget {
             border: Border.all(color: price == 100 ? Colors.orange.shade300 : Colors.grey.shade300, width: 0.6),
           ),
           child: Text(
-            isAvailable ? 'â‚¹$price' : 'CLOSED',
+            isAvailable ? '₹$price' : 'CLOSED',
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.bold,

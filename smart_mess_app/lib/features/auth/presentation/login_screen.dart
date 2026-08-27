@@ -362,7 +362,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   
                   // Institutional Header
                   const Text(
-                    'Smart Mess â€¢ Institutional Dining Portal',
+                    'Smart Mess • Institutional Dining Portal',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Color(0xFF2E7D32),
