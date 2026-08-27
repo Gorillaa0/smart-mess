@@ -154,13 +154,7 @@ class DashboardScreen extends ConsumerWidget {
           children: [
             // 1. TOP PROFILE & DAY BANNER (HOSTEL NUMBER 4 - REAL STUDENT DATA)
             _buildProfileBanner(context, todayMenu, dateString, ref.watch(currentStudentProvider)),
-            const SizedBox(height: 14),
-
-            // 1.5 REAL-TIME MESS MANAGER BROADCAST ANNOUNCEMENTS
-            if (notifsList.isNotEmpty) ...[
-              _buildLiveBroadcastCard(context, notifsList.first),
-              const SizedBox(height: 16),
-            ],
+            const SizedBox(height: 18),
 
             // 2. TODAY'S MEALS TIMELINE & PRICING ROW
             Row(

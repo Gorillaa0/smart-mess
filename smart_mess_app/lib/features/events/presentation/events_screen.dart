@@ -1,251 +1,19 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:dio/dio.dart';
+import '../providers/events_provider.dart';
 
-class EventsScreen extends StatefulWidget {
+class EventsScreen extends ConsumerStatefulWidget {
   const EventsScreen({super.key});
 
   @override
-  State<EventsScreen> createState() => _EventsScreenState();
+  ConsumerState<EventsScreen> createState() => _EventsScreenState();
 }
 
-class _EventsScreenState extends State<EventsScreen> {
+class _EventsScreenState extends ConsumerState<EventsScreen> {
   String selectedFilter = 'All';
-  StreamSubscription? _eventsSub;
-
-  List<CollegeEvent> events = [
-    CollegeEvent(
-      id: 'e1',
-      title: 'Diwali & Chhath Puja Semester Break',
-      category: 'Holiday',
-      date: DateTime.now().add(const Duration(days: 3)),
-      endDate: DateTime.now().add(const Duration(days: 12)),
-      location: 'Hostel Vacations',
-      description: 'Official institute holiday for festival break. Hostel mess operates on minimal staff.',
-      messImpact: 'Full Meal Billing Waiver Applicable (₹125/day saved)',
-      impactLevel: 'High',
-      tagColor: const Color(0xFFC62828),
-      bgColor: const Color(0xFFFFEBEE),
-      borderColor: const Color(0xFFEF9A9A),
-      icon: Icons.holiday_village,
-      advisory: 'Residents travelling home must submit Mess-Off requests before 8 PM to get full fee waiver.',
-    ),
-    CollegeEvent(
-      id: 'e2',
-      title: 'Mid-Semester Theory Examinations',
-      category: 'Academic',
-      date: DateTime.now().add(const Duration(days: 14)),
-      endDate: DateTime.now().add(const Duration(days: 20)),
-      location: 'Academic Block Exam Halls',
-      description: 'B.Tech 6th Semester Mid-term exams across CSE, Civil, ECE, EE, and ME.',
-      messImpact: 'Extended Breakfast & Dinner Timings (Night study tea available)',
-      impactLevel: 'Medium',
-      tagColor: const Color(0xFF1565C0),
-      bgColor: const Color(0xFFE3F2FD),
-      borderColor: const Color(0xFF90CAF9),
-      icon: Icons.menu_book,
-      advisory: 'Extended dining hours will be active. Students staying in hostel need not apply for mess-off.',
-    ),
-    CollegeEvent(
-      id: 'e3',
-      title: 'BCE Tech Fest: Technovate 2026',
-      category: 'Campus Event',
-      date: DateTime.now().add(const Duration(days: 25)),
-      endDate: DateTime.now().add(const Duration(days: 27)),
-      location: 'Main Auditorium & CS Labs',
-      description: 'Annual inter-college robotics, coding hackathon & AI exhibitions.',
-      messImpact: 'Special Grand Feast Dinner on Final Night',
-      impactLevel: 'Low',
-      tagColor: const Color(0xFF6A1B9A),
-      bgColor: const Color(0xFFF3E5F5),
-      borderColor: const Color(0xFFCE93D8),
-      icon: Icons.rocket_launch,
-      advisory: 'Special feast menu will be served. Day scholars and guests can purchase coupons.',
-    ),
-  ];
-
-  @override
-  Timer? _eventsTimer;
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchLiveEvents();
-    _eventsTimer = Timer.periodic(const Duration(seconds: 3), (_) => _fetchLiveEvents());
-    _subscribeLiveEvents();
-  }
-
-  @override
-  void dispose() {
-    _eventsTimer?.cancel();
-    _eventsSub?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _fetchLiveEvents() async {
-    try {
-      final dio = Dio();
-      final res = await dio.post(
-        'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents:runQuery?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
-        data: {
-          'structuredQuery': {
-            'from': [{'collectionId': 'events'}]
-          }
-        },
-        options: Options(headers: {'Content-Type': 'application/json'}),
-      ).timeout(const Duration(seconds: 3));
-
-      if (res.statusCode == 200 && res.data is List) {
-        final List results = res.data;
-        final liveList = <CollegeEvent>[];
-
-        for (final item in results) {
-          if (item is Map && item['document'] != null) {
-            final doc = item['document'] as Map;
-            final fields = (doc['fields'] as Map?) ?? {};
-
-            final id = fields['id']?['stringValue'] ?? (doc['name']?.toString().split('/').last ?? 'evt');
-            final title = fields['title']?['stringValue'] ?? 'Campus Event';
-            final type = fields['type']?['stringValue'] ?? 'Holiday';
-            final startStr = fields['startDate']?['stringValue'] ?? '';
-            final endStr = fields['endDate']?['stringValue'];
-            final impact = fields['impactLevel']?['stringValue'] ?? 'Medium';
-            final desc = fields['description']?['stringValue'] ?? '';
-            final advisory = fields['advisoryForStudents']?['stringValue'] ?? fields['advisory']?['stringValue'] ?? '';
-            final messImpact = fields['expectedMessOffs']?['stringValue'] ?? 'Normal dining schedule';
-
-            final start = DateTime.tryParse(startStr) ?? DateTime.now();
-            final end = endStr != null ? DateTime.tryParse(endStr) : null;
-
-            Color tagCol;
-            Color bgCol;
-            Color borderCol;
-            IconData ic;
-
-            if (type.toLowerCase().contains('exam') || type.toLowerCase().contains('academic')) {
-              tagCol = const Color(0xFF1565C0);
-              bgCol = const Color(0xFFE3F2FD);
-              borderCol = const Color(0xFF90CAF9);
-              ic = Icons.menu_book;
-            } else if (type.toLowerCase().contains('fest') || type.toLowerCase().contains('celebration')) {
-              tagCol = const Color(0xFF6A1B9A);
-              bgCol = const Color(0xFFF3E5F5);
-              borderCol = const Color(0xFFCE93D8);
-              ic = Icons.celebration;
-            } else {
-              tagCol = const Color(0xFFC62828);
-              bgCol = const Color(0xFFFFEBEE);
-              borderCol = const Color(0xFFEF9A9A);
-              ic = Icons.holiday_village;
-            }
-
-            liveList.add(CollegeEvent(
-              id: id,
-              title: title,
-              category: type,
-              date: start,
-              endDate: end,
-              location: 'Hostel H4 / Campus',
-              description: desc,
-              messImpact: messImpact,
-              impactLevel: impact,
-              tagColor: tagCol,
-              bgColor: bgCol,
-              borderColor: borderCol,
-              icon: ic,
-              advisory: advisory,
-            ));
-          }
-        }
-
-        if (mounted && liveList.isNotEmpty) {
-          liveList.sort((a, b) => a.date.compareTo(b.date));
-          setState(() {
-            events = liveList;
-          });
-        }
-      }
-    } catch (_) {}
-  }
-
-  void _subscribeLiveEvents() {
-    try {
-      final firestore = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'default');
-      _eventsSub = firestore
-          .collection('events')
-          .snapshots()
-          .listen((snapshot) {
-        if (snapshot.docs.isNotEmpty) {
-          final liveList = snapshot.docs.map((doc) {
-            final d = doc.data();
-            final String title = d['title'] ?? 'Campus Event';
-            final String type = d['type'] ?? 'Holiday';
-            final DateTime start = d['startDate'] != null
-                ? (DateTime.tryParse(d['startDate']) ?? DateTime.now())
-                : DateTime.now();
-            final DateTime? end = d['endDate'] != null ? DateTime.tryParse(d['endDate']) : null;
-            final String impact = d['impactLevel'] ?? 'Medium';
-            final String desc = d['description'] ?? '';
-            final String advisory = d['advisoryForStudents'] ?? d['advisory'] ?? 'Check mess schedule for changes.';
-            final String messImpact = d['expectedMessOffs'] ?? 'Normal dining schedule';
-
-            Color tagCol;
-            Color bgCol;
-            Color borderCol;
-            IconData ic;
-
-            if (type.toLowerCase().contains('exam') || type.toLowerCase().contains('academic')) {
-              tagCol = const Color(0xFF1565C0);
-              bgCol = const Color(0xFFE3F2FD);
-              borderCol = const Color(0xFF90CAF9);
-              ic = Icons.menu_book;
-            } else if (type.toLowerCase().contains('fest') || type.toLowerCase().contains('celebration')) {
-              tagCol = const Color(0xFF6A1B9A);
-              bgCol = const Color(0xFFF3E5F5);
-              borderCol = const Color(0xFFCE93D8);
-              ic = Icons.celebration;
-            } else {
-              tagCol = const Color(0xFFC62828);
-              bgCol = const Color(0xFFFFEBEE);
-              borderCol = const Color(0xFFEF9A9A);
-              ic = Icons.holiday_village;
-            }
-
-            return CollegeEvent(
-              id: doc.id,
-              title: title,
-              category: type,
-              date: start,
-              endDate: end,
-              location: 'Hostel H4 / Campus',
-              description: desc,
-              messImpact: messImpact,
-              impactLevel: impact,
-              tagColor: tagCol,
-              bgColor: bgCol,
-              borderColor: borderCol,
-              icon: ic,
-              advisory: advisory,
-            );
-          }).toList();
-
-          if (mounted) {
-            setState(() {
-              events = liveList;
-            });
-          }
-        }
-      }, onError: (err) {
-        debugPrint('[EVENTS FIRESTORE] Stream notice: $err');
-      });
-    } catch (e) {
-      debugPrint('[EVENTS FIRESTORE] Init error: $e');
-    }
-  }
 
   void _applyMessOffForEvent(BuildContext context, CollegeEvent event) {
     final startStr = DateFormat('dd MMM yyyy').format(event.date);
@@ -328,6 +96,8 @@ class _EventsScreenState extends State<EventsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final eventsAsync = ref.watch(eventsListProvider);
+    final events = eventsAsync.valueOrNull ?? [];
     final filteredEvents = selectedFilter == 'All'
         ? events
         : events.where((e) => e.category == selectedFilter).toList();
