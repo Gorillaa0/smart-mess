@@ -2,41 +2,24 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+
+    <!-- MUST be the first meta — forces desktop 1280px viewport before any rendering -->
+    <meta name="viewport" content="width=1280" />
+
     <title>Smart Mess Dashboard</title>
-    
-    <!-- STRICT IMMEDIATE DESKTOP VIEWPORT -->
-    <script>
-      (function() {
-        var screenW = window.screen.width || window.innerWidth || 1280;
-        var scale = Math.min(1, screenW / 1280);
-        if (scale < 0.2) scale = 0.25;
-        
-        var meta = document.createElement('meta');
-        meta.name = 'viewport';
-        meta.content = 'width=1280, initial-scale=' + scale + ', minimum-scale=0.1, maximum-scale=5.0, user-scalable=yes';
-        document.head.appendChild(meta);
-      })();
-    </script>
-    
+
     <style>
-      html, body {
-        width: 1280px !important;
-        min-width: 1280px !important;
-        overflow-x: auto !important;
-        -webkit-text-size-adjust: 100% !important;
-      }
-      #root {
-        width: 1280px !important;
-        min-width: 1280px !important;
-        overflow-x: auto !important;
-      }
+      /* CSS-level lock — prevents mobile browsers from shrinking layout */
+      html { min-width: 1280px; }
+      body { min-width: 1280px; overflow-x: auto; }
+      #root { min-width: 1280px; }
     </style>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   </head>
-  <body class="bg-gray-50">
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
