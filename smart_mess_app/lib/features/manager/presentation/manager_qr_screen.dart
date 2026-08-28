@@ -1,52 +1,21 @@
-﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
-class ManagerQRScreen extends StatefulWidget {
+class ManagerQRScreen extends StatelessWidget {
   const ManagerQRScreen({super.key});
 
-  @override
-  State<ManagerQRScreen> createState() => _ManagerQRScreenState();
-}
-
-class _ManagerQRScreenState extends State<ManagerQRScreen> {
-  int secondsRemaining = 58;
-  Timer? timer;
-  String currentToken = 'SM_LUNCH_X7AB39';
-  int scannedCount = 138;
-
-  @override
-  void initState() {
-    super.initState();
-    timer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (mounted) {
-        setState(() {
-          if (secondsRemaining > 1) {
-            secondsRemaining--;
-          } else {
-            secondsRemaining = 60;
-            currentToken = 'SM_LUNCH_${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
-          }
-        });
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    timer?.cancel();
-    super.dispose();
-  }
+  static const String staticPayload =
+      '{"system":"SmartMess","hostel":"Hostel Number 4","messId":"mess_h4","counter":"Main Dining Counter","type":"static_counter_qr"}';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A1A),
+      backgroundColor: const Color(0xFF141E15),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
         elevation: 0,
-        title: const Text('Live Meal QR Session', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Permanent Mess QR Poster', style: TextStyle(fontWeight: FontWeight.bold)),
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -58,25 +27,33 @@ class _ManagerQRScreenState extends State<ManagerQRScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
+                  color: Colors.white.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.greenAccent.withOpacity(0.3)),
                 ),
-                child: const Text(
-                  'LUNCH • MAIN MESS (TODAY)',
-                  style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 1),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.verified, color: Colors.greenAccent, size: 16),
+                    SizedBox(width: 6),
+                    Text(
+                      'HOSTEL 4 • PERMANENT DINING QR',
+                      style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 0.8),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
               // QR Code Box
               Container(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(22),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF2E7D32).withOpacity(0.3),
+                      color: const Color(0xFF2E7D32).withOpacity(0.35),
                       blurRadius: 30,
                       spreadRadius: 5,
                     ),
@@ -85,59 +62,50 @@ class _ManagerQRScreenState extends State<ManagerQRScreen> {
                 child: Column(
                   children: [
                     QrImageView(
-                      data: currentToken,
+                      data: staticPayload,
                       version: QrVersions.auto,
                       size: 240.0,
                     ),
                     const SizedBox(height: 12),
-                    Text(
-                      currentToken,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87, letterSpacing: 2),
+                    const Text(
+                      'HOSTEL NUMBER 4 • DINING COUNTER',
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 11, color: Color(0xFF1B5E20), letterSpacing: 1),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Static Printable QR (Never Expires)',
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 11, color: Colors.black54),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
-              // Countdown Ring & Status
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      value: secondsRemaining / 60,
-                      strokeWidth: 3,
-                      valueColor: const AlwaysStoppedAnimation<Color>(Colors.amberAccent),
-                      backgroundColor: Colors.white24,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Rotates in ${secondsRemaining}s (Anti-Abuse Protection)',
-                    style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 32),
-
-              // Live Counter Pill
+              // Offline / Testing Notice Card
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2E7D32).withOpacity(0.2),
+                  color: Colors.white.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFF2E7D32).withOpacity(0.5)),
+                  border: Border.all(color: Colors.white12),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.people, color: Colors.greenAccent, size: 22),
-                    const SizedBox(width: 12),
+                    Row(
+                      children: [
+                        Icon(Icons.print_outlined, color: Colors.greenAccent, size: 18),
+                        SizedBox(width: 8),
+                        Text(
+                          'Testing Ready (No Screen Needed)',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 6),
                     Text(
-                      'Live Checked-in: $scannedCount / 168',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                      'You can print this QR code on physical paper or display it from another phone. Students can scan it anytime with the mobile app camera to verify their meal attendance.',
+                      style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.4),
                     ),
                   ],
                 ),

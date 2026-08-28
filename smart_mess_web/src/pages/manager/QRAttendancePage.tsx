@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
 import { H4_STUDENTS_LIST } from '../../data/h4StudentsData';
-import type { H4Student } from '../../data/h4StudentsData';
-import { QrCode, Users, CheckCircle2, AlertCircle, RefreshCw, Cpu, Sparkles, Building2, Utensils, Check } from 'lucide-react';
+import { Building2, Utensils, Printer, Download, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface ScannedEntry {
@@ -19,8 +18,6 @@ interface ScannedEntry {
 export const QRAttendancePage: React.FC = () => {
   const [selectedMeal, setSelectedMeal] = useState<'Breakfast' | 'Lunch' | 'Dinner'>('Lunch');
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
-  const [countdown, setCountdown] = useState(60);
-  const [isCounterActive, setIsCounterActive] = useState(true);
   const [scannedEntries, setScannedEntries] = useState<ScannedEntry[]>([]);
 
   const totalStudents = H4_STUDENTS_LIST.length; // 112
@@ -77,71 +74,105 @@ export const QRAttendancePage: React.FC = () => {
   }, [selectedMeal]);
 
   useEffect(() => {
-    generateQR();
-  }, [selectedMeal]);
+    generateStaticQR();
+  }, []);
 
-  useEffect(() => {
-    let timer: any;
-    if (isCounterActive && countdown > 0) {
-      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-    } else if (countdown === 0 && isCounterActive) {
-      generateQR();
-    }
-    return () => clearTimeout(timer);
-  }, [countdown, isCounterActive]);
-
-  const generateQR = async () => {
+  const generateStaticQR = async () => {
     try {
-      const uniquePayload = JSON.stringify({
+      // Permanent Static QR payload for physical paper printout / wall mounting
+      const staticPayload = JSON.stringify({
+        system: 'SmartMess',
         hostel: 'Hostel Number 4',
-        meal: selectedMeal,
-        timestamp: Date.now(),
-        token: `H4_TOKEN_${Date.now()}_${Math.random().toString(36).substring(7).toUpperCase()}`
+        messId: 'mess_h4',
+        counter: 'Main Dining Counter',
+        type: 'static_counter_qr'
       });
-      const url = await QRCode.toDataURL(uniquePayload, {
-        width: 280,
+      const url = await QRCode.toDataURL(staticPayload, {
+        width: 320,
         margin: 1,
         color: { dark: '#1B5E20', light: '#FFFFFF' }
       });
       setQrCodeUrl(url);
-      setCountdown(60);
     } catch (err) {
       console.error(err);
     }
   };
 
-  const handleManualScan = async (student: H4Student) => {
-    const exists = scannedEntries.some((s) => s.registrationNo === student.registrationNo);
-    if (exists) {
-      toast.error(`${student.name} has already scanned for ${selectedMeal}!`);
+  const handlePrintQR = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast.error('Pop-up blocked. Please allow pop-ups to print the QR poster.');
       return;
     }
-
-    const docId = `SCAN_MANUAL_${Date.now()}_${student.rollNo}`;
-    try {
-      await fetch(
-        `https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/mealAttendance/${docId}?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            fields: {
-              id: { stringValue: docId },
-              registrationNo: { stringValue: student.registrationNo },
-              studentName: { stringValue: student.name },
-              rollNo: { stringValue: student.rollNo },
-              branch: { stringValue: student.branch },
-              mealType: { stringValue: selectedMeal },
-              scannedAt: { stringValue: new Date().toISOString() },
-              roomNo: { stringValue: student.roomNo },
-              hostelId: { stringValue: 'Hostel Number 4' }
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Smart Mess - Hostel 4 Counter QR Code</title>
+          <style>
+            @page { size: A4 portrait; margin: 20mm; }
+            body {
+              font-family: system-ui, -apple-system, sans-serif;
+              text-align: center;
+              padding: 30px;
+              color: #1B5E20;
             }
-          })
-        }
-      );
-      toast.success(`Plate verified for ${student.name} (Room ${student.roomNo})`);
-      fetchLiveScans();
-    } catch (_) {}
+            .border-box {
+              border: 4px solid #1B5E20;
+              border-radius: 24px;
+              padding: 40px 20px;
+              max-width: 500px;
+              margin: 0 auto;
+            }
+            h1 { font-size: 28px; margin: 0 0 6px 0; color: #1B5E20; }
+            h2 { font-size: 18px; margin: 0 0 20px 0; color: #43A047; font-weight: normal; }
+            img { width: 300px; height: 300px; margin: 10px auto; display: block; }
+            .badge {
+              display: inline-block;
+              background: #E8F5E9;
+              color: #1B5E20;
+              padding: 6px 16px;
+              border-radius: 20px;
+              font-weight: bold;
+              font-size: 13px;
+              margin-top: 15px;
+            }
+            .instructions {
+              margin-top: 25px;
+              font-size: 14px;
+              color: #555;
+              line-height: 1.5;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="border-box">
+            <h1>SMART MESS</h1>
+            <h2>Hostel Number 4 • Dining Hall Counter</h2>
+            <img src="${qrCodeUrl}" alt="Permanent Counter QR Code" />
+            <div class="badge">PERMANENT STATIC QR CODE</div>
+            <div class="instructions">
+              <strong>Instructions for Students:</strong><br/>
+              Open the <b>Smart Mess Mobile App</b> &gt; Tap <b>Scan QR</b>.<br/>
+              Align your camera with this code to verify your meal plate.
+            </div>
+          </div>
+          <script>
+            window.onload = () => { window.print(); };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
+  const handleDownloadQR = () => {
+    if (!qrCodeUrl) return;
+    const a = document.createElement('a');
+    a.href = qrCodeUrl;
+    a.download = 'SmartMess_Hostel4_Static_QR.png';
+    a.click();
+    toast.success('Downloaded Static QR Code image');
   };
 
   return (
@@ -151,13 +182,13 @@ export const QRAttendancePage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2 text-primary-200 text-sm font-medium">
             <Building2 className="w-4 h-4 text-emerald-400" />
-            <span>Hostel Number 4 • Digital Counter Turnstile</span>
+            <span>Hostel Number 4 • Physical Dining Counter</span>
           </div>
           <h1 className="text-2xl md:text-3xl font-bold font-display tracking-tight text-white mt-1">
-            Dynamic QR Meal Attendance Scanner
+            Permanent Static Counter QR Code
           </h1>
           <p className="text-primary-200 text-sm mt-1">
-            Live auto-rotating security QR code for counter verification of 112 enrolled students.
+            Print or paste this permanent QR code on the mess counter for offline student camera scanning.
           </p>
         </div>
 
@@ -182,50 +213,51 @@ export const QRAttendancePage: React.FC = () => {
 
       {/* Main Content Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left 5 Cols: QR Code Display Card */}
+        {/* Left 5 Cols: Static Printable QR Code Display */}
         <div className="lg:col-span-5 bg-white rounded-2xl border border-gray-200 p-6 shadow-sm flex flex-col items-center text-center space-y-4">
           <div className="flex items-center justify-between w-full border-b border-gray-100 pb-3">
             <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-              {selectedMeal} Session • Counter Display
+              Permanent Mess Counter QR
             </span>
             <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-              Live Dynamic Token
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+              Static (Never Expires)
             </div>
           </div>
 
-          {/* QR Code Container with 60s Ring */}
-          <div className="relative p-4 bg-white rounded-2xl border-2 border-primary-800/20 shadow-inner flex items-center justify-center">
+          {/* QR Code Container */}
+          <div className="p-4 bg-white rounded-2xl border-2 border-primary-800/30 shadow-sm flex flex-col items-center justify-center">
             {qrCodeUrl ? (
-              <img src={qrCodeUrl} alt="Counter QR Code" className="w-64 h-64 rounded-lg" />
+              <img src={qrCodeUrl} alt="Static Counter QR Code" className="w-64 h-64 rounded-lg" />
             ) : (
               <div className="w-64 h-64 bg-gray-100 flex items-center justify-center rounded-lg text-gray-400">
-                Generating QR...
+                Generating Static QR...
               </div>
             )}
+            <span className="text-[11px] text-gray-500 font-mono mt-2">HOSTEL 4 • PERMANENT DINING TOKEN</span>
           </div>
 
-          {/* 60-Second Rotation Progress */}
-          <div className="w-full space-y-1.5">
-            <div className="flex justify-between text-xs font-bold text-gray-600">
-              <span>Token Refresh Countdown</span>
-              <span className="text-primary-800">{countdown}s remaining</span>
-            </div>
-            <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-              <div
-                className="bg-primary-700 h-2 rounded-full transition-all duration-1000 ease-linear"
-                style={{ width: `${(countdown / 60) * 100}%` }}
-              ></div>
-            </div>
+          {/* Action Buttons: Print & Download Poster */}
+          <div className="grid grid-cols-2 gap-3 w-full pt-1">
+            <button
+              onClick={handlePrintQR}
+              className="py-2.5 px-3 bg-[#1B8E2D] hover:bg-[#157324] text-white text-xs font-bold rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-1.5"
+            >
+              <Printer className="w-4 h-4" />
+              Print Counter Poster
+            </button>
+            <button
+              onClick={handleDownloadQR}
+              className="py-2.5 px-3 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5"
+            >
+              <Download className="w-4 h-4" />
+              Save Image
+            </button>
           </div>
 
-          <button
-            onClick={generateQR}
-            className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            Force Refresh QR Code Now
-          </button>
+          <p className="text-[11px] text-gray-500 bg-gray-50 p-2.5 rounded-xl border border-gray-100 w-full text-left leading-relaxed">
+            💡 <strong>Testing Mode:</strong> You can print this QR code on paper or show it from your phone. It never expires, eliminating the need for digital screens at the counter.
+          </p>
         </div>
 
         {/* Right 7 Cols: Live Attendance Feed */}
@@ -249,50 +281,59 @@ export const QRAttendancePage: React.FC = () => {
             <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm text-center">
               <span className="text-xs font-semibold text-gray-500 block">Total Boarders</span>
               <span className="text-2xl font-bold text-gray-900">{totalStudents}</span>
-              <span className="text-[11px] text-blue-600 font-medium block mt-0.5">Hostel 4 List</span>
+              <span className="text-[11px] text-primary-700 font-bold block mt-0.5">H4 Roster</span>
             </div>
           </div>
 
           {/* Real-time Scanned Students Table */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 space-y-3">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="p-4 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                <h3 className="font-bold text-sm text-gray-900">
-                  Live Verified Counter Scans ({scannedCount} Verified)
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <h3 className="font-bold text-gray-900 text-sm">
+                  Live Attendance Feed • {selectedMeal}
                 </h3>
               </div>
-              <span className="text-xs text-gray-400">Updates in real-time</span>
+              <span className="text-xs text-gray-500 font-medium">Auto-refreshing (3s)</span>
             </div>
 
-            <div className="max-h-96 overflow-y-auto divide-y divide-gray-100">
-              {scannedEntries.map((s) => (
-                <div key={s.token} className="py-2.5 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold text-xs">
-                      {s.name[0]}
-                    </div>
-                    <div>
-                      <p className="font-bold text-gray-900">{s.name}</p>
-                      <p className="text-[10.5px] text-gray-500">Roll: {s.rollNo} • Room {s.roomNo}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="inline-flex items-center gap-1 text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded font-bold text-[11px]">
-                      <Check className="w-3 h-3 text-emerald-600" />
-                      {s.scannedAt}
-                    </span>
-                  </div>
-                </div>
-              ))}
-
-              {scannedEntries.length === 0 && (
-                <div className="py-12 text-center text-gray-400">
-                  <Utensils className="w-10 h-10 mx-auto text-gray-300 mb-2 opacity-60" />
-                  <p className="font-bold text-gray-600">No scans recorded yet for {selectedMeal}</p>
-                  <p className="text-xs text-gray-400 mt-1">Student phone scans at counter will appear here live.</p>
-                </div>
-              )}
+            <div className="overflow-x-auto max-h-[420px] overflow-y-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-gray-50 text-gray-600 font-bold sticky top-0 border-b border-gray-100 z-10">
+                  <tr>
+                    <th className="py-2.5 px-3">#</th>
+                    <th className="py-2.5 px-3">Student Name</th>
+                    <th className="py-2.5 px-3">Roll No.</th>
+                    <th className="py-2.5 px-3">Room</th>
+                    <th className="py-2.5 px-3">Time</th>
+                    <th className="py-2.5 px-3 text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 text-gray-800">
+                  {scannedEntries.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-10 text-gray-400">
+                        No students scanned for {selectedMeal} yet today.
+                      </td>
+                    </tr>
+                  ) : (
+                    scannedEntries.map((entry) => (
+                      <tr key={entry.slNo} className="hover:bg-emerald-50/40 transition-colors">
+                        <td className="py-2.5 px-3 font-mono text-gray-400">{entry.slNo}</td>
+                        <td className="py-2.5 px-3 font-semibold text-gray-900">{entry.name}</td>
+                        <td className="py-2.5 px-3 font-mono text-emerald-800 font-bold">{entry.rollNo}</td>
+                        <td className="py-2.5 px-3 font-medium text-gray-600">Room {entry.roomNo}</td>
+                        <td className="py-2.5 px-3 text-gray-500 font-mono">{entry.scannedAt}</td>
+                        <td className="py-2.5 px-3 text-right">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                            Verified
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
