@@ -4,8 +4,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { createAuditLog } from '../audit/createAuditLog';
 import { Bill } from '../types';
 
-const BASE_FEE = 3000;
-const DEDUCTION_PER_MEAL = 40;
+const RATE_PER_MEAL = 40; // Testing consumption rate: charged strictly per QR scan
 
 export const calculateBilling = onCall(async (request) => {
   if (!request.auth || !['admin', 'manager'].includes(request.auth.token.role)) {
@@ -51,17 +50,16 @@ async function runBillingCalculation(messId: string, month: string, actorUid: st
     const startOfMonth = new Date(`${month}-01T00:00:00Z`).toISOString();
     const endOfMonth = new Date(new Date(startOfMonth).getFullYear(), new Date(startOfMonth).getMonth() + 1, 0, 23, 59, 59).toISOString();
 
-    const messOffsQuery = await db.collection('messOffs')
+    // Query strictly scanned QR meal attendance records
+    const attendanceQuery = await db.collection('mealAttendance')
       .where('studentId', '==', student.studentId)
-      .where('date', '>=', startOfMonth)
-      .where('date', '<=', endOfMonth)
-      .where('status', '==', 'active')
+      .where('scannedAt', '>=', startOfMonth)
+      .where('scannedAt', '<=', endOfMonth)
+      .where('status', '==', 'attended')
       .get();
 
-    const validMessOffsCount = messOffsQuery.size;
-    const deductions = validMessOffsCount * DEDUCTION_PER_MEAL;
-    const extraCharges = 0; 
-    const totalAmount = BASE_FEE - deductions + extraCharges;
+    const scannedMealsCount = attendanceQuery.size;
+    const totalAmount = scannedMealsCount * RATE_PER_MEAL;
 
     const billRef = db.collection('bills').doc();
     const bill: Bill = {
@@ -69,9 +67,9 @@ async function runBillingCalculation(messId: string, month: string, actorUid: st
       studentId: student.studentId,
       messId,
       month,
-      baseFee: BASE_FEE,
-      messOffDeductions: deductions,
-      extraCharges,
+      baseFee: 0,
+      messOffDeductions: 0,
+      extraCharges: 0,
       totalAmount,
       status: 'pending',
       createdAt: new Date().toISOString()
@@ -83,8 +81,8 @@ async function runBillingCalculation(messId: string, month: string, actorUid: st
     batch.set(notifRef, {
       notificationId: notifRef.id,
       recipientUid: student.uid,
-      title: 'New Bill Generated',
-      body: `Your mess bill for ${month} is Rs. ${totalAmount}`,
+      title: 'Monthly Mess Bill (QR Consumption)',
+      body: `Your mess bill for ${month} (${scannedMealsCount} QR scanned meals) is Rs. ${totalAmount}`,
       type: 'alert',
       read: false,
       createdAt: new Date().toISOString()
@@ -96,7 +94,7 @@ async function runBillingCalculation(messId: string, month: string, actorUid: st
   await batch.commit();
 
   if (actorUid !== 'system') {
-    await createAuditLog(actorUid, 'CALCULATE_BILLING', messId, 'bills', `Generated bills for ${month}`);
+    await createAuditLog(actorUid, 'CALCULATE_BILLING', messId, 'bills', `Generated consumption bills for ${month} (QR Scan Only)`);
   }
 
   return { success: true, count: results.length };
