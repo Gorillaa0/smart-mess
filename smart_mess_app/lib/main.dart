@@ -10,18 +10,25 @@ import 'core/constants/h4_students_data.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Restore session from local storage so refreshing never logs out
+  // Restore session from local storage only if valid and explicit
   bool isLoggedIn = false;
   String loggedRole = 'student';
   H4Student? loggedStudent;
 
   try {
     final prefs = await SharedPreferences.getInstance();
-    isLoggedIn = prefs.getBool('is_logged_in') ?? false;
-    loggedRole = prefs.getString('logged_role') ?? 'student';
-    final regNo = prefs.getString('logged_student_reg');
-    if (regNo != null && regNo.isNotEmpty) {
-      loggedStudent = H4StudentDirectory.findByRegistrationOrRoll(regNo);
+    final bool rawLoggedIn = prefs.getBool('is_logged_in') ?? false;
+    final String? role = prefs.getString('logged_role');
+    final String? regNo = prefs.getString('logged_student_reg');
+
+    if (rawLoggedIn && role == 'manager') {
+      isLoggedIn = true;
+      loggedRole = 'manager';
+    } else if (rawLoggedIn && regNo != null && regNo.trim().isNotEmpty) {
+      loggedStudent = H4StudentDirectory.findByRegistrationOrRoll(regNo.trim());
+      isLoggedIn = (loggedStudent != null);
+    } else {
+      isLoggedIn = false;
     }
   } catch (e) {
     debugPrint('Error restoring saved session: $e');

@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/constants/h4_students_data.dart';
 import '../../../core/widgets/top_notification_overlay.dart';
+import '../../../core/services/auth_service.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -381,16 +382,7 @@ class ProfileScreen extends ConsumerWidget {
             ),
             icon: const Icon(Icons.logout),
             label: const Text('LOGOUT ACCOUNT', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-            onPressed: () async {
-              TopNotificationOverlay.hide();
-              try {
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.clear();
-              } catch (_) {}
-              await FirebaseAuth.instance.signOut();
-              ref.read(authStateProvider.notifier).state = false;
-              if (context.mounted) context.go('/login');
-            },
+            onPressed: () => AuthService.performLogout(ref, context),
           ),
         ],
       ),

@@ -22,6 +22,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isLoading = false;
   String _selectedRole = 'student'; // 'student' or 'manager'
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(authStateProvider.notifier).state = false;
+      }
+    });
+  }
+
   void _login() async {
     if (!_formKey.currentState!.validate()) return;
 

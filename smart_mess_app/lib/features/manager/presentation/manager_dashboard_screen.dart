@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/constants/h4_students_data.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/services/auth_service.dart';
 import '../../attendance/providers/attendance_provider.dart';
 
 class ManagerDashboardScreen extends ConsumerStatefulWidget {
@@ -232,15 +232,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
               ),
               child: const Icon(Icons.logout, color: Colors.redAccent, size: 18),
             ),
-            onPressed: () async {
-              try {
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.clear();
-              } catch (_) {}
-              ref.read(authStateProvider.notifier).state = false;
-              ref.read(userRoleProvider.notifier).state = 'student';
-              if (context.mounted) context.go('/login');
-            },
+            onPressed: () => AuthService.performLogout(ref, context),
           ),
           const SizedBox(width: 6),
         ],
