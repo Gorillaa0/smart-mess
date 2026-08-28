@@ -6,6 +6,7 @@ import '../../../core/router/app_router.dart';
 import '../../../core/constants/weekly_menu.dart';
 import '../../../core/constants/h4_students_data.dart';
 import '../../../core/models/notification_model.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../notifications/providers/notifications_provider.dart';
 import '../../events/providers/events_provider.dart';
 import '../../attendance/providers/student_attendance_provider.dart';
@@ -139,9 +140,13 @@ class DashboardScreen extends ConsumerWidget {
               ),
               child: const Icon(Icons.logout, color: Colors.redAccent, size: 18),
             ),
-            onPressed: () {
+            onPressed: () async {
+              try {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.clear();
+              } catch (_) {}
               ref.read(authStateProvider.notifier).state = false;
-              context.go('/login');
+              if (context.mounted) context.go('/login');
             },
           ),
           const SizedBox(width: 6),
