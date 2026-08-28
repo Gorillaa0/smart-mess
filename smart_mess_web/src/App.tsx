@@ -15,21 +15,31 @@ export const App: React.FC = () => {
   const { setUser, setLoading } = useAuthStore();
 
   useEffect(() => {
+    // 1. Immediately hydrate from localStorage if available
+    try {
+      const saved = localStorage.getItem('SMART_MESS_AUTH_USER');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.role) {
+          setUser(parsed);
+          setLoading(false);
+        }
+      }
+    } catch (err) {
+      console.error('Error reading localStorage session:', err);
+    }
+
+    // 2. Listen to Firebase auth changes without wiping localStorage session
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
           if (userDoc.exists()) {
             setUser({ ...userDoc.data(), uid: firebaseUser.uid } as User);
-          } else {
-            setUser(null);
           }
         } catch (error) {
-          console.error("Error fetching user role", error);
-          setUser(null);
+          console.error("Error fetching user role:", error);
         }
-      } else {
-        setUser(null);
       }
       setLoading(false);
     });
