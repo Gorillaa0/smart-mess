@@ -10,6 +10,7 @@ import '../../../core/services/auth_service.dart';
 import '../../notifications/providers/notifications_provider.dart';
 import '../../events/providers/events_provider.dart';
 import '../../attendance/providers/student_attendance_provider.dart';
+import '../../attendance/providers/attendance_provider.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});

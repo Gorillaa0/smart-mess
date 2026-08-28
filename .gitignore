@@ -31,8 +31,9 @@ smart_mess_app/.flutter-plugins-dependencies
 smart_mess_app/.dart_tool/
 .dart_tool/
 
-# Android signing
+# Android signing & APK binaries
 *.keystore
 *.jks
 key.properties
+*.apk
 
