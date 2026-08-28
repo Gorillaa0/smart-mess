@@ -43,7 +43,6 @@ class BillScreen extends ConsumerStatefulWidget {
 
 class _BillScreenState extends ConsumerState<BillScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  String _selectedFilter = 'All Days';
 
   @override
   void initState() {
@@ -146,7 +145,7 @@ class _BillScreenState extends ConsumerState<BillScreen> with SingleTickerProvid
       body: TabBarView(
         controller: _tabController,
         children: [
-          // TAB 1: 100% REAL-TIME CONSUMPTION STATEMENT
+          // TAB 1: 100% REAL-TIME CONSUMPTION & ADVANCE DEPOSIT STATEMENT
           _buildMonthlyStatementTab(
             currentMonthName,
             totalEatenMeals,
@@ -169,7 +168,7 @@ class _BillScreenState extends ConsumerState<BillScreen> with SingleTickerProvid
     );
   }
 
-  // TAB 1: 100% DYNAMIC MONTHLY STATEMENT
+  // TAB 1: 100% DYNAMIC MONTHLY STATEMENT WITH REAL ₹10,000 ADVANCE DEPOSIT
   Widget _buildMonthlyStatementTab(
     String currentMonthName,
     int totalEatenMeals,
@@ -179,6 +178,9 @@ class _BillScreenState extends ConsumerState<BillScreen> with SingleTickerProvid
     int lunchScans,
     int dinnerScans,
   ) {
+    const int advanceDeposit = 10000; // Actual advance deposit paid
+    final int remainingBalance = advanceDeposit - totalMonthAmount;
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -217,7 +219,7 @@ class _BillScreenState extends ConsumerState<BillScreen> with SingleTickerProvid
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: Colors.white30),
                     ),
-                    child: const Text('Live Consumption', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                    child: const Text('Prepaid Account', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
@@ -228,7 +230,7 @@ class _BillScreenState extends ConsumerState<BillScreen> with SingleTickerProvid
               ),
               const SizedBox(height: 2),
               Text(
-                'Total mess charges calculated from $totalEatenMeals verified QR scans',
+                'Total mess charges deducted for $totalEatenMeals verified QR scans',
                 style: const TextStyle(color: Colors.white70, fontSize: 12),
               ),
               const Divider(color: Colors.white24, height: 24),
@@ -238,9 +240,9 @@ class _BillScreenState extends ConsumerState<BillScreen> with SingleTickerProvid
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Tracked Dining Days', style: TextStyle(color: Colors.white70, fontSize: 11)),
+                      const Text('Remaining Deposit Balance', style: TextStyle(color: Colors.white70, fontSize: 11)),
                       Text(
-                        '$totalDaysTracked Days Recorded',
+                        '₹$remainingBalance Remaining',
                         style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 13),
                       ),
                     ],
@@ -253,7 +255,7 @@ class _BillScreenState extends ConsumerState<BillScreen> with SingleTickerProvid
                       border: Border.all(color: Colors.greenAccent),
                     ),
                     child: const Text(
-                      'QR VERIFIED',
+                      'AUTO-DEDUCTED',
                       style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.w800, fontSize: 10.5),
                     ),
                   ),
@@ -264,7 +266,49 @@ class _BillScreenState extends ConsumerState<BillScreen> with SingleTickerProvid
         ),
         const SizedBox(height: 16),
 
-        // 2. Real-Time Scan Itemization Breakdown
+        // 2. Real Advance Deposit Ledger
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.account_balance_wallet_outlined, color: Color(0xFF1B5E20), size: 18),
+                  SizedBox(width: 8),
+                  Text('Prepaid Advance Deposit Ledger', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Your advance mess deposit of ₹10,000. Meals consumed via QR scan are deducted automatically in real-time.',
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 11.5),
+              ),
+              const SizedBox(height: 14),
+              _ledgerRow('Initial Advance Deposit Paid', '₹$advanceDeposit', Colors.black87),
+              _ledgerRow('Current Consumption Deducted', '-₹$totalMonthAmount', Colors.red.shade700),
+              const Divider(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Net Remaining Deposit', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  Text(
+                    '₹$remainingBalance',
+                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: Color(0xFF1B5E20)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // 3. Real-Time Scan Itemization Breakdown
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -288,14 +332,14 @@ class _BillScreenState extends ConsumerState<BillScreen> with SingleTickerProvid
                 style: TextStyle(color: Colors.grey.shade600, fontSize: 11.5),
               ),
               const SizedBox(height: 14),
-              _itemRow('Breakfast Scans', '$breakfastScans meals', '₹25 / scan', const Color(0xFF1B5E20)),
-              _itemRow('Lunch Scans', '$lunchScans meals', '₹50 or ₹100', const Color(0xFF1B5E20)),
-              _itemRow('Dinner Scans', '$dinnerScans meals', '₹50 or ₹100', const Color(0xFF1B5E20)),
+              _itemRow('Breakfast Scans', '$breakfastScans meals', '₹25 / scan'),
+              _itemRow('Lunch Scans', '$lunchScans meals', '₹50 or ₹100'),
+              _itemRow('Dinner Scans', '$dinnerScans meals', '₹50 or ₹100'),
               const Divider(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Total Bill to Pay', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  const Text('Total Charges Deducted', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                   Text(
                     '₹$totalMonthAmount',
                     style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: Color(0xFF1B5E20)),
@@ -307,7 +351,7 @@ class _BillScreenState extends ConsumerState<BillScreen> with SingleTickerProvid
         ),
         const SizedBox(height: 16),
 
-        // 3. Official Institutional Tariff Rules
+        // 4. Official Institutional Tariff Rules
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
@@ -332,6 +376,51 @@ class _BillScreenState extends ConsumerState<BillScreen> with SingleTickerProvid
               _tariffRow('Sunday Special Feast Lunch', '₹100 / meal (Chicken/Mushroom & Sweet)'),
               _tariffRow('Regular Dinner (6 Days)', '₹50 / meal'),
               _tariffRow('Wednesday Non-Veg / Paneer Dinner', '₹100 / meal (Special Feast)'),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // 5. Previous Monthly Statements Archive (Clean & Empty for New System)
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.history, color: Colors.grey, size: 18),
+                  SizedBox(width: 8),
+                  Text('Previous Monthly Statements Archive', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12.0),
+                  child: Column(
+                    children: [
+                      Icon(Icons.receipt_long_outlined, color: Colors.grey.shade400, size: 32),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'No Previous Statements Archived',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black54),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'This is your first active billing cycle starting from today.\nPast monthly statements will be archived here at the end of each month.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600, height: 1.4),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -557,7 +646,20 @@ class _BillScreenState extends ConsumerState<BillScreen> with SingleTickerProvid
     );
   }
 
-  Widget _itemRow(String title, String qty, String rate, Color color) {
+  Widget _ledgerRow(String label, String amount, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 12.5, color: Colors.black87)),
+          Text(amount, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: color)),
+        ],
+      ),
+    );
+  }
+
+  Widget _itemRow(String title, String qty, String rate) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
