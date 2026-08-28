@@ -8,8 +8,8 @@ import { sendPasswordResetEmail, signInWithEmailAndPassword } from 'firebase/aut
 import toast from 'react-hot-toast';
 
 export const LoginPage: React.FC = () => {
-  const [identifier, setIdentifier] = useState('6200432942'); // Default: Dhaneshwar Yadav
-  const [password, setPassword] = useState('Pass@2942');
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -299,37 +299,6 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const handleDemoLogin = (role: 'manager' | 'admin') => {
-    if (role === 'manager') {
-      const savedManager = localStorage.getItem('SMART_MESS_MANAGER_DATA');
-      let name = 'Dhaneshwar Yadav';
-      if (savedManager) {
-        try {
-          name = JSON.parse(savedManager).name || name;
-        } catch (e) {}
-      }
-
-      setUser({
-        uid: 'mgr_dhaneshwar_01',
-        email: '6200432942@smartmess.edu',
-        name: `${name} (Mess Manager)`,
-        role: 'manager',
-        messId: 'mess_h4'
-      });
-      toast.success(`Logged in as Mess Manager (${name})`);
-      navigate('/dashboard');
-    } else {
-      setUser({
-        uid: 'admin_demo_01',
-        email: 'admin@smartmess.edu',
-        name: 'Super Administrator',
-        role: 'admin'
-      });
-      toast.success('Logged in as Super Admin');
-      navigate('/admin/students');
-    }
-  };
-
   return (
     <div className="space-y-4">
       <form onSubmit={handleLogin} className="space-y-3.5">
@@ -344,7 +313,7 @@ export const LoginPage: React.FC = () => {
             onChange={(e) => setIdentifier(e.target.value)}
             required
             className="w-full pl-10 pr-3.5 py-2.5 bg-gray-50/70 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white text-sm transition-all font-medium"
-            placeholder="Manager Mobile (6200432942) / Staff Email"
+            placeholder="Enter ID"
           />
         </div>
 
@@ -359,7 +328,7 @@ export const LoginPage: React.FC = () => {
             onChange={(e) => setPassword(e.target.value)}
             required
             className="w-full pl-10 pr-10 py-2.5 bg-gray-50/70 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white text-sm transition-all"
-            placeholder="Password (e.g. Pass@2942)"
+            placeholder="Enter Password"
           />
           <button
             type="button"
@@ -415,40 +384,6 @@ export const LoginPage: React.FC = () => {
           )}
         </button>
       </form>
-
-      {/* Demo Credentials Quick Switcher */}
-      <div className="pt-3 border-t border-gray-100">
-        <p className="text-[11px] text-center font-bold text-gray-400 uppercase tracking-wider mb-2.5">
-          Quick Access Demo Portals
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          {/* Dhaneshwar Yadav Card */}
-          <button
-            onClick={() => handleDemoLogin('manager')}
-            className="flex flex-col p-2.5 rounded-xl border border-emerald-200 bg-emerald-50/50 hover:bg-emerald-100/70 hover:border-emerald-300 transition-all text-left group"
-          >
-            <div className="flex items-center space-x-1.5 text-emerald-800 mb-1">
-              <Utensils className="w-3.5 h-3.5" />
-              <span className="text-xs font-bold">Mess Manager</span>
-            </div>
-            <span className="text-[11px] font-bold text-gray-900 truncate">Dhaneshwar Yadav</span>
-            <span className="text-[10px] text-gray-500 font-mono">ID: 6200432942</span>
-          </button>
-
-          {/* Super Admin Card */}
-          <button
-            onClick={() => handleDemoLogin('admin')}
-            className="flex flex-col p-2.5 rounded-xl border border-blue-200 bg-blue-50/50 hover:bg-blue-100/70 hover:border-blue-300 transition-all text-left group"
-          >
-            <div className="flex items-center space-x-1.5 text-blue-800 mb-1">
-              <Shield className="w-3.5 h-3.5" />
-              <span className="text-xs font-bold">Super Admin</span>
-            </div>
-            <span className="text-[11px] font-bold text-gray-900 truncate">Hostel Administrator</span>
-            <span className="text-[10px] text-gray-500 font-mono">Full Roster & Keys</span>
-          </button>
-        </div>
-      </div>
 
       {/* FORGOT PASSWORD MODAL (MANAGER / ADMIN RESET ONLY) */}
       {isForgotModalOpen && (

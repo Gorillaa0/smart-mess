@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/constants/h4_students_data.dart';
 
@@ -380,6 +381,10 @@ class ProfileScreen extends ConsumerWidget {
             icon: const Icon(Icons.logout),
             label: const Text('LOGOUT ACCOUNT', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
             onPressed: () async {
+              try {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.clear();
+              } catch (_) {}
               await FirebaseAuth.instance.signOut();
               ref.read(authStateProvider.notifier).state = false;
               if (context.mounted) context.go('/login');

@@ -1,17 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 import 'app.dart';
+import 'core/router/app_router.dart';
+import 'core/constants/h4_students_data.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Always launch runApp immediately so the UI is never blocked or left blank
+  // Restore session from local storage so refreshing never logs out
+  bool isLoggedIn = false;
+  String loggedRole = 'student';
+  H4Student? loggedStudent;
+
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    isLoggedIn = prefs.getBool('is_logged_in') ?? false;
+    loggedRole = prefs.getString('logged_role') ?? 'student';
+    final regNo = prefs.getString('logged_student_reg');
+    if (regNo != null && regNo.isNotEmpty) {
+      loggedStudent = H4StudentDirectory.findByRegistrationOrRoll(regNo);
+    }
+  } catch (e) {
+    debugPrint('Error restoring saved session: $e');
+  }
+
   runApp(
-    const ProviderScope(
-      child: SmartMessApp(),
+    ProviderScope(
+      overrides: [
+        authStateProvider.overrideWith((ref) => isLoggedIn),
+        userRoleProvider.overrideWith((ref) => loggedRole),
+        if (loggedStudent != null) currentStudentProvider.overrideWith((ref) => loggedStudent!),
+      ],
+      child: const SmartMessApp(),
     ),
   );
 
@@ -23,4 +46,3 @@ void main() {
     return Firebase.app();
   });
 }
-

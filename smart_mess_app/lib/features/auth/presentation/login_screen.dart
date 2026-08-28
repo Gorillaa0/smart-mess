@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/constants/h4_students_data.dart';
 
@@ -82,6 +83,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ref.read(userRoleProvider.notifier).state = 'student';
           ref.read(authStateProvider.notifier).state = true;
 
+          // Save session to local storage
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setBool('is_logged_in', true);
+            await prefs.setString('logged_role', 'student');
+            await prefs.setString('logged_student_reg', student.registrationNo);
+          } catch (_) {}
+
           // Non-blocking background sync to Firestore
           FirebaseFirestore.instance
               .collection('students')
@@ -116,6 +125,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                 ref.read(userRoleProvider.notifier).state = 'student';
                 ref.read(authStateProvider.notifier).state = true;
+
+                try {
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setBool('is_logged_in', true);
+                  await prefs.setString('logged_role', 'student');
+                  await prefs.setString('logged_student_reg', student.registrationNo);
+                } catch (_) {}
+
                 return;
               }
             } catch (createErr) {
@@ -142,6 +159,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       setState(() => _isLoading = false);
       ref.read(userRoleProvider.notifier).state = 'manager';
       ref.read(authStateProvider.notifier).state = true;
+
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('is_logged_in', true);
+        await prefs.setString('logged_role', 'manager');
+      } catch (_) {}
     }
   }
 
@@ -403,8 +426,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             onTap: () {
                               setState(() {
                                 _selectedRole = 'student';
-                                _idController.text = '23105108019';
-                                _passwordController.text = 'Pass@8019';
+                                _idController.clear();
+                                _passwordController.clear();
                               });
                             },
                             child: Container(
@@ -439,8 +462,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             onTap: () {
                               setState(() {
                                 _selectedRole = 'manager';
-                                _idController.text = '6200432942'; // Dhaneshwar Yadav (Mobile ID)
-                                _passwordController.text = 'Pass@2942';
+                                _idController.clear();
+                                _passwordController.clear();
                               });
                             },
                             child: Container(
@@ -494,21 +517,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          isStudent ? 'REGISTRATION NO. / ROLL NO.' : 'MANAGER EMAIL',
+                          isStudent ? 'REGISTRATION NO. / ROLL NO.' : 'MANAGER EMAIL / ID',
                           style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF1B5E20), letterSpacing: 0.5),
                         ),
                         const SizedBox(height: 6),
                         TextFormField(
                           controller: _idController,
                           decoration: InputDecoration(
-                            hintText: isStudent ? 'e.g. 23105108019 or 23508' : 'manager@smartmess.edu',
+                            hintText: 'Enter ID',
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
                             prefixIcon: Icon(isStudent ? Icons.badge_outlined : Icons.email_outlined, color: const Color(0xFF2E7D32)),
                             filled: true,
                             fillColor: const Color(0xFFF9FBF9),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                           ),
-                          validator: (value) => value!.isEmpty ? (isStudent ? 'Enter your Registration No. / Roll No.' : 'Enter Manager Email') : null,
+                          validator: (value) => value!.isEmpty ? (isStudent ? 'Enter your Registration No. / Roll No.' : 'Enter Manager ID') : null,
                         ),
                         const SizedBox(height: 14),
 
@@ -521,7 +544,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           controller: _passwordController,
                           obscureText: _obscurePassword,
                           decoration: InputDecoration(
-                            hintText: isStudent ? 'Enter your confidential unique password' : 'Enter Manager Password',
+                            hintText: 'Enter Password',
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
                             prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF2E7D32)),
                             suffixIcon: IconButton(
