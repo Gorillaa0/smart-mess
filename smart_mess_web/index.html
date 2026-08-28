@@ -2,15 +2,42 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <!-- Force default Desktop Version on all browsers and devices -->
-    <meta name="viewport" content="width=1280, initial-scale=0.35, minimum-scale=0.2, maximum-scale=5.0, user-scalable=yes" />
     <title>Smart Mess Dashboard</title>
+    
+    <!-- STRICT IMMEDIATE DESKTOP VIEWPORT -->
+    <script>
+      (function() {
+        var screenW = window.screen.width || window.innerWidth || 1280;
+        var scale = Math.min(1, screenW / 1280);
+        if (scale < 0.2) scale = 0.25;
+        
+        var meta = document.createElement('meta');
+        meta.name = 'viewport';
+        meta.content = 'width=1280, initial-scale=' + scale + ', minimum-scale=0.1, maximum-scale=5.0, user-scalable=yes';
+        document.head.appendChild(meta);
+      })();
+    </script>
+    
+    <style>
+      html, body {
+        width: 1280px !important;
+        min-width: 1280px !important;
+        overflow-x: auto !important;
+        -webkit-text-size-adjust: 100% !important;
+      }
+      #root {
+        width: 1280px !important;
+        min-width: 1280px !important;
+        overflow-x: auto !important;
+      }
+    </style>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   </head>
-  <body class="min-w-[1200px] overflow-x-auto bg-gray-50">
-    <div id="root" class="min-w-[1200px] w-full min-h-screen"></div>
+  <body class="bg-gray-50">
+    <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

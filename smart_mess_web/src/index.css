@@ -3,6 +3,13 @@
 @tailwind utilities;
 
 @layer base {
+  html, body, #root {
+    min-width: 1280px !important;
+    width: 1280px !important;
+    overflow-x: auto !important;
+    -webkit-text-size-adjust: 100% !important;
+  }
+
   body {
     @apply font-sans bg-gray-50 text-gray-900;
   }

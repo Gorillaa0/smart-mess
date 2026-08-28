@@ -14,8 +14,36 @@ const queryClient = new QueryClient();
 export const App: React.FC = () => {
   const { setUser, setLoading } = useAuthStore();
 
+  // 1. Maintain strict desktop scaling across all dynamic route changes and device rotations
   useEffect(() => {
-    // 1. Immediately hydrate from localStorage if available
+    const applyDesktopViewport = () => {
+      const screenW = window.screen.width || window.innerWidth || 1280;
+      const targetScale = Math.min(1, screenW / 1280);
+      const safeScale = targetScale > 0.2 ? targetScale : 0.25;
+
+      let meta = document.querySelector('meta[name="viewport"]');
+      if (!meta) {
+        meta = document.createElement('meta');
+        meta.setAttribute('name', 'viewport');
+        document.head.appendChild(meta);
+      }
+      meta.setAttribute(
+        'content',
+        `width=1280, initial-scale=${safeScale}, minimum-scale=0.1, maximum-scale=5.0, user-scalable=yes`
+      );
+    };
+
+    applyDesktopViewport();
+    window.addEventListener('resize', applyDesktopViewport);
+    window.addEventListener('orientationchange', applyDesktopViewport);
+    return () => {
+      window.removeEventListener('resize', applyDesktopViewport);
+      window.removeEventListener('orientationchange', applyDesktopViewport);
+    };
+  }, []);
+
+  // 2. Auth session restoration
+  useEffect(() => {
     try {
       const saved = localStorage.getItem('SMART_MESS_AUTH_USER');
       if (saved) {
@@ -29,7 +57,6 @@ export const App: React.FC = () => {
       console.error('Error reading localStorage session:', err);
     }
 
-    // 2. Listen to Firebase auth changes without wiping localStorage session
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
