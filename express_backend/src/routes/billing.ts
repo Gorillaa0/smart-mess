@@ -4,7 +4,28 @@ import { verifyToken, requireRole, AuthRequest } from '../middleware/verifyToken
 import { createAuditLog } from '../utils/audit';
 
 const router = Router();
-const RATE_PER_MEAL = 40; // Testing consumption rate: charged strictly per QR scan
+
+/**
+ * Institutional Meal Pricing Chart:
+ * - Breakfast: ₹25 (Mon-Sat), ₹0 on Sunday
+ * - Lunch: ₹50 (Mon-Sat), ₹100 on Sunday (Special Feast)
+ * - Dinner: ₹50 (Mon, Tue, Thu, Fri, Sat, Sun), ₹100 on Wednesday (Special Feast)
+ */
+function getMealPrice(mealType: string, date: Date): number {
+  const day = date.getDay(); // 0 = Sunday, 1 = Monday, 2 = Tuesday, 3 = Wednesday, ...
+  const type = (mealType || '').toLowerCase();
+
+  if (type.includes('breakfast')) {
+    return day === 0 ? 0 : 25;
+  }
+  if (type.includes('lunch')) {
+    return day === 0 ? 100 : 50;
+  }
+  if (type.includes('dinner')) {
+    return day === 3 ? 100 : 50;
+  }
+  return 50;
+}
 
 async function runBilling(messId: string, month: string, actorUid: string) {
   const db = getFirestore();
@@ -25,9 +46,22 @@ async function runBilling(messId: string, month: string, actorUid: string) {
       .where('status', '==', 'attended')
       .get();
 
-    const scannedMealsCount = attendanceQuery.size;
-    // Billing strictly by QR Scans: only scanned meals are counted
-    const totalAmount = scannedMealsCount * RATE_PER_MEAL;
+    let totalAmount = 0;
+    let breakfastCount = 0;
+    let lunchCount = 0;
+    let dinnerCount = 0;
+
+    for (const doc of attendanceQuery.docs) {
+      const data = doc.data();
+      const scanDate = new Date(data.scannedAt);
+      const mealType = data.mealType || data.mealId || 'lunch';
+      const cost = getMealPrice(mealType, scanDate);
+      totalAmount += cost;
+
+      if (mealType.toLowerCase().includes('breakfast')) breakfastCount++;
+      else if (mealType.toLowerCase().includes('lunch')) lunchCount++;
+      else if (mealType.toLowerCase().includes('dinner')) dinnerCount++;
+    }
 
     const billRef = db.collection('bills').doc();
     batch.set(billRef, {
@@ -35,13 +69,15 @@ async function runBilling(messId: string, month: string, actorUid: string) {
       studentId: student.studentId,
       messId,
       month,
-      scannedMealsCount,
-      ratePerMeal: RATE_PER_MEAL,
+      scannedMealsCount: attendanceQuery.size,
+      breakfastCount,
+      lunchCount,
+      dinnerCount,
       baseFee: 0,
       messOffDeductions: 0,
       extraCharges: 0,
       totalAmount,
-      billingModel: 'scan_consumption_only',
+      billingModel: 'itemized_menu_chart',
       status: 'pending',
       createdAt: new Date().toISOString()
     });
@@ -50,8 +86,8 @@ async function runBilling(messId: string, month: string, actorUid: string) {
     batch.set(notifRef, {
       notificationId: notifRef.id,
       recipientUid: student.uid,
-      title: 'Monthly Mess Bill (QR Consumption)',
-      body: `Your mess bill for ${month} (${scannedMealsCount} QR scanned meals) is Rs. ${totalAmount}`,
+      title: 'Monthly Mess Bill (QR Itemized Consumption)',
+      body: `Your mess bill for ${month} (${attendanceQuery.size} scanned meals) is Rs. ${totalAmount}`,
       type: 'alert',
       read: false,
       createdAt: new Date().toISOString()
@@ -62,7 +98,7 @@ async function runBilling(messId: string, month: string, actorUid: string) {
 
   await batch.commit();
   if (actorUid !== 'system') {
-    await createAuditLog(actorUid, 'CALCULATE_BILLING', messId, 'bills', `Generated consumption bills for ${month} (QR Scan Only)`);
+    await createAuditLog(actorUid, 'CALCULATE_BILLING', messId, 'bills', `Generated itemized consumption bills for ${month}`);
   }
   return { success: true, count: results.length };
 }

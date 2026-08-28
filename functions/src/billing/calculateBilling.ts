@@ -4,7 +4,27 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { createAuditLog } from '../audit/createAuditLog';
 import { Bill } from '../types';
 
-const RATE_PER_MEAL = 40; // Testing consumption rate: charged strictly per QR scan
+/**
+ * Institutional Meal Pricing Chart:
+ * - Breakfast: ₹25 (Mon-Sat), ₹0 on Sunday
+ * - Lunch: ₹50 (Mon-Sat), ₹100 on Sunday (Special Feast)
+ * - Dinner: ₹50 (Mon, Tue, Thu, Fri, Sat, Sun), ₹100 on Wednesday (Special Feast)
+ */
+function getMealPrice(mealType: string, date: Date): number {
+  const day = date.getDay();
+  const type = (mealType || '').toLowerCase();
+
+  if (type.includes('breakfast')) {
+    return day === 0 ? 0 : 25;
+  }
+  if (type.includes('lunch')) {
+    return day === 0 ? 100 : 50;
+  }
+  if (type.includes('dinner')) {
+    return day === 3 ? 100 : 50;
+  }
+  return 50;
+}
 
 export const calculateBilling = onCall(async (request) => {
   if (!request.auth || !['admin', 'manager'].includes(request.auth.token.role)) {
@@ -58,8 +78,13 @@ async function runBillingCalculation(messId: string, month: string, actorUid: st
       .where('status', '==', 'attended')
       .get();
 
-    const scannedMealsCount = attendanceQuery.size;
-    const totalAmount = scannedMealsCount * RATE_PER_MEAL;
+    let totalAmount = 0;
+    for (const doc of attendanceQuery.docs) {
+      const data = doc.data();
+      const scanDate = new Date(data.scannedAt);
+      const mealType = data.mealType || data.mealId || 'lunch';
+      totalAmount += getMealPrice(mealType, scanDate);
+    }
 
     const billRef = db.collection('bills').doc();
     const bill: Bill = {
@@ -81,8 +106,8 @@ async function runBillingCalculation(messId: string, month: string, actorUid: st
     batch.set(notifRef, {
       notificationId: notifRef.id,
       recipientUid: student.uid,
-      title: 'Monthly Mess Bill (QR Consumption)',
-      body: `Your mess bill for ${month} (${scannedMealsCount} QR scanned meals) is Rs. ${totalAmount}`,
+      title: 'Monthly Mess Bill (QR Itemized Consumption)',
+      body: `Your mess bill for ${month} (${attendanceQuery.size} scanned meals) is Rs. ${totalAmount}`,
       type: 'alert',
       read: false,
       createdAt: new Date().toISOString()
@@ -94,7 +119,7 @@ async function runBillingCalculation(messId: string, month: string, actorUid: st
   await batch.commit();
 
   if (actorUid !== 'system') {
-    await createAuditLog(actorUid, 'CALCULATE_BILLING', messId, 'bills', `Generated consumption bills for ${month} (QR Scan Only)`);
+    await createAuditLog(actorUid, 'CALCULATE_BILLING', messId, 'bills', `Generated itemized consumption bills for ${month}`);
   }
 
   return { success: true, count: results.length };
