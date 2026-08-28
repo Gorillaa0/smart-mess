@@ -4,11 +4,11 @@ import { Target, QrCode, ShoppingBag, Building2, ShieldCheck } from 'lucide-reac
 
 export const AuthLayout: React.FC = () => {
   return (
-    <div className="min-h-screen w-full relative flex items-center justify-center p-4 sm:p-6 lg:p-12 overflow-hidden bg-slate-900">
+    <div className="min-h-screen min-w-[1100px] w-full relative flex items-center justify-center p-8 overflow-x-auto bg-slate-900">
       
       {/* 1. Full Screen Cafeteria Dining Atmosphere Background */}
       <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat min-w-[1100px]"
         style={{
           backgroundImage: `url('https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1920&q=80')`,
           filter: 'brightness(0.55) contrast(1.1) saturate(1.35)',
@@ -16,14 +16,14 @@ export const AuthLayout: React.FC = () => {
       />
 
       {/* Subtle Green & Dark Vignette Gradient Over Cafeteria Photo */}
-      <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/85 via-emerald-950/60 to-emerald-950/40 pointer-events-none" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/85 via-emerald-950/60 to-emerald-950/40 pointer-events-none min-w-[1100px]" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 pointer-events-none min-w-[1100px]" />
 
-      {/* 2. Main Content Container (Split Grid) */}
-      <div className="w-full max-w-6xl z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+      {/* 2. Main Content Container (Full Desktop Split Grid) */}
+      <div className="w-full max-w-6xl min-w-[1020px] z-10 grid grid-cols-12 gap-12 items-center">
         
         {/* Left Hero Section: Headline, Branding & 3 Glass Cards (7 Cols) */}
-        <div className="lg:col-span-7 text-white space-y-6 flex flex-col justify-between">
+        <div className="col-span-7 text-white space-y-6 flex flex-col justify-between">
           
           {/* Top Pill Badge */}
           <div>
@@ -35,20 +35,20 @@ export const AuthLayout: React.FC = () => {
             </div>
 
             {/* Main Bold Headline */}
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-extrabold text-white tracking-tight leading-[1.15] mt-4 drop-shadow-md">
-              Smart Mess & AI <br />
+            <h1 className="text-4xl lg:text-5xl font-display font-extrabold text-white tracking-tight leading-[1.15] mt-4 drop-shadow-md">
+              Smart Mess &amp; AI <br />
               Food Demand <br />
               Optimization
             </h1>
 
-            <p className="text-emerald-100/90 text-sm sm:text-base mt-3 font-medium max-w-lg drop-shadow">
-              Automated Dining Operations, <br className="hidden sm:inline" />
-              Meal Analytics & Waste Reduction Console
+            <p className="text-emerald-100/90 text-base mt-3 font-medium max-w-lg drop-shadow">
+              Automated Dining Operations, <br />
+              Meal Analytics &amp; Waste Reduction Console
             </p>
           </div>
 
           {/* 3 Horizontal Glassmorphism Feature Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-4">
+          <div className="grid grid-cols-3 gap-3.5 pt-4">
             
             {/* Card 1: AI Prediction */}
             <div className="p-4 rounded-2xl bg-emerald-950/60 border border-emerald-500/30 backdrop-blur-xl hover:bg-emerald-950/80 transition-all shadow-xl group">
@@ -81,7 +81,7 @@ export const AuthLayout: React.FC = () => {
         </div>
 
         {/* Right Floating White Login Card (5 Cols) */}
-        <div className="lg:col-span-5 bg-white/95 backdrop-blur-2xl rounded-3xl p-7 sm:p-9 shadow-2xl border border-white/50 flex flex-col justify-between">
+        <div className="col-span-5 bg-white/95 backdrop-blur-2xl rounded-3xl p-8 shadow-2xl border border-white/50 flex flex-col justify-between">
           <div>
             {/* Header & Logo */}
             <div className="text-center mb-6">

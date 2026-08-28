@@ -8,7 +8,7 @@ export const DashboardLayout: React.FC = () => {
   const { user, loading } = useAuthStore();
 
   if (loading) {
-    return <div className="h-screen flex items-center justify-center bg-gray-50">Loading...</div>;
+    return <div className="h-screen min-w-[1200px] flex items-center justify-center bg-gray-50">Loading...</div>;
   }
 
   if (!user) {
@@ -16,11 +16,14 @@ export const DashboardLayout: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
+    <div className="flex h-screen min-w-[1200px] w-full overflow-hidden bg-gray-50">
+      {/* Fixed Full Desktop Sidebar */}
       <Sidebar />
-      <div className="flex flex-col flex-1 overflow-hidden">
+      
+      {/* Desktop Main Workspace Area */}
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <TopBar />
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto overflow-x-auto p-6 min-w-[940px]">
           <Outlet />
         </main>
       </div>
