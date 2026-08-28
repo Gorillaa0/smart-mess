@@ -230,18 +230,36 @@ class DashboardScreen extends ConsumerWidget {
             Row(
               children: [
                 Expanded(
-                  child: _colorfulSummaryCard(
-                    context,
-                    title: 'Current Mess Bill',
-                    value: '₹${attStats.mealsEaten * 50}',
-                    subtitle: 'Aug 2026 • ${attStats.mealsEaten} meals recorded',
-                    icon: Icons.receipt_long,
-                    startColor: const Color(0xFFFFF8E1),
-                    endColor: const Color(0xFFFFECB3),
-                    borderColor: const Color(0xFFFFD54F),
-                    textColor: const Color(0xFFE65100),
-                    onTap: () => context.push('/bill'),
-                  ),
+                  child: () {
+                    final student = ref.watch(currentStudentProvider);
+                    final allScans = ref.watch(liveAttendanceProvider);
+                    final studentScans = allScans.where((s) => s.registrationNo == student.registrationNo).toList();
+                    int liveBillAmount = 0;
+                    for (final s in studentScans) {
+                      final isSun = s.scannedAt.weekday == DateTime.sunday;
+                      final isWed = s.scannedAt.weekday == DateTime.wednesday;
+                      final type = s.mealType.toLowerCase();
+                      if (type.contains('breakfast')) {
+                        liveBillAmount += isSun ? 0 : 25;
+                      } else if (type.contains('lunch')) {
+                        liveBillAmount += isSun ? 100 : 50;
+                      } else if (type.contains('dinner')) {
+                        liveBillAmount += isWed ? 100 : 50;
+                      }
+                    }
+                    return _colorfulSummaryCard(
+                      context,
+                      title: 'Current Mess Bill',
+                      value: '₹$liveBillAmount',
+                      subtitle: '${studentScans.length} meal(s) verified',
+                      icon: Icons.receipt_long,
+                      startColor: const Color(0xFFFFF8E1),
+                      endColor: const Color(0xFFFFECB3),
+                      borderColor: const Color(0xFFFFD54F),
+                      textColor: const Color(0xFFE65100),
+                      onTap: () => context.push('/bill'),
+                    );
+                  }(),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

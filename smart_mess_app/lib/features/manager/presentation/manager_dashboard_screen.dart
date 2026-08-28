@@ -1,8 +1,10 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/router/app_router.dart';
+import '../../../core/constants/h4_students_data.dart';
+import '../../attendance/providers/attendance_provider.dart';
 
 class ManagerDashboardScreen extends ConsumerStatefulWidget {
   const ManagerDashboardScreen({super.key});
@@ -12,7 +14,6 @@ class ManagerDashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen> {
-  int approvedQty = 168;
   bool isApproved = false;
   String _currentManagerPassword = 'Pass@2942';
 
@@ -148,8 +149,17 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
 
   @override
   Widget build(BuildContext context) {
+    final totalStudents = H4StudentDirectory.students.length; // 112 enrolled
+    final allScans = ref.watch(liveAttendanceProvider);
     final now = DateTime.now();
-    final dateString = DateFormat('dd MMMM yyyy').format(now);
+
+    final todayScans = allScans.where((s) =>
+        s.scannedAt.day == now.day &&
+        s.scannedAt.month == now.month &&
+        s.scannedAt.year == now.year).toList();
+    final todayScansCount = todayScans.length;
+
+    final recommendedPreparation = (totalStudents * 0.95).round();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7FAF7),
@@ -177,7 +187,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                   style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Color(0xFF1B5E20)),
                 ),
                 Text(
-                  'Central Dining Mess Hall',
+                  'Hostel Number 4 Dining Hall',
                   style: TextStyle(color: Colors.grey.shade600, fontSize: 11, fontWeight: FontWeight.w500),
                 ),
               ],
@@ -208,7 +218,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
               ),
               child: const Icon(Icons.qr_code_scanner, color: Color(0xFFE65100), size: 18),
             ),
-            tooltip: 'Generate Live Meal QR',
+            tooltip: 'Permanent Static Counter QR',
             onPressed: () => context.push('/manager/qr-generate'),
           ),
           IconButton(
@@ -248,13 +258,6 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                 ),
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(color: const Color(0xFF81C784).withOpacity(0.4), width: 1.2),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF1B5E20).withOpacity(0.20),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -266,35 +269,28 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.18),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.white30, width: 0.8),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white24),
                         ),
                         child: const Row(
                           children: [
-                            Icon(Icons.kitchen, size: 13, color: Colors.amberAccent),
-                            SizedBox(width: 5),
-                            Text(
-                              'CENTRAL MESS • TODAY',
-                              style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 0.5),
-                            ),
+                            Icon(Icons.admin_panel_settings, color: Colors.amberAccent, size: 14),
+                            SizedBox(width: 6),
+                            Text('OFFICIAL MESS OPERATOR', style: TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.bold)),
                           ],
                         ),
                       ),
-                      InkWell(
+                      GestureDetector(
                         onTap: () => _showChangePasswordDialog(context),
-                        borderRadius: BorderRadius.circular(12),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2)),
-                            ],
+                            borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Row(
                             children: [
-                              Icon(Icons.key, size: 12, color: Color(0xFF1B5E20)),
+                              Icon(Icons.lock_reset, size: 13, color: Color(0xFF1B5E20)),
                               SizedBox(width: 4),
                               Text(
                                 'Change Password',
@@ -312,13 +308,13 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                     style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 3),
-                  Row(
+                  const Row(
                     children: [
-                      const Icon(Icons.apartment, color: Colors.white70, size: 14),
-                      const SizedBox(width: 4),
+                      Icon(Icons.apartment, color: Colors.white70, size: 14),
+                      SizedBox(width: 4),
                       Text(
-                        'Central Mess Unit • ID: 6200432942',
-                        style: const TextStyle(color: Colors.white70, fontSize: 11.5, fontWeight: FontWeight.w500),
+                        'Hostel Number 4 • Manager ID: 6200432942',
+                        style: TextStyle(color: Colors.white70, fontSize: 11.5, fontWeight: FontWeight.w500),
                       ),
                     ],
                   ),
@@ -327,12 +323,12 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
             ),
             const SizedBox(height: 18),
 
-            // 2. AI PREDICTION CARD (5 METRICS)
-            _buildPredictionCard(context),
+            // 2. AI DEMAND PREDICTION CARD (REAL-TIME COMPUTATION)
+            _buildPredictionCard(context, totalStudents, recommendedPreparation),
             const SizedBox(height: 18),
 
-            // 3. LIVE MEAL ATTENDANCE CARD
-            _buildLiveAttendanceCard(context),
+            // 3. LIVE MEAL ATTENDANCE CARD (REAL-TIME SCANS)
+            _buildLiveAttendanceCard(context, todayScansCount, totalStudents),
             const SizedBox(height: 20),
 
             // 4. OPERATIONAL CONTROLS
@@ -355,10 +351,6 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
             ),
             const SizedBox(height: 12),
             _buildManagerActions(context),
-            const SizedBox(height: 20),
-
-            // 5. RECENT MODEL ACCURACY & WASTAGE AUDIT
-            _buildRecentPerformanceCard(),
           ],
         ),
       ),
@@ -366,7 +358,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
   }
 
   // 2. AI DEMAND PREDICTION CARD
-  Widget _buildPredictionCard(BuildContext context) {
+  Widget _buildPredictionCard(BuildContext context, int totalStudents, int recommendedPrep) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -412,7 +404,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                   border: Border.all(color: Colors.green.shade200),
                 ),
                 child: Text(
-                  'Confidence: 97.4%',
+                  'Active Model',
                   style: TextStyle(color: Colors.green.shade900, fontSize: 11, fontWeight: FontWeight.w800),
                 ),
               ),
@@ -423,19 +415,19 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
           // 5 Stats Row
           Row(
             children: [
-              _metricBox('Active', '187', const Color(0xFF1565C0), const Color(0xFFE3F2FD), const Color(0xFF90CAF9)),
+              _metricBox('Enrolled', '$totalStudents', const Color(0xFF1565C0), const Color(0xFFE3F2FD), const Color(0xFF90CAF9)),
               const SizedBox(width: 8),
-              _metricBox('Mess-Off', '23', const Color(0xFFC62828), const Color(0xFFFFEBEE), const Color(0xFFFFCDD2)),
+              _metricBox('Mess-Off', '0', const Color(0xFFC62828), const Color(0xFFFFEBEE), const Color(0xFFFFCDD2)),
               const SizedBox(width: 8),
-              _metricBox('Predicted', '163', const Color(0xFF6A1B9A), const Color(0xFFF3E5F5), const Color(0xFFCE93D8)),
+              _metricBox('Predicted', '$recommendedPrep', const Color(0xFF6A1B9A), const Color(0xFFF3E5F5), const Color(0xFFCE93D8)),
             ],
           ),
           const SizedBox(height: 8),
           Row(
             children: [
-              _metricBox('Expected Range', '158-169', const Color(0xFF283593), const Color(0xFFE8EAF6), const Color(0xFF9FA8DA)),
+              _metricBox('Expected Range', '${recommendedPrep - 5}-${recommendedPrep + 5}', const Color(0xFF283593), const Color(0xFFE8EAF6), const Color(0xFF9FA8DA)),
               const SizedBox(width: 8),
-              _metricBox('Rec. Cook (+3%)', '$approvedQty', const Color(0xFF1B5E20), const Color(0xFFE8F5E9), const Color(0xFFA5D6A7), isHighlight: true),
+              _metricBox('Rec. Cook (+3%)', '$recommendedPrep', const Color(0xFF1B5E20), const Color(0xFFE8F5E9), const Color(0xFFA5D6A7), isHighlight: true),
             ],
           ),
           const SizedBox(height: 16),
@@ -449,12 +441,11 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                elevation: 1,
               ),
-              icon: Icon(isApproved ? Icons.check_circle : Icons.soup_kitchen, size: 20),
+              icon: Icon(isApproved ? Icons.check_circle : Icons.approval, size: 20),
               label: Text(
-                isApproved ? 'Approved $approvedQty Portions for Kitchen' : 'APPROVE $approvedQty PORTIONS',
-                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5, letterSpacing: 0.5),
+                isApproved ? 'PREPARATION APPROVED ($recommendedPrep PORTIONS)' : 'APPROVE COOKING QUANTITY ($recommendedPrep PORTIONS)',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
               ),
               onPressed: isApproved
                   ? null
@@ -462,7 +453,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                       setState(() => isApproved = true);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Approved kitchen preparation of $approvedQty portions for Hostel H4!'),
+                          content: Text('Approved kitchen preparation of $recommendedPrep portions for Hostel H4!'),
                           backgroundColor: const Color(0xFF1B5E20),
                         ),
                       );
@@ -495,7 +486,9 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
   }
 
   // 3. LIVE MEAL ATTENDANCE CARD
-  Widget _buildLiveAttendanceCard(BuildContext context) {
+  Widget _buildLiveAttendanceCard(BuildContext context, int todayScansCount, int totalStudents) {
+    final double ratio = totalStudents > 0 ? (todayScansCount / totalStudents).clamp(0.0, 1.0) : 0.0;
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -546,102 +539,54 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              const Text('138', style: TextStyle(fontSize: 38, fontWeight: FontWeight.w800, color: Color(0xFF1B5E20))),
-              Text(' / 168 scanned', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey.shade600)),
+              Text('$todayScansCount', style: const TextStyle(fontSize: 38, fontWeight: FontWeight.w800, color: Color(0xFF1B5E20))),
+              Text(' / $totalStudents scanned today', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.grey.shade600)),
             ],
           ),
           const SizedBox(height: 12),
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
-            child: const LinearProgressIndicator(
-              value: 138 / 168,
+            child: LinearProgressIndicator(
+              value: ratio,
               minHeight: 10,
-              backgroundColor: Color(0xFFEEEEEE),
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2E7D32)),
+              backgroundColor: const Color(0xFFEEEEEE),
+              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF2E7D32)),
             ),
           ),
-          const SizedBox(height: 12),
-          const SizedBox(height: 12),
-          InkWell(
-            onTap: () => context.push('/manager/attendance'),
-            borderRadius: BorderRadius.circular(10),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE8F5E9),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF81C784)),
-              ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.people_alt_outlined, size: 16, color: Color(0xFF1B5E20)),
-                  SizedBox(width: 6),
-                  Text(
-                    'View 112 Student Attendance Ledger ➔',
-                    style: TextStyle(color: Color(0xFF1B5E20), fontWeight: FontWeight.w800, fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('${(ratio * 100).toStringAsFixed(1)}% Present Today', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20))),
+              Text('${totalStudents - todayScansCount} Remaining', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+            ],
           ),
         ],
       ),
     );
   }
 
-  // 4. OPERATIONAL CONTROLS
   Widget _buildManagerActions(BuildContext context) {
     final actions = [
       _ManagerActionItem(
-        title: 'Attendance Ledger',
-        subtitle: '112 student meal status',
-        icon: Icons.how_to_reg,
-        startColor: const Color(0xFFE3F2FD),
-        endColor: const Color(0xFFBBDEFB),
-        borderColor: const Color(0xFF90CAF9),
-        iconColor: const Color(0xFF1565C0),
-        route: '/manager/attendance',
-      ),
-      _ManagerActionItem(
-        title: 'Generate QR',
-        subtitle: 'Live meal scanner code',
+        title: 'Static Counter QR',
+        subtitle: 'Physical Printable QR',
         icon: Icons.qr_code_2,
         startColor: const Color(0xFFE8F5E9),
         endColor: const Color(0xFFC8E6C9),
         borderColor: const Color(0xFFA5D6A7),
-        iconColor: const Color(0xFF2E7D32),
+        iconColor: const Color(0xFF1B5E20),
         route: '/manager/qr-generate',
       ),
       _ManagerActionItem(
-        title: 'Enter Wastage',
-        subtitle: 'Post-meal audit log',
-        icon: Icons.delete_outline,
-        startColor: const Color(0xFFFFF3E0),
-        endColor: const Color(0xFFFFE0B2),
-        borderColor: const Color(0xFFFFCC80),
-        iconColor: const Color(0xFFE65100),
-        route: '/manager/wastage',
-      ),
-      _ManagerActionItem(
-        title: 'Mess-Off List',
-        subtitle: '23 students opted out',
-        icon: Icons.event_busy,
-        startColor: const Color(0xFFFFEBEE),
-        endColor: const Color(0xFFFFCDD2),
-        borderColor: const Color(0xFFEF9A9A),
-        iconColor: const Color(0xFFC62828),
-        route: '/mess-off',
-      ),
-      _ManagerActionItem(
-        title: 'Complaints',
-        subtitle: '3 pending reviews',
-        icon: Icons.chat_bubble_outline,
-        startColor: const Color(0xFFF3E5F5),
-        endColor: const Color(0xFFE1BEE7),
-        borderColor: const Color(0xFFCE93D8),
-        iconColor: const Color(0xFF6A1B9A),
-        route: '/complaints',
+        title: 'Student Roster',
+        subtitle: '112 Enrolled Boarders',
+        icon: Icons.people_alt_outlined,
+        startColor: const Color(0xFFE3F2FD),
+        endColor: const Color(0xFFBBDEFB),
+        borderColor: const Color(0xFF90CAF9),
+        iconColor: const Color(0xFF1565C0),
+        route: '/notifications',
       ),
     ];
 
@@ -650,52 +595,26 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        mainAxisSpacing: 10,
         crossAxisSpacing: 10,
-        childAspectRatio: 2.1,
+        mainAxisSpacing: 10,
+        childAspectRatio: 2.3,
       ),
       itemCount: actions.length,
       itemBuilder: (context, index) {
         final item = actions[index];
-        return InkWell(
+        return GestureDetector(
           onTap: () => context.push(item.route),
-          borderRadius: BorderRadius.circular(14),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [item.startColor, item.endColor],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              gradient: LinearGradient(colors: [item.startColor, item.endColor]),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: item.borderColor, width: 1.2),
-              boxShadow: [
-                BoxShadow(
-                  color: item.iconColor.withOpacity(0.08),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+              border: Border.all(color: item.borderColor, width: 1.1),
             ),
             child: Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: [
-                      BoxShadow(
-                        color: item.iconColor.withOpacity(0.15),
-                        blurRadius: 4,
-                        offset: const Offset(0, 1),
-                      ),
-                    ],
-                  ),
-                  child: Icon(item.icon, color: item.iconColor, size: 20),
-                ),
-                const SizedBox(width: 10),
+                Icon(item.icon, color: item.iconColor, size: 24),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -722,71 +641,6 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
           ),
         );
       },
-    );
-  }
-
-  // 5. RECENT MODEL ACCURACY & WASTAGE AUDIT
-  Widget _buildRecentPerformanceCard() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.analytics_outlined, color: Color(0xFF1B5E20), size: 18),
-              SizedBox(width: 8),
-              Text('Recent Model Accuracy & Food Saved', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _perfRow('Breakfast (Today)', '125', '122', '3 (2.4%)', '4 kg'),
-          const Divider(height: 16),
-          _perfRow('Dinner (Yesterday)', '170', '168', '2 (1.2%)', '5 kg'),
-          const Divider(height: 16),
-          _perfRow('Lunch (Yesterday)', '165', '161', '4 (2.4%)', '7 kg'),
-        ],
-      ),
-    );
-  }
-
-  Widget _perfRow(String meal, String pred, String act, String err, String waste) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Expanded(
-          flex: 3,
-          child: Text(meal, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-        ),
-        Expanded(
-          flex: 2,
-          child: Text('Pred: $pred', style: const TextStyle(fontSize: 11, color: Colors.grey)),
-        ),
-        Expanded(
-          flex: 2,
-          child: Text('Act: $act', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20))),
-        ),
-        Expanded(
-          flex: 2,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: Colors.amber.shade50,
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: Colors.amber.shade200, width: 0.8),
-            ),
-            child: Text(
-              'Waste: $waste',
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
