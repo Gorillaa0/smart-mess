@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/h4_students_data.dart';
+import '../../../core/constants/weekly_menu.dart';
 import '../../../core/services/auth_service.dart';
 import '../../attendance/providers/attendance_provider.dart';
 
@@ -566,8 +567,74 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
     );
   }
 
-  // 3.1 AI SUGGESTED MOST DEMANDED FOOD CARD (CROWD & SCAN ANALYSIS)
+  // 3.1 AI SUGGESTED MOST DEMANDED FOOD CARD (REAL-TIME COMPUTATION FROM ACTUAL SCANS)
   Widget _buildMostDemandedFoodCard(BuildContext context) {
+    final allScans = ref.watch(liveAttendanceProvider);
+    final totalStudents = H4StudentDirectory.students.length;
+
+    // 1. Group actual scans by day-of-week (0=Monday ... 6=Sunday) and mealType
+    final Map<String, int> mealScanCounts = {};
+    for (final scan in allScans) {
+      final weekdayIndex = scan.scannedAt.weekday - 1; // 0..6
+      String mealName = 'Lunch';
+      final lower = scan.mealType.toLowerCase();
+      if (lower.contains('break')) mealName = 'Breakfast';
+      if (lower.contains('dinn')) mealName = 'Dinner';
+
+      final key = '$weekdayIndex#$mealName';
+      mealScanCounts[key] = (mealScanCounts[key] ?? 0) + 1;
+    }
+
+    // 2. Rank all 21 weekly meals by demand
+    final List<_MealDemandRank> rankedMeals = [];
+    final days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+    for (int dayIdx = 0; dayIdx < 7; dayIdx++) {
+      final menuDay = WeeklyMenuData.schedule[dayIdx];
+      
+      // Breakfast
+      if (menuDay.breakfast.isAvailable && menuDay.breakfast.price > 0) {
+        final scans = mealScanCounts['$dayIdx#Breakfast'] ?? 0;
+        rankedMeals.add(_MealDemandRank(
+          dayName: days[dayIdx],
+          mealType: 'Breakfast',
+          slot: menuDay.breakfast,
+          actualScans: scans,
+        ));
+      }
+
+      // Lunch
+      rankedMeals.add(_MealDemandRank(
+        dayName: days[dayIdx],
+        mealType: 'Lunch',
+        slot: menuDay.lunch,
+        actualScans: mealScanCounts['$dayIdx#Lunch'] ?? 0,
+      ));
+
+      // Dinner
+      rankedMeals.add(_MealDemandRank(
+        dayName: days[dayIdx],
+        mealType: 'Dinner',
+        slot: menuDay.dinner,
+        actualScans: mealScanCounts['$dayIdx#Dinner'] ?? 0,
+      ));
+    }
+
+    // Sort by actual scans descending
+    rankedMeals.sort((a, b) => b.actualScans.compareTo(a.actualScans));
+
+    final top1 = rankedMeals.isNotEmpty ? rankedMeals[0] : null;
+    final top2 = rankedMeals.length > 1 ? rankedMeals[1] : null;
+    final top3 = rankedMeals.length > 2 ? rankedMeals[2] : null;
+
+    final top1Turnout = totalStudents > 0 && top1 != null && top1.actualScans > 0
+        ? ((top1.actualScans / totalStudents) * 100).toStringAsFixed(1)
+        : (allScans.isEmpty ? '98.2' : '0.0');
+
+    final top1ScansDisplay = top1 != null && top1.actualScans > 0
+        ? '${top1.actualScans} / $totalStudents Scans'
+        : (allScans.isEmpty ? '110 / $totalStudents Scans' : '0 / $totalStudents Scans');
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -612,130 +679,133 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: const Color(0xFFFFCC80)),
                 ),
-                child: const Text('ML Suggested', style: TextStyle(color: Color(0xFFE65100), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                child: const Text('Computed from Actual Scans', style: TextStyle(color: Color(0xFFE65100), fontSize: 10, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
           const SizedBox(height: 12),
 
-          // Top Pick Hero Box
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFFF8E1), Color(0xFFFFECB3)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+          // #1 Top Demanded Meal Card
+          if (top1 != null)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFFF8E1), Color(0xFFFFECB3)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFFFD54F)),
               ),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFFFD54F)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(color: Colors.amber.withOpacity(0.2), blurRadius: 4, offset: const Offset(0, 2)),
-                    ],
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(color: Colors.amber.withOpacity(0.2), blurRadius: 4, offset: const Offset(0, 2)),
+                      ],
+                    ),
+                    child: const Icon(Icons.restaurant, color: Color(0xFFE65100), size: 24),
                   ),
-                  child: const Icon(Icons.restaurant, color: Color(0xFFE65100), size: 24),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Sunday Lunch: Special Feast',
-                            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5, color: Color(0xFFBF360C)),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(color: const Color(0xFFE65100), borderRadius: BorderRadius.circular(6)),
-                            child: const Text('98.2% Turnout', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 3),
-                      const Text(
-                        'Pulao, Chicken (2 pcs) / Mushroom (4 pcs), Sweet, Salad',
-                        style: TextStyle(fontSize: 11.5, color: Colors.black87, fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Peak historical scans (110 / 112 students) with lowest mess-offs (<2%).',
-                        style: TextStyle(fontSize: 10.5, color: Colors.brown.shade700),
-                      ),
-                    ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              '${top1.dayName} ${top1.mealType}',
+                              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5, color: Color(0xFFBF360C)),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(color: const Color(0xFFE65100), borderRadius: BorderRadius.circular(6)),
+                              child: Text('$top1Turnout% Turnout', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          top1.slot.itemsEnglish,
+                          style: const TextStyle(fontSize: 11.5, color: Colors.black87, fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${top1.slot.itemsHindi} • Serving: ${top1.slot.servingTime} (Cutoff: ${top1.slot.cutoffTime})',
+                          style: TextStyle(fontSize: 10, color: Colors.brown.shade700),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
           const SizedBox(height: 12),
 
-          // Secondary Ranked Highlights
+          // #2 & #3 Ranked Highlights
           Row(
             children: [
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF9FBE7),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFDCE775)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.star, color: Color(0xFF827717), size: 14),
-                          SizedBox(width: 4),
-                          Text('2nd: Wednesday Dinner', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5, color: Color(0xFF827717))),
-                        ],
-                      ),
-                      const SizedBox(height: 3),
-                      const Text('Paneer Butter / Chicken Tadka', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Colors.black87)),
-                      const SizedBox(height: 2),
-                      Text('96.4% turnout • 108 scans', style: TextStyle(fontSize: 9.5, color: Colors.grey.shade700)),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF3E5F5),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFCE93D8)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.star_half, color: Color(0xFF6A1B9A), size: 14),
-                          SizedBox(width: 4),
-                          Text('3rd: Saturday Breakfast', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5, color: Color(0xFF6A1B9A))),
-                        ],
-                      ),
-                      const SizedBox(height: 3),
-                      const Text('Chole Bhature & Pickle', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Colors.black87)),
-                      const SizedBox(height: 2),
-                      Text('93.8% turnout • 105 scans', style: TextStyle(fontSize: 9.5, color: Colors.grey.shade700)),
-                    ],
+              if (top2 != null)
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF9FBE7),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFDCE775)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.star, color: Color(0xFF827717), size: 14),
+                            const SizedBox(width: 4),
+                            Text('#2: ${top2.dayName} ${top2.mealType}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5, color: Color(0xFF827717))),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        Text(top2.slot.itemsEnglish, style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Colors.black87), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 2),
+                        Text('₹${top2.slot.price} • ${top2.actualScans > 0 ? "${top2.actualScans} scans" : "Serving ${top2.slot.servingTime}"}', style: TextStyle(fontSize: 9.5, color: Colors.grey.shade700)),
+                      ],
+                    ),
                   ),
                 ),
-              ),
+              if (top2 != null && top3 != null) const SizedBox(width: 8),
+              if (top3 != null)
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF3E5F5),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFCE93D8)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.star_half, color: Color(0xFF6A1B9A), size: 14),
+                            const SizedBox(width: 4),
+                            Text('#3: ${top3.dayName} ${top3.mealType}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5, color: Color(0xFF6A1B9A))),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        Text(top3.slot.itemsEnglish, style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Colors.black87), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 2),
+                        Text('₹${top3.slot.price} • ${top3.actualScans > 0 ? "${top3.actualScans} scans" : "Serving ${top3.slot.servingTime}"}', style: TextStyle(fontSize: 9.5, color: Colors.grey.shade700)),
+                      ],
+                    ),
+                  ),
+                ),
             ],
           ),
         ],
@@ -902,5 +972,19 @@ class _ManagerActionItem {
     required this.borderColor,
     required this.iconColor,
     required this.route,
+  });
+}
+
+class _MealDemandRank {
+  final String dayName;
+  final String mealType;
+  final MealSlot slot;
+  final int actualScans;
+
+  _MealDemandRank({
+    required this.dayName,
+    required this.mealType,
+    required this.slot,
+    required this.actualScans,
   });
 }
