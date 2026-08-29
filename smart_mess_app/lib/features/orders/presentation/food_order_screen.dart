@@ -7,6 +7,7 @@ import '../../../core/constants/h4_students_data.dart';
 import '../../../core/models/special_food_item.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/services/shared_orders_store.dart';
+import '../providers/orders_provider.dart';
 
 class FoodOrderScreen extends ConsumerStatefulWidget {
   const FoodOrderScreen({super.key});
@@ -22,7 +23,6 @@ class _FoodOrderScreenState extends ConsumerState<FoodOrderScreen> {
 
   List<SpecialFoodItem> _menuItems = kDefaultSpecialFoodMenu;
   SpecialFoodItem _selectedItem = kDefaultSpecialFoodMenu[0];
-  List<Map<String, dynamic>> _myRecentOrders = [];
   int _quantity = 1;
   bool _isSubmitting = false;
   Timer? _menuTimer;
@@ -34,10 +34,8 @@ class _FoodOrderScreenState extends ConsumerState<FoodOrderScreen> {
     _roomController.text = student.roomNo;
     _phoneController.text = '9876543210';
     _fetchLiveSpecialFoodMenu();
-    _fetchMyRecentOrders();
     _menuTimer = Timer.periodic(const Duration(seconds: 4), (_) {
       _fetchLiveSpecialFoodMenu();
-      _fetchMyRecentOrders();
     });
   }
 
@@ -50,56 +48,6 @@ class _FoodOrderScreenState extends ConsumerState<FoodOrderScreen> {
     super.dispose();
   }
 
-  Future<void> _fetchMyRecentOrders() async {
-    try {
-      final student = ref.read(currentStudentProvider);
-      final dio = Dio();
-      final res = await dio.post(
-        'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents:runQuery?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
-        data: {
-          'structuredQuery': {
-            'from': [{'collectionId': 'foodOrders'}]
-          }
-        },
-        options: Options(headers: {'Content-Type': 'application/json'}),
-      ).timeout(const Duration(seconds: 3));
-
-      if (res.statusCode == 200 && res.data is List) {
-        final List data = res.data;
-        final list = <Map<String, dynamic>>[];
-
-        for (final item in data) {
-          if (item is Map && item['document'] != null) {
-            final doc = item['document'] as Map;
-            final fields = (doc['fields'] as Map?) ?? {};
-            final reg = fields['registrationNo']?['stringValue'] ?? '';
-            final roll = fields['rollNo']?['stringValue'] ?? '';
-
-            if (reg == student.registrationNo || roll == student.rollNo) {
-              list.add({
-                'id': fields['id']?['stringValue'] ?? '',
-                'foodItemName': fields['foodItemName']?['stringValue'] ?? 'Special Item',
-                'quantity': int.tryParse(fields['quantity']?['integerValue'] ?? '1') ?? 1,
-                'totalBill': int.tryParse(fields['totalBill']?['integerValue'] ?? '0') ?? 0,
-                'status': fields['status']?['stringValue'] ?? 'Pending Approval',
-                'cancellationReason': fields['cancellationReason']?['stringValue'] ?? '',
-                'estimatedDeliveryTime': fields['estimatedDeliveryTime']?['stringValue'] ?? '30 - 40 Mins',
-                'orderedAt': fields['orderedAt']?['stringValue'] ?? '',
-                'specialNotes': fields['specialNotes']?['stringValue'] ?? '',
-              });
-            }
-          }
-        }
-
-        list.sort((a, b) => (b['orderedAt'] ?? '').compareTo(a['orderedAt'] ?? ''));
-        if (mounted) {
-          setState(() {
-            _myRecentOrders = list;
-          });
-        }
-      }
-    } catch (_) {}
-  }
 
   Future<void> _fetchLiveSpecialFoodMenu() async {
     try {
@@ -252,9 +200,6 @@ class _FoodOrderScreenState extends ConsumerState<FoodOrderScreen> {
         } catch (_) {}
       }
 
-      // refresh local list
-      _fetchMyRecentOrders();
-
       if (mounted) {
         showDialog(
           context: context,
@@ -333,6 +278,8 @@ class _FoodOrderScreenState extends ConsumerState<FoodOrderScreen> {
   Widget build(BuildContext context) {
     final student = ref.watch(currentStudentProvider);
     final totalBill = _selectedItem.price * _quantity;
+    // Live orders from Firestore via Riverpod – updates instantly when manager changes status
+    final myOrders = ref.watch(studentOrdersListProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7FAF7),
@@ -346,7 +293,7 @@ class _FoodOrderScreenState extends ConsumerState<FoodOrderScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           // LIVE ORDERS STATUS TRACKER (Shows pending, preparing, delivered, or cancelled with reason)
-          if (_myRecentOrders.isNotEmpty) ...[
+          if (myOrders.isNotEmpty) ...[
             Row(
               children: [
                 Container(
@@ -365,10 +312,10 @@ class _FoodOrderScreenState extends ConsumerState<FoodOrderScreen> {
               ],
             ),
             const SizedBox(height: 8),
-            ..._myRecentOrders.take(3).map((order) {
-              final status = order['status'] ?? 'Pending Approval';
-              final reason = order['cancellationReason'] ?? '';
-              final estTime = order['estimatedDeliveryTime'] ?? '30 - 40 Mins';
+            ...myOrders.take(3).map((order) {
+              final status = order.status;
+              final reason = order.cancellationReason;
+              final estTime = order.estimatedDeliveryTime;
               final isCancelled = status == 'Cancelled';
               final isDelivered = status == 'Delivered';
               final isPreparing = status == 'Preparing';
@@ -413,7 +360,7 @@ class _FoodOrderScreenState extends ConsumerState<FoodOrderScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          '${order['foodItemName']} (x${order['quantity']})',
+                          '${order.foodItemName} (x${order.quantity})',
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
                         ),
                         Container(
@@ -442,7 +389,7 @@ class _FoodOrderScreenState extends ConsumerState<FoodOrderScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'Bill: ₹${order['totalBill']} • Pay on Delivery',
+                          'Bill: ₹${order.totalBill} • Pay on Delivery',
                           style: TextStyle(fontSize: 11.5, color: Colors.grey.shade700, fontWeight: FontWeight.w600),
                         ),
                         if (!isCancelled && !isDelivered)
@@ -483,6 +430,7 @@ class _FoodOrderScreenState extends ConsumerState<FoodOrderScreen> {
             }),
             const SizedBox(height: 14),
           ],
+
 
           // Student Details Card (Auto Filled + Editable Room + Notes Row)
           Container(
