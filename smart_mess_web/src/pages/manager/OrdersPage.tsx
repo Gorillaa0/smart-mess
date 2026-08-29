@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Clock, CheckCircle2, Phone, User, Check, AlertCircle, RefreshCw, Edit3, DollarSign, Utensils } from 'lucide-react';
+import { ShoppingBag, Clock, CheckCircle2, Phone, User, Check, AlertCircle, RefreshCw, Edit3, Plus, Utensils, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface FoodOrder {
@@ -83,8 +83,10 @@ export const OrdersPage: React.FC = () => {
   const [selectedTimeModalOrder, setSelectedTimeModalOrder] = useState<FoodOrder | null>(null);
   const [deliveryTime, setDeliveryTime] = useState<string>('30 - 40 Mins');
   
-  // Edit Menu Item Modal State
-  const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
+  // Edit/Create Menu Item Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [currentEditingId, setCurrentEditingId] = useState<string | null>(null);
   const [editPrice, setEditPrice] = useState<number>(45);
   const [editName, setEditName] = useState<string>('');
   const [editHindiName, setEditHindiName] = useState<string>('');
@@ -222,19 +224,31 @@ export const OrdersPage: React.FC = () => {
   };
 
   const handleSaveMenuItem = async () => {
-    if (!editingItem) return;
+    if (!editName.trim()) {
+      toast.error('Please enter an item name');
+      return;
+    }
+    if (editPrice <= 0) {
+      toast.error('Please enter a valid price');
+      return;
+    }
+
     try {
+      const itemId = isCreatingNew
+        ? `item_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`
+        : (currentEditingId || `item_${Date.now()}`);
+
       const updatedItem: MenuItem = {
-        ...editingItem,
-        name: editName,
-        hindiName: editHindiName,
+        id: itemId,
+        name: editName.trim(),
+        hindiName: editHindiName.trim(),
         price: editPrice,
-        description: editDescription,
+        description: editDescription.trim(),
         isAvailable: editAvailable,
       };
 
       await fetch(
-        `https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/specialFoodMenu/${editingItem.id}?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E`,
+        `https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/specialFoodMenu/${itemId}?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E`,
         {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -251,21 +265,41 @@ export const OrdersPage: React.FC = () => {
         }
       );
 
-      toast.success(`Updated "${updatedItem.name}" to ₹${updatedItem.price}! Reflected in Student App.`);
-      setMenuItems(prev => prev.map(i => i.id === editingItem.id ? updatedItem : i));
-      setEditingItem(null);
+      if (isCreatingNew) {
+        toast.success(`New item "${updatedItem.name}" (₹${updatedItem.price}) created and synced to Student Dashboard!`);
+        setMenuItems(prev => [updatedItem, ...prev]);
+      } else {
+        toast.success(`Updated "${updatedItem.name}" (₹${updatedItem.price})! Synced to Student Dashboard.`);
+        setMenuItems(prev => prev.map(i => i.id === itemId ? updatedItem : i));
+      }
+
+      setIsModalOpen(false);
+      setCurrentEditingId(null);
     } catch (_) {
-      toast.error('Failed to save menu changes');
+      toast.error('Failed to save food item');
     }
   };
 
+  const openCreateModal = () => {
+    setIsCreatingNew(true);
+    setCurrentEditingId(null);
+    setEditName('');
+    setEditHindiName('');
+    setEditPrice(50);
+    setEditDescription('');
+    setEditAvailable(true);
+    setIsModalOpen(true);
+  };
+
   const openEditModal = (item: MenuItem) => {
-    setEditingItem(item);
+    setIsCreatingNew(false);
+    setCurrentEditingId(item.id);
     setEditName(item.name);
     setEditHindiName(item.hindiName);
     setEditPrice(item.price);
     setEditDescription(item.description);
     setEditAvailable(item.isAvailable);
+    setIsModalOpen(true);
   };
 
   const filteredOrders = orders.filter(o => {
@@ -286,7 +320,7 @@ export const OrdersPage: React.FC = () => {
             Special Food Desk & Menu Manager
           </h1>
           <p className="text-primary-200 text-sm mt-1">
-            Manage live resident fast-food orders, edit items, and change price rates in real time.
+            Manage live resident fast-food orders, create new food items, and edit rates in real time.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -332,7 +366,7 @@ export const OrdersPage: React.FC = () => {
             <div className="bg-white rounded-2xl p-12 text-center border border-gray-200">
               <ShoppingBag className="w-12 h-12 text-gray-300 mx-auto mb-3" />
               <h3 className="text-base font-bold text-gray-700">No Orders Found</h3>
-              <p className="text-xs text-gray-500 mt-1">Student orders for Egg Rolls, Chowmein & Burgers will appear here in real-time.</p>
+              <p className="text-xs text-gray-500 mt-1">Student orders for Egg Rolls, Chowmein, Burgers, or new custom food will appear here in real-time.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -422,10 +456,19 @@ export const OrdersPage: React.FC = () => {
           )}
         </>
       ) : (
-        /* TAB 2: Manage Special Food Items & Prices */
+        /* TAB 2: Manage Special Food Items & Prices + CREATE NEW FOOD ITEM */
         <div className="space-y-4">
-          <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-200 text-xs text-emerald-900 font-medium">
-            💡 <strong>Dynamic Pricing:</strong> Edit the rate or name of any fast food item below. Once saved, students will instantly see the updated prices on their mobile food ordering screen.
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-emerald-50 p-4 rounded-2xl border border-emerald-200">
+            <div className="text-xs text-emerald-900 font-medium">
+              💡 <strong>Dynamic Menu & Pricing:</strong> Create new food items or edit existing rates. Everything updates in real-time in the Student Mobile App!
+            </div>
+            <button
+              onClick={openCreateModal}
+              className="bg-primary-800 hover:bg-primary-900 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-sm whitespace-nowrap"
+            >
+              <Plus className="w-4 h-4" />
+              + Add New Food Item
+            </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -451,7 +494,7 @@ export const OrdersPage: React.FC = () => {
                   </span>
                 </div>
 
-                <p className="text-xs text-gray-600 line-clamp-2">{item.description}</p>
+                <p className="text-xs text-gray-600 line-clamp-2">{item.description || 'Special hostel fast food item prepared fresh by mess staff.'}</p>
 
                 <div className="flex items-center justify-between pt-2 border-t border-gray-100">
                   <div>
@@ -463,7 +506,7 @@ export const OrdersPage: React.FC = () => {
                     className="bg-primary-800 hover:bg-primary-900 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 shadow-sm"
                   >
                     <Edit3 className="w-3.5 h-3.5" />
-                    Edit Price & Name
+                    Edit Price & Details
                   </button>
                 </div>
               </div>
@@ -472,20 +515,30 @@ export const OrdersPage: React.FC = () => {
         </div>
       )}
 
-      {/* Edit Menu Item Modal */}
-      {editingItem && (
+      {/* Edit / Create Menu Item Modal */}
+      {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl border border-gray-200 animate-in fade-in zoom-in-95">
             <h3 className="text-lg font-display font-bold text-gray-900 flex items-center gap-2">
-              <Edit3 className="w-5 h-5 text-primary-700" />
-              Edit Special Food Item & Price
+              {isCreatingNew ? (
+                <>
+                  <Plus className="w-5 h-5 text-primary-700" />
+                  Create New Special Food Item
+                </>
+              ) : (
+                <>
+                  <Edit3 className="w-5 h-5 text-primary-700" />
+                  Edit Special Food Item & Price
+                </>
+              )}
             </h3>
             
             <div className="space-y-3 text-xs">
               <div>
-                <label className="font-bold text-gray-700 block mb-1">Item Name (English)</label>
+                <label className="font-bold text-gray-700 block mb-1">Food Item Name (English) *</label>
                 <input
                   type="text"
+                  placeholder="e.g., Crispy Spring Roll / Chicken Biryani"
                   value={editName}
                   onChange={e => setEditName(e.target.value)}
                   className="w-full p-2.5 border rounded-xl font-semibold"
@@ -493,9 +546,10 @@ export const OrdersPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="font-bold text-gray-700 block mb-1">Item Name (Hindi)</label>
+                <label className="font-bold text-gray-700 block mb-1">Item Name (Hindi Optional)</label>
                 <input
                   type="text"
+                  placeholder="e.g., स्प्रिंग रोल"
                   value={editHindiName}
                   onChange={e => setEditHindiName(e.target.value)}
                   className="w-full p-2.5 border rounded-xl"
@@ -503,7 +557,7 @@ export const OrdersPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="font-bold text-gray-700 block mb-1">Price Rate (₹)</label>
+                <label className="font-bold text-gray-700 block mb-1">Price Rate (₹) *</label>
                 <div className="relative">
                   <span className="absolute left-3 top-2.5 font-bold text-gray-500">₹</span>
                   <input
@@ -518,6 +572,7 @@ export const OrdersPage: React.FC = () => {
               <div>
                 <label className="font-bold text-gray-700 block mb-1">Description / Ingredients</label>
                 <textarea
+                  placeholder="e.g., Freshly prepared with organic vegetables and special spices."
                   value={editDescription}
                   onChange={e => setEditDescription(e.target.value)}
                   rows={2}
@@ -541,16 +596,20 @@ export const OrdersPage: React.FC = () => {
 
             <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
               <button
-                onClick={() => setEditingItem(null)}
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setCurrentEditingId(null);
+                }}
                 className="px-4 py-2 text-xs font-bold text-gray-600 hover:text-gray-800"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveMenuItem}
-                className="bg-primary-800 hover:bg-primary-900 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition shadow-sm"
+                className="bg-primary-800 hover:bg-primary-900 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition shadow-sm flex items-center gap-1.5"
               >
-                Save & Sync to Student App
+                <Check className="w-4 h-4" />
+                {isCreatingNew ? 'Create & Sync to Students' : 'Save & Sync Changes'}
               </button>
             </div>
           </div>

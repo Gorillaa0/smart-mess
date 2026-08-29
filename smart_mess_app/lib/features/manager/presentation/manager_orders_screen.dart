@@ -176,12 +176,13 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
     }
   }
 
-  void _showEditMenuItemDialog(BuildContext context, SpecialFoodItem item) {
-    final nameController = TextEditingController(text: item.name);
-    final hindiController = TextEditingController(text: item.hindiName);
-    final priceController = TextEditingController(text: item.price.toString());
-    final descController = TextEditingController(text: item.description);
-    bool isAvail = item.isAvailable;
+  void _showEditOrCreateDialog(BuildContext context, {SpecialFoodItem? item}) {
+    final isCreating = item == null;
+    final nameController = TextEditingController(text: item?.name ?? '');
+    final hindiController = TextEditingController(text: item?.hindiName ?? '');
+    final priceController = TextEditingController(text: item != null ? item.price.toString() : '50');
+    final descController = TextEditingController(text: item?.description ?? '');
+    bool isAvail = item?.isAvailable ?? true;
 
     showDialog(
       context: context,
@@ -190,10 +191,13 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
           title: Row(
             children: [
-              const Icon(Icons.edit, color: Color(0xFF1B5E20), size: 22),
+              Icon(isCreating ? Icons.add_circle : Icons.edit, color: const Color(0xFF1B5E20), size: 22),
               const SizedBox(width: 8),
               Expanded(
-                child: Text('Edit Special Food Item', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1B5E20))),
+                child: Text(
+                  isCreating ? 'Create New Special Food Item' : 'Edit Special Food Item',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1B5E20)),
+                ),
               ),
             ],
           ),
@@ -203,24 +207,40 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
               children: [
                 TextField(
                   controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Item Name (English)', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    labelText: 'Food Item Name (English) *',
+                    hintText: 'e.g. Crispy Spring Roll / Paneer Roll',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: hindiController,
-                  decoration: const InputDecoration(labelText: 'Item Name (Hindi)', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    labelText: 'Item Name (Hindi Optional)',
+                    hintText: 'e.g. स्प्रिंग रोल',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: priceController,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Price (₹)', prefixText: '₹ ', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    labelText: 'Price Rate (₹) *',
+                    prefixText: '₹ ',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: descController,
                   maxLines: 2,
-                  decoration: const InputDecoration(labelText: 'Description / Ingredients', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    labelText: 'Description / Ingredients',
+                    hintText: 'e.g. Fresh vegetables, special herbs & cheese',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
                 const SizedBox(height: 10),
                 SwitchListTile(
@@ -245,12 +265,28 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               onPressed: () async {
-                final newPrice = int.tryParse(priceController.text.trim()) ?? item.price;
-                final updated = item.copyWith(
-                  name: nameController.text.trim(),
-                  hindiName: hindiController.text.trim(),
-                  price: newPrice,
-                  description: descController.text.trim(),
+                final name = nameController.text.trim();
+                final hindi = hindiController.text.trim();
+                final price = int.tryParse(priceController.text.trim()) ?? 50;
+                final desc = descController.text.trim();
+
+                if (name.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please enter food item name'), backgroundColor: Colors.redAccent),
+                  );
+                  return;
+                }
+
+                final itemId = isCreating
+                    ? 'item_${DateTime.now().millisecondsSinceEpoch}'
+                    : item.id;
+
+                final newItem = SpecialFoodItem(
+                  id: itemId,
+                  name: name,
+                  hindiName: hindi,
+                  price: price,
+                  description: desc,
                   isAvailable: isAvail,
                 );
 
@@ -259,8 +295,8 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
                 try {
                   final dio = Dio();
                   await dio.patch(
-                    'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/specialFoodMenu/${item.id}?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
-                    data: {'fields': updated.toFirestoreFields()},
+                    'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/specialFoodMenu/$itemId?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
+                    data: {'fields': newItem.toFirestoreFields()},
                     options: Options(headers: {'Content-Type': 'application/json'}),
                   );
 
@@ -269,7 +305,9 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Updated "${updated.name}" price to ₹${updated.price}! Reflected in Student App.'),
+                        content: Text(isCreating
+                            ? 'Created "$name" (₹$price)! Synced to Student Dashboard.'
+                            : 'Updated "$name" price to ₹$price! Synced.'),
                         backgroundColor: const Color(0xFF1B5E20),
                         behavior: SnackBarBehavior.floating,
                       ),
@@ -278,12 +316,15 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
                 } catch (e) {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Failed to update food rate: $e'), backgroundColor: Colors.redAccent),
+                      SnackBar(content: Text('Failed to save item: $e'), backgroundColor: Colors.redAccent),
                     );
                   }
                 }
               },
-              child: const Text('SAVE & SYNC TO STUDENTS', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: Text(
+                isCreating ? 'CREATE & SYNC' : 'SAVE & SYNC TO STUDENTS',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
           ],
         ),
@@ -581,12 +622,13 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
             ],
           ),
 
-          // TAB 2: Manage Special Food Items & Prices (Reflects in Student App)
+          // TAB 2: Manage Special Food Items & Prices + CREATE NEW ITEM
           _isMenuLoading
               ? const Center(child: CircularProgressIndicator(color: Color(0xFF1B5E20)))
               : ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
+                    // Header card with Create New Item Action
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
@@ -594,14 +636,34 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(color: const Color(0xFFA5D6A7)),
                       ),
-                      child: const Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(Icons.info_outline, color: Color(0xFF1B5E20), size: 20),
-                          SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              'Edit food item rates and availability here. Any changes reflect instantly on student ordering screens!',
-                              style: TextStyle(fontSize: 12, color: Color(0xFF1B5E20), fontWeight: FontWeight.w600),
+                          const Row(
+                            children: [
+                              Icon(Icons.info_outline, color: Color(0xFF1B5E20), size: 18),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Create new items or edit rates. Anything added appears live in the student app!',
+                                  style: TextStyle(fontSize: 12, color: Color(0xFF1B5E20), fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF1B5E20),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 11),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                              icon: const Icon(Icons.add, size: 18),
+                              label: const Text('+ CREATE NEW FOOD ITEM', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
+                              onPressed: () => _showEditOrCreateDialog(context),
                             ),
                           ),
                         ],
@@ -641,13 +703,15 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
                                         Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                                           decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(4)),
-                                          child: Text('UNAVAILABLE', style: TextStyle(color: Colors.red.shade800, fontSize: 9, fontWeight: FontWeight.bold)),
+                                          child: const Text('UNAVAILABLE', style: TextStyle(color: Colors.red, fontSize: 9, fontWeight: FontWeight.bold)),
                                         ),
                                       ],
                                     ],
                                   ),
-                                  const SizedBox(height: 2),
-                                  Text(item.hindiName, style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+                                  if (item.hindiName.isNotEmpty) ...[
+                                    const SizedBox(height: 2),
+                                    Text(item.hindiName, style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+                                  ],
                                   const SizedBox(height: 2),
                                   Text('Rate: ₹${item.price}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF1B5E20))),
                                 ],
@@ -655,8 +719,8 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
                             ),
                             IconButton(
                               icon: const Icon(Icons.edit, color: Color(0xFF1B5E20), size: 20),
-                              tooltip: 'Edit Price & Name',
-                              onPressed: () => _showEditMenuItemDialog(context, item),
+                              tooltip: 'Edit Price & Details',
+                              onPressed: () => _showEditOrCreateDialog(context, item: item),
                             ),
                           ],
                         ),
