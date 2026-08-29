@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/models/special_food_item.dart';
 
 class ManagerOrdersScreen extends ConsumerStatefulWidget {
   const ManagerOrdersScreen({super.key});
@@ -10,23 +11,74 @@ class ManagerOrdersScreen extends ConsumerStatefulWidget {
   ConsumerState<ManagerOrdersScreen> createState() => _ManagerOrdersScreenState();
 }
 
-class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> {
+class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   String _selectedStatus = 'All';
   List<Map<String, dynamic>> _orders = [];
+  List<SpecialFoodItem> _menuItems = kDefaultSpecialFoodMenu;
   bool _isLoading = true;
+  bool _isMenuLoading = false;
   Timer? _timer;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _fetchOrders();
-    _timer = Timer.periodic(const Duration(seconds: 3), (_) => _fetchOrders(silent: true));
+    _fetchMenuItems();
+    _timer = Timer.periodic(const Duration(seconds: 3), (_) {
+      _fetchOrders(silent: true);
+      _fetchMenuItems(silent: true);
+    });
   }
 
   @override
   void dispose() {
+    _tabController.dispose();
     _timer?.cancel();
     super.dispose();
+  }
+
+  Future<void> _fetchMenuItems({bool silent = false}) async {
+    if (!silent && mounted) setState(() => _isMenuLoading = true);
+    try {
+      final dio = Dio();
+      final res = await dio.post(
+        'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents:runQuery?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
+        data: {
+          'structuredQuery': {
+            'from': [{'collectionId': 'specialFoodMenu'}]
+          }
+        },
+        options: Options(headers: {'Content-Type': 'application/json'}),
+      ).timeout(const Duration(seconds: 4));
+
+      if (res.statusCode == 200 && res.data is List) {
+        final List data = res.data;
+        final list = <SpecialFoodItem>[];
+
+        for (final item in data) {
+          if (item is Map && item['document'] != null) {
+            final doc = item['document'] as Map;
+            final fields = (doc['fields'] as Map?) ?? {};
+            list.add(SpecialFoodItem.fromFirestoreJson(Map<String, dynamic>.from(fields)));
+          }
+        }
+
+        if (list.isNotEmpty && mounted) {
+          setState(() {
+            _menuItems = list;
+            _isMenuLoading = false;
+          });
+        } else {
+          if (mounted) setState(() => _isMenuLoading = false);
+        }
+      } else {
+        if (mounted) setState(() => _isMenuLoading = false);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isMenuLoading = false);
+    }
   }
 
   Future<void> _fetchOrders({bool silent = false}) async {
@@ -52,7 +104,7 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> {
             final doc = item['document'] as Map;
             final fields = (doc['fields'] as Map?) ?? {};
             final docName = (doc['name'] as String? ?? '').split('/').isNotEmpty ? (doc['name'] as String? ?? '').split('/').last : '';
-            
+
             list.add({
               'id': fields['id']?['stringValue'] ?? docName,
               'studentName': fields['studentName']?['stringValue'] ?? 'Student',
@@ -66,7 +118,8 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> {
               'unitPrice': int.tryParse(fields['unitPrice']?['integerValue'] ?? '0') ?? 0,
               'quantity': int.tryParse(fields['quantity']?['integerValue'] ?? '1') ?? 1,
               'totalBill': int.tryParse(fields['totalBill']?['integerValue'] ?? '0') ?? 0,
-              'isPaid': fields['isPaid']?['booleanValue'] ?? true,
+              'isPaid': fields['isPaid']?['booleanValue'] ?? false,
+              'paymentMethod': fields['paymentMethod']?['stringValue'] ?? 'Pay on Delivery',
               'status': fields['status']?['stringValue'] ?? 'Pending Approval',
               'estimatedDeliveryTime': fields['estimatedDeliveryTime']?['stringValue'] ?? '30 - 40 Mins',
               'orderedAt': fields['orderedAt']?['stringValue'] ?? '',
@@ -123,6 +176,121 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> {
     }
   }
 
+  void _showEditMenuItemDialog(BuildContext context, SpecialFoodItem item) {
+    final nameController = TextEditingController(text: item.name);
+    final hindiController = TextEditingController(text: item.hindiName);
+    final priceController = TextEditingController(text: item.price.toString());
+    final descController = TextEditingController(text: item.description);
+    bool isAvail = item.isAvailable;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          title: Row(
+            children: [
+              const Icon(Icons.edit, color: Color(0xFF1B5E20), size: 22),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('Edit Special Food Item', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1B5E20))),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Item Name (English)', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: hindiController,
+                  decoration: const InputDecoration(labelText: 'Item Name (Hindi)', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: priceController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Price (₹)', prefixText: '₹ ', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: descController,
+                  maxLines: 2,
+                  decoration: const InputDecoration(labelText: 'Description / Ingredients', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 10),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Available for Ordering', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  value: isAvail,
+                  activeColor: const Color(0xFF1B5E20),
+                  onChanged: (v) => setDialogState(() => isAvail = v),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('CANCEL', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1B5E20),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: () async {
+                final newPrice = int.tryParse(priceController.text.trim()) ?? item.price;
+                final updated = item.copyWith(
+                  name: nameController.text.trim(),
+                  hindiName: hindiController.text.trim(),
+                  price: newPrice,
+                  description: descController.text.trim(),
+                  isAvailable: isAvail,
+                );
+
+                Navigator.pop(ctx);
+
+                try {
+                  final dio = Dio();
+                  await dio.patch(
+                    'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/specialFoodMenu/${item.id}?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
+                    data: {'fields': updated.toFirestoreFields()},
+                    options: Options(headers: {'Content-Type': 'application/json'}),
+                  );
+
+                  _fetchMenuItems(silent: true);
+
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Updated "${updated.name}" price to ₹${updated.price}! Reflected in Student App.'),
+                        backgroundColor: const Color(0xFF1B5E20),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to update food rate: $e'), backgroundColor: Colors.redAccent),
+                    );
+                  }
+                }
+              },
+              child: const Text('SAVE & SYNC TO STUDENTS', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showConfirmDialog(BuildContext context, Map<String, dynamic> order) {
     String selectedTime = '30 - 40 Mins';
 
@@ -146,8 +314,8 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> {
               const SizedBox(height: 4),
               Text('Student: ${order['studentName']} (Room ${order['roomNo']})', style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
               const SizedBox(height: 4),
-              Text('Total Bill: ₹${order['totalBill']} • ${order['isPaid'] == true ? "PAID ONLINE" : "UNPAID (Pay on delivery)"}',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: order['isPaid'] == true ? Colors.green : Colors.redAccent)),
+              Text('Total Bill: ₹${order['totalBill']} • ${order['paymentMethod'] ?? "Pay on Delivery"}',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFFE65100))),
               const SizedBox(height: 14),
               const Text('Estimated Delivery Time:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black87)),
               const SizedBox(height: 6),
@@ -205,195 +373,297 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> {
         backgroundColor: Colors.white,
         foregroundColor: const Color(0xFF1B5E20),
         elevation: 0.5,
-        title: const Text('Special Food Orders Ledger', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.5)),
+        title: const Text('Special Food Desk & Menu Manager', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.5)),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => _fetchOrders(),
+            onPressed: () {
+              _fetchOrders();
+              _fetchMenuItems();
+            },
           ),
         ],
+        bottom: TabBar(
+          controller: _tabController,
+          labelColor: const Color(0xFF1B5E20),
+          unselectedLabelColor: Colors.grey,
+          indicatorColor: const Color(0xFF1B5E20),
+          indicatorWeight: 3,
+          tabs: const [
+            Tab(icon: Icon(Icons.receipt_long, size: 18), text: 'Student Orders'),
+            Tab(icon: Icon(Icons.edit_note, size: 18), text: 'Manage Menu & Rates'),
+          ],
+        ),
       ),
-      body: Column(
+      body: TabBarView(
+        controller: _tabController,
         children: [
-          // Filter Tabs
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: ['All', 'Pending Approval', 'Preparing', 'Delivered'].map((st) {
-                  final isSelected = _selectedStatus == st;
-                  final count = st == 'All' ? _orders.length : _orders.where((o) => (o['status'] ?? '').toString().toLowerCase() == st.toLowerCase()).length;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text('$st ($count)'),
-                      selected: isSelected,
-                      selectedColor: const Color(0xFF1B5E20),
-                      backgroundColor: Colors.grey.shade100,
-                      labelStyle: TextStyle(
-                        color: isSelected ? Colors.white : Colors.black87,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                        fontSize: 12,
-                      ),
-                      onSelected: (selected) {
-                        if (selected) setState(() => _selectedStatus = st);
-                      },
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-          ),
-          const Divider(height: 1),
-
-          // Orders List with Instant Loading Timeout Safeguard
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator(color: Color(0xFF1B5E20)))
-                : filtered.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.soup_kitchen_outlined, size: 64, color: Colors.green.shade300),
-                            const SizedBox(height: 12),
-                            Text('No food orders matching "$_selectedStatus"',
-                                style: TextStyle(color: Colors.grey.shade700, fontSize: 14, fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 4),
-                            Text('Orders placed by students will arrive here in real time', style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
-                          ],
+          // TAB 1: Real-time Orders Ledger
+          Column(
+            children: [
+              // Filter Tabs
+              Container(
+                color: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: ['All', 'Pending Approval', 'Preparing', 'Delivered'].map((st) {
+                      final isSelected = _selectedStatus == st;
+                      final count = st == 'All' ? _orders.length : _orders.where((o) => (o['status'] ?? '').toString().toLowerCase() == st.toLowerCase()).length;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: Text('$st ($count)'),
+                          selected: isSelected,
+                          selectedColor: const Color(0xFF1B5E20),
+                          backgroundColor: Colors.grey.shade100,
+                          labelStyle: TextStyle(
+                            color: isSelected ? Colors.white : Colors.black87,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            fontSize: 12,
+                          ),
+                          onSelected: (selected) {
+                            if (selected) setState(() => _selectedStatus = st);
+                          },
                         ),
-                      )
-                    : RefreshIndicator(
-                        onRefresh: _fetchOrders,
-                        child: ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: filtered.length,
-                          itemBuilder: (context, index) {
-                            final order = filtered[index];
-                            final item = order['foodItemName'] ?? 'Special Item';
-                            final qty = order['quantity'] ?? 1;
-                            final total = order['totalBill'] ?? 0;
-                            final student = order['studentName'] ?? 'Student';
-                            final room = order['roomNo'] ?? '101';
-                            final phone = order['mobileNumber'] ?? '';
-                            final isPaid = order['isPaid'] == true;
-                            final status = order['status'] ?? 'Pending Approval';
-                            final estTime = order['estimatedDeliveryTime'] ?? '30 - 40 Mins';
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+              const Divider(height: 1),
 
-                            Color statusColor = Colors.orange;
-                            if (status == 'Delivered') statusColor = Colors.green;
-                            if (status == 'Preparing') statusColor = Colors.blue;
-
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: statusColor.withOpacity(0.4), width: 1.2),
-                                boxShadow: [
-                                  BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
-                                ],
-                              ),
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator(color: Color(0xFF1B5E20)))
+                    : filtered.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.soup_kitchen_outlined, size: 64, color: Colors.green.shade300),
+                                const SizedBox(height: 12),
+                                Text('No food orders matching "$_selectedStatus"',
+                                    style: TextStyle(color: Colors.grey.shade700, fontSize: 14, fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 4),
+                                Text('Orders placed by students will arrive here in real time', style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                              ],
+                            ),
+                          )
+                        : RefreshIndicator(
+                            onRefresh: _fetchOrders,
+                            child: ListView.builder(
                               padding: const EdgeInsets.all(16),
+                              itemCount: filtered.length,
+                              itemBuilder: (context, index) {
+                                final order = filtered[index];
+                                final item = order['foodItemName'] ?? 'Special Item';
+                                final qty = order['quantity'] ?? 1;
+                                final total = order['totalBill'] ?? 0;
+                                final student = order['studentName'] ?? 'Student';
+                                final room = order['roomNo'] ?? '101';
+                                final phone = order['mobileNumber'] ?? '';
+                                final status = order['status'] ?? 'Pending Approval';
+                                final estTime = order['estimatedDeliveryTime'] ?? '30 - 40 Mins';
+
+                                Color statusColor = Colors.orange;
+                                if (status == 'Delivered') statusColor = Colors.green;
+                                if (status == 'Preparing') statusColor = Colors.blue;
+
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: statusColor.withOpacity(0.4), width: 1.2),
+                                    boxShadow: [
+                                      BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
+                                    ],
+                                  ),
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Expanded(
+                                            child: Text('$item (x$qty)', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Colors.black87)),
+                                          ),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                            decoration: BoxDecoration(
+                                              color: statusColor.withOpacity(0.12),
+                                              borderRadius: BorderRadius.circular(8),
+                                              border: Border.all(color: statusColor.withOpacity(0.4)),
+                                            ),
+                                            child: Text(status, style: TextStyle(color: statusColor, fontWeight: FontWeight.w800, fontSize: 11)),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text('Student: $student (Room $room, H4)', style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.w600)),
+                                          Text('₹$total', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Color(0xFFE65100))),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          Icon(Icons.phone, size: 13, color: Colors.grey.shade600),
+                                          const SizedBox(width: 4),
+                                          Text('Phone: $phone', style: TextStyle(fontSize: 11.5, color: Colors.grey.shade700)),
+                                          const SizedBox(width: 12),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                            decoration: BoxDecoration(
+                                              color: Colors.amber.shade50,
+                                              borderRadius: BorderRadius.circular(4),
+                                              border: Border.all(color: Colors.amber.shade300),
+                                            ),
+                                            child: const Text('PAY ON DELIVERY',
+                                                style: TextStyle(color: Color(0xFFBF360C), fontSize: 9.5, fontWeight: FontWeight.bold)),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(color: const Color(0xFFF1F8E9), borderRadius: BorderRadius.circular(6)),
+                                        child: Row(
+                                          children: [
+                                            const Icon(Icons.delivery_dining, size: 15, color: Color(0xFF1B5E20)),
+                                            const SizedBox(width: 6),
+                                            Text('Estimated Delivery: $estTime', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20))),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        children: [
+                                          if (status != 'Delivered') ...[
+                                            if (status == 'Pending Approval')
+                                              ElevatedButton.icon(
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor: const Color(0xFF1B5E20),
+                                                  foregroundColor: Colors.white,
+                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                                ),
+                                                icon: const Icon(Icons.check, size: 16),
+                                                label: const Text('CONFIRM & PREPARE', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5)),
+                                                onPressed: () => _showConfirmDialog(context, order),
+                                              ),
+                                            if (status == 'Preparing')
+                                              ElevatedButton.icon(
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor: const Color(0xFF1565C0),
+                                                  foregroundColor: Colors.white,
+                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                                ),
+                                                icon: const Icon(Icons.delivery_dining, size: 16),
+                                                label: const Text('MARK AS DELIVERED', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5)),
+                                                onPressed: () => _updateOrderStatus(context, order['id'], 'Delivered', estTime),
+                                              ),
+                                          ],
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+              ),
+            ],
+          ),
+
+          // TAB 2: Manage Special Food Items & Prices (Reflects in Student App)
+          _isMenuLoading
+              ? const Center(child: CircularProgressIndicator(color: Color(0xFF1B5E20)))
+              : ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8F5E9),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFA5D6A7)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.info_outline, color: Color(0xFF1B5E20), size: 20),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Edit food item rates and availability here. Any changes reflect instantly on student ordering screens!',
+                              style: TextStyle(fontSize: 12, color: Color(0xFF1B5E20), fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    ..._menuItems.map((item) {
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: item.isAvailable ? Colors.grey.shade300 : Colors.red.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: item.isAvailable ? const Color(0xFFFFF3E0) : Colors.grey.shade200,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(Icons.fastfood, color: item.isAvailable ? const Color(0xFFE65100) : Colors.grey, size: 22),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Expanded(
-                                        child: Text('$item (x$qty)', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Colors.black87)),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                        decoration: BoxDecoration(
-                                          color: statusColor.withOpacity(0.12),
-                                          borderRadius: BorderRadius.circular(8),
-                                          border: Border.all(color: statusColor.withOpacity(0.4)),
-                                        ),
-                                        child: Text(status, style: TextStyle(color: statusColor, fontWeight: FontWeight.w800, fontSize: 11)),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text('Student: $student (Room $room, H4)', style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.w600)),
-                                      Text('₹$total', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Color(0xFFE65100))),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      Icon(Icons.phone, size: 13, color: Colors.grey.shade600),
-                                      const SizedBox(width: 4),
-                                      Text('Phone: $phone', style: TextStyle(fontSize: 11.5, color: Colors.grey.shade700)),
-                                      const SizedBox(width: 12),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                                        decoration: BoxDecoration(
-                                          color: isPaid ? Colors.green.shade50 : Colors.red.shade50,
-                                          borderRadius: BorderRadius.circular(4),
-                                          border: Border.all(color: isPaid ? Colors.green.shade200 : Colors.red.shade200),
-                                        ),
-                                        child: Text(isPaid ? 'PAID ONLINE' : 'PAY ON DELIVERY',
-                                            style: TextStyle(color: isPaid ? Colors.green.shade800 : Colors.red.shade800, fontSize: 9.5, fontWeight: FontWeight.bold)),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(color: const Color(0xFFF1F8E9), borderRadius: BorderRadius.circular(6)),
-                                    child: Row(
-                                      children: [
-                                        const Icon(Icons.delivery_dining, size: 15, color: Color(0xFF1B5E20)),
+                                      Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                                      if (!item.isAvailable) ...[
                                         const SizedBox(width: 6),
-                                        Text('Estimated Delivery: $estTime', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20))),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: [
-                                      if (status != 'Delivered') ...[
-                                        if (status == 'Pending Approval')
-                                          ElevatedButton.icon(
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(0xFF1B5E20),
-                                              foregroundColor: Colors.white,
-                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                            ),
-                                            icon: const Icon(Icons.check, size: 16),
-                                            label: const Text('CONFIRM & PREPARE', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5)),
-                                            onPressed: () => _showConfirmDialog(context, order),
-                                          ),
-                                        if (status == 'Preparing')
-                                          ElevatedButton.icon(
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(0xFF1565C0),
-                                              foregroundColor: Colors.white,
-                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                            ),
-                                            icon: const Icon(Icons.delivery_dining, size: 16),
-                                            label: const Text('MARK AS DELIVERED', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5)),
-                                            onPressed: () => _updateOrderStatus(context, order['id'], 'Delivered', estTime),
-                                          ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                          decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(4)),
+                                          child: Text('UNAVAILABLE', style: TextStyle(color: Colors.red.shade800, fontSize: 9, fontWeight: FontWeight.bold)),
+                                        ),
                                       ],
                                     ],
                                   ),
+                                  const SizedBox(height: 2),
+                                  Text(item.hindiName, style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+                                  const SizedBox(height: 2),
+                                  Text('Rate: ₹${item.price}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF1B5E20))),
                                 ],
                               ),
-                            );
-                          },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.edit, color: Color(0xFF1B5E20), size: 20),
+                              tooltip: 'Edit Price & Name',
+                              onPressed: () => _showEditMenuItemDialog(context, item),
+                            ),
+                          ],
                         ),
-                      ),
-          ),
+                      );
+                    }),
+                  ],
+                ),
         ],
       ),
     );
