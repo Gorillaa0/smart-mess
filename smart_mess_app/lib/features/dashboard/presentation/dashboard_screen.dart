@@ -12,6 +12,7 @@ import '../../notifications/providers/notifications_provider.dart';
 import '../../events/providers/events_provider.dart';
 import '../../attendance/providers/student_attendance_provider.dart';
 import '../../attendance/providers/attendance_provider.dart';
+import '../../orders/providers/orders_provider.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -263,22 +264,161 @@ class DashboardScreen extends ConsumerWidget {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _colorfulSummaryCard(
-                    context,
-                    title: 'Order Special Food',
-                    value: 'Rolls & Fast Food',
-                    subtitle: 'Egg Roll, Chowmein, Burger',
-                    icon: Icons.fastfood,
-                    startColor: const Color(0xFFFFEBEE),
-                    endColor: const Color(0xFFFFCDD2),
-                    borderColor: const Color(0xFFEF9A9A),
-                    textColor: const Color(0xFFC62828),
-                    onTap: () => context.push('/order-food'),
-                  ),
+                  child: () {
+                    final myOrders = ref.watch(studentOrdersListProvider);
+                    final activeOrder = myOrders.isNotEmpty ? myOrders.first : null;
+                    final statusText = activeOrder != null ? activeOrder.status : 'Available Now';
+                    final subtitleText = activeOrder != null 
+                        ? '${activeOrder.foodItemName} (₹${activeOrder.totalBill}) • $statusText'
+                        : 'Order Egg Roll & Paneer Roll';
+
+                    return _colorfulSummaryCard(
+                      context,
+                      title: 'Special Food & Orders',
+                      value: activeOrder != null ? 'Status: $statusText' : 'Rolls & Snacks',
+                      subtitle: subtitleText,
+                      icon: Icons.fastfood,
+                      startColor: const Color(0xFFFFEBEE),
+                      endColor: const Color(0xFFFFCDD2),
+                      borderColor: const Color(0xFFEF9A9A),
+                      textColor: const Color(0xFFC62828),
+                      onTap: () => context.push('/order-food'),
+                    );
+                  }(),
                 ),
               ],
             ),
             const SizedBox(height: 16),
+
+            // 5.5 LIVE FOOD ORDER STATUS BANNER (SHOWS RECENT ORDER HISTORY & CANCELLATION REASON ON DASHBOARD)
+            () {
+              final myOrders = ref.watch(studentOrdersListProvider);
+              if (myOrders.isEmpty) return const SizedBox.shrink();
+              final latestOrder = myOrders.first;
+              final isCancelled = latestOrder.status == 'Cancelled';
+              final isDelivered = latestOrder.status == 'Delivered';
+              final isPreparing = latestOrder.status == 'Preparing';
+
+              Color bannerBg = Colors.orange.shade50;
+              Color bannerBorder = Colors.orange.shade300;
+              Color bannerText = Colors.orange.shade900;
+              IconData statusIcon = Icons.hourglass_top;
+
+              if (isDelivered) {
+                bannerBg = Colors.green.shade50;
+                bannerBorder = Colors.green.shade300;
+                bannerText = Colors.green.shade900;
+                statusIcon = Icons.check_circle;
+              } else if (isPreparing) {
+                bannerBg = Colors.blue.shade50;
+                bannerBorder = Colors.blue.shade300;
+                bannerText = Colors.blue.shade900;
+                statusIcon = Icons.soup_kitchen;
+              } else if (isCancelled) {
+                bannerBg = Colors.red.shade50;
+                bannerBorder = Colors.red.shade300;
+                bannerText = Colors.red.shade900;
+                statusIcon = Icons.cancel;
+              }
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: bannerBg,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: bannerBorder, width: 1.2),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2)),
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () => context.push('/order-food'),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(statusIcon, color: bannerText, size: 18),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'RECENT FOOD ORDER STATUS',
+                                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 11, color: bannerText, letterSpacing: 0.5),
+                                  ),
+                                ],
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: bannerBorder),
+                                ),
+                                child: Text(
+                                  latestOrder.status.toUpperCase(),
+                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: bannerText),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                '${latestOrder.foodItemName} (x${latestOrder.quantity})',
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: Colors.black87),
+                              ),
+                              Text(
+                                '₹${latestOrder.totalBill} • Pay on Delivery',
+                                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5, color: bannerText),
+                              ),
+                            ],
+                          ),
+                          if (!isCancelled && !isDelivered) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              'Estimated Delivery: ${latestOrder.estimatedDeliveryTime} (Room ${latestOrder.roomNo})',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey.shade800),
+                            ),
+                          ],
+                          if (isCancelled && latestOrder.cancellationReason.isNotEmpty) ...[
+                            const SizedBox(height: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: Colors.red.shade200),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.info_outline, color: Colors.red, size: 13),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      'Cancellation Reason: ${latestOrder.cancellationReason}',
+                                      style: TextStyle(fontSize: 11, color: Colors.red.shade900, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }(),
 
             // 6. COMPLAINT TRACKER BANNER
             Container(
