@@ -3,9 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-// Updating app router configuration natively inline here for speed
-// in reality this replaces lib/core/router/app_router.dart
-
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/attendance/presentation/qr_scanner_screen.dart';
@@ -17,10 +14,17 @@ import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/events/presentation/events_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/mess_off/presentation/mess_off_screen.dart';
+
+// Manager Screens
 import '../../features/manager/presentation/manager_dashboard_screen.dart';
 import '../../features/manager/presentation/manager_qr_screen.dart';
 import '../../features/manager/presentation/manager_wastage_screen.dart';
 import '../../features/manager/presentation/manager_attendance_screen.dart';
+import '../../features/manager/presentation/manager_meals_screen.dart';
+import '../../features/manager/presentation/manager_mess_offs_screen.dart';
+import '../../features/manager/presentation/manager_complaints_screen.dart';
+import '../../features/manager/presentation/manager_broadcast_screen.dart';
+import '../../features/manager/presentation/manager_analytics_screen.dart';
 
 import '../constants/h4_students_data.dart';
 import '../widgets/top_notification_overlay.dart';
@@ -62,11 +66,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/events', builder: (context, state) => const EventsScreen()),
       GoRoute(path: '/profile', builder: (context, state) => const ProfileScreen()),
 
-      // Manager Routes
+      // Complete Manager Routes (Mirrors Web Version)
       GoRoute(path: '/manager-dashboard', builder: (context, state) => const ManagerDashboardScreen()),
       GoRoute(path: '/manager/qr-generate', builder: (context, state) => const ManagerQRScreen()),
       GoRoute(path: '/manager/attendance', builder: (context, state) => const ManagerAttendanceScreen()),
+      GoRoute(path: '/manager/meals', builder: (context, state) => const ManagerMealsScreen()),
+      GoRoute(path: '/manager/mess-offs', builder: (context, state) => const ManagerMessOffsScreen()),
       GoRoute(path: '/manager/wastage', builder: (context, state) => const ManagerWastageScreen()),
+      GoRoute(path: '/manager/complaints', builder: (context, state) => const ManagerComplaintsScreen()),
+      GoRoute(path: '/manager/broadcast', builder: (context, state) => const ManagerBroadcastScreen()),
+      GoRoute(path: '/manager/analytics', builder: (context, state) => const ManagerAnalyticsScreen()),
     ],
   );
 });

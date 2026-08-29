@@ -197,11 +197,16 @@ export const StudentsPage: React.FC = () => {
 
     const reg = editForm.registrationNo.trim();
     const newPassword = editForm.password.trim();
-    const oldPassword = editingStudent.password; // password before admin changed it
+    const oldPassword = editingStudent.password;
     const passwordChanged = newPassword !== oldPassword;
-    const studentEmail = editForm.email.trim()
+
+    // Detect email change
+    const oldEmail = editingStudent.email?.trim().toLowerCase() || `${editingStudent.registrationNo}@smartmess.edu`;
+    const newEmail = editForm.email.trim()
       ? editForm.email.trim().toLowerCase()
       : `${reg}@smartmess.edu`;
+    const emailChanged = newEmail !== oldEmail;
+    const studentEmail = newEmail;
 
     setStudents((prev) =>
       prev.map((s) =>
@@ -299,7 +304,41 @@ export const StudentsPage: React.FC = () => {
           }
         }
 
-        // ── STEP 2: Write updated student data + password to Firestore
+        // ── STEP 2: Update Firebase Auth email (if changed)
+        if (emailChanged) {
+          const emailUpdateAppName = `email-update-${reg}-${Date.now()}`;
+          const emailUpdateApp = initializeApp(FIREBASE_CONFIG, emailUpdateAppName);
+          const emailUpdateAuth = getAuth(emailUpdateApp);
+          try {
+            // Sign in with old email + current password to get the user object
+            const userCred = await signInWithEmailAndPassword(emailUpdateAuth, oldEmail, newPassword)
+              .catch(() => signInWithEmailAndPassword(emailUpdateAuth, oldEmail, oldPassword));
+
+            const { updateEmail } = await import('firebase/auth');
+            await updateEmail(userCred.user, newEmail);
+            toast.success(`✅ Firebase login email updated: ${oldEmail} → ${newEmail}`);
+            console.log(`[AUTH] Email updated from ${oldEmail} to ${newEmail}`);
+          } catch (emailErr: any) {
+            if (emailErr.code === 'auth/user-not-found' || emailErr.code === 'auth/invalid-credential') {
+              // No old account — create fresh at new email
+              try {
+                await createUserWithEmailAndPassword(emailUpdateAuth, newEmail, newPassword);
+                toast.success(`✅ New Firebase account created at ${newEmail}`);
+              } catch (createErr: any) {
+                if (createErr.code !== 'auth/email-already-in-use') {
+                  console.error('[AUTH] Email create error:', createErr);
+                }
+              }
+            } else {
+              console.warn('[AUTH] Email update warning:', emailErr.code, emailErr.message);
+            }
+          } finally {
+            await signOut(emailUpdateAuth);
+            await deleteApp(emailUpdateApp);
+          }
+        }
+
+        // ── STEP 3: Write updated student data + password to Firestore
         const mainApps = getApps();
         const mainApp = mainApps.find(a => a.name === '[DEFAULT]') || initializeApp(FIREBASE_CONFIG);
         const mainAuth = getAuth(mainApp);

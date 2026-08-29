@@ -328,7 +328,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
             _buildLiveAttendanceCard(context, todayScansCount, totalStudents),
             const SizedBox(height: 20),
 
-            // 4. OPERATIONAL CONTROLS
+            // 4. FULL MESS OPERATIONS & CONTROL MODULES (ALL WEB FEATURES)
             Row(
               children: [
                 Container(
@@ -341,13 +341,14 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                 ),
                 const SizedBox(width: 8),
                 const Text(
-                  'OPERATIONAL CONTROLS',
+                  'ALL MESS OPERATIONS & CONTROLS',
                   style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Colors.black87, letterSpacing: 0.5),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            _buildManagerActions(context),
+            _buildManagerOperationsGrid(context),
+            const SizedBox(height: 20),
           ],
         ),
       ),
@@ -563,11 +564,12 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
     );
   }
 
-  Widget _buildManagerActions(BuildContext context) {
+  // 4. FULL OPERATIONS GRID MATCHING WEB DASHBOARD
+  Widget _buildManagerOperationsGrid(BuildContext context) {
     final actions = [
       _ManagerActionItem(
         title: 'Static Counter QR',
-        subtitle: 'Physical Printable QR',
+        subtitle: 'Physical Printable Poster',
         icon: Icons.qr_code_2,
         startColor: const Color(0xFFE8F5E9),
         endColor: const Color(0xFFC8E6C9),
@@ -576,14 +578,74 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
         route: '/manager/qr-generate',
       ),
       _ManagerActionItem(
-        title: 'Student Roster',
-        subtitle: '112 Enrolled Boarders',
-        icon: Icons.people_alt_outlined,
+        title: 'Attendance Ledger',
+        subtitle: '112 Boarders Status',
+        icon: Icons.checklist_rtl,
         startColor: const Color(0xFFE3F2FD),
         endColor: const Color(0xFFBBDEFB),
         borderColor: const Color(0xFF90CAF9),
         iconColor: const Color(0xFF1565C0),
-        route: '/notifications',
+        route: '/manager/attendance',
+      ),
+      _ManagerActionItem(
+        title: 'Weekly Meal Menu',
+        subtitle: 'Timings, Cutoff & Rates',
+        icon: Icons.restaurant_menu,
+        startColor: const Color(0xFFFFF3E0),
+        endColor: const Color(0xFFFFE0B2),
+        borderColor: const Color(0xFFFFCC80),
+        iconColor: const Color(0xFFE65100),
+        route: '/manager/meals',
+      ),
+      _ManagerActionItem(
+        title: 'Mess-Off Records',
+        subtitle: 'Rebate Requests Live',
+        icon: Icons.event_busy,
+        startColor: const Color(0xFFFFEBEE),
+        endColor: const Color(0xFFFFCDD2),
+        borderColor: const Color(0xFFEF9A9A),
+        iconColor: const Color(0xFFC62828),
+        route: '/manager/mess-offs',
+      ),
+      _ManagerActionItem(
+        title: 'Daily Food Wastage',
+        subtitle: 'Post-Meal Entry & Audit',
+        icon: Icons.delete_outline,
+        startColor: const Color(0xFFFBE9E7),
+        endColor: const Color(0xFFFFCCBC),
+        borderColor: const Color(0xFFFFAB91),
+        iconColor: const Color(0xFFD84315),
+        route: '/manager/wastage',
+      ),
+      _ManagerActionItem(
+        title: 'Student Complaints',
+        subtitle: 'Feedback & Resolution',
+        icon: Icons.rate_review_outlined,
+        startColor: const Color(0xFFF3E5F5),
+        endColor: const Color(0xFFE1BEE7),
+        borderColor: const Color(0xFFCE93D8),
+        iconColor: const Color(0xFF7B1FA2),
+        route: '/manager/complaints',
+      ),
+      _ManagerActionItem(
+        title: 'Broadcast Notices',
+        subtitle: 'Push Alert to 112 Boarders',
+        icon: Icons.campaign_outlined,
+        startColor: const Color(0xFFEDE7F6),
+        endColor: const Color(0xFFD1C4E9),
+        borderColor: const Color(0xFFB39DDB),
+        iconColor: const Color(0xFF512DA8),
+        route: '/manager/broadcast',
+      ),
+      _ManagerActionItem(
+        title: 'Analytics & Insights',
+        subtitle: 'Attendance & Waste Trends',
+        icon: Icons.insights_outlined,
+        startColor: const Color(0xFFE0F2F1),
+        endColor: const Color(0xFFB2DFDB),
+        borderColor: const Color(0xFF80CBC4),
+        iconColor: const Color(0xFF00695C),
+        route: '/manager/analytics',
       ),
     ];
 
@@ -594,7 +656,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
         crossAxisCount: 2,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
-        childAspectRatio: 2.3,
+        childAspectRatio: 2.1,
       ),
       itemCount: actions.length,
       itemBuilder: (context, index) {
@@ -602,7 +664,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
         return GestureDetector(
           onTap: () => context.push(item.route),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
               gradient: LinearGradient(colors: [item.startColor, item.endColor]),
               borderRadius: BorderRadius.circular(14),
@@ -610,7 +672,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
             ),
             child: Row(
               children: [
-                Icon(item.icon, color: item.iconColor, size: 24),
+                Icon(item.icon, color: item.iconColor, size: 22),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Column(
@@ -619,14 +681,14 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                     children: [
                       Text(
                         item.title,
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: item.iconColor),
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: item.iconColor),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
                       Text(
                         item.subtitle,
-                        style: TextStyle(fontSize: 10, color: Colors.grey.shade700, fontWeight: FontWeight.w500),
+                        style: TextStyle(fontSize: 9.5, color: Colors.grey.shade700, fontWeight: FontWeight.w500),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
