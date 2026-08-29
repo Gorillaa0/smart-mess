@@ -78,9 +78,6 @@ class _ManagerMessOffsScreenState extends ConsumerState<ManagerMessOffsScreen> {
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance.collection('messOffs').snapshots(),
               builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return Center(child: Text('Error loading mess-offs: ${snapshot.error}'));
-                }
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator(color: Color(0xFF1B5E20)));
                 }
@@ -94,11 +91,11 @@ class _ManagerMessOffsScreenState extends ConsumerState<ManagerMessOffsScreen> {
 
                 final filtered = items.where((item) {
                   final name = (item['studentName'] ?? '').toString().toLowerCase();
-                  final reg = (item['registrationNo'] ?? item['studentId'] ?? '').toString().toLowerCase();
+                  final reg = (item['registrationNo'] ?? item['studentId'] ?? item['rollNo'] ?? '').toString().toLowerCase();
                   final meal = (item['mealType'] ?? '').toString();
 
                   final matchesQuery = _searchQuery.isEmpty || name.contains(_searchQuery) || reg.contains(_searchQuery);
-                  final matchesMeal = _selectedMealFilter == 'All' || meal.toLowerCase() == _selectedMealFilter.toLowerCase();
+                  final matchesMeal = _selectedMealFilter == 'All' || meal.toLowerCase().contains(_selectedMealFilter.toLowerCase());
 
                   return matchesQuery && matchesMeal;
                 }).toList();
@@ -108,11 +105,11 @@ class _ManagerMessOffsScreenState extends ConsumerState<ManagerMessOffsScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.event_available, size: 64, color: Colors.grey.shade400),
+                        Icon(Icons.event_available, size: 64, color: Colors.green.shade400),
                         const SizedBox(height: 12),
-                        Text('No active mess-off requests found', style: TextStyle(color: Colors.grey.shade700, fontSize: 14, fontWeight: FontWeight.w600)),
+                        Text('No active mess-off requests found', style: TextStyle(color: Colors.grey.shade700, fontSize: 14, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 4),
-                        Text('All boarders are dining today', style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                        Text('All boarders are currently registered for meals', style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
                       ],
                     ),
                   );
@@ -124,7 +121,7 @@ class _ManagerMessOffsScreenState extends ConsumerState<ManagerMessOffsScreen> {
                   itemBuilder: (context, index) {
                     final item = filtered[index];
                     final name = item['studentName'] ?? 'Student';
-                    final reg = item['registrationNo'] ?? item['studentId'] ?? '';
+                    final reg = item['registrationNo'] ?? item['studentId'] ?? item['rollNo'] ?? '';
                     final meal = item['mealType'] ?? 'Meal';
                     final date = item['date'] ?? '';
                     final refund = item['refundCredited'] ?? 50;

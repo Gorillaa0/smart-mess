@@ -21,12 +21,12 @@ class _ManagerComplaintsScreenState extends ConsumerState<ManagerComplaintsScree
       builder: (dialogCtx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-          title: Row(
+          title: const Row(
             children: [
-              const Icon(Icons.rate_review, color: Color(0xFF1B5E20), size: 22),
-              const SizedBox(width: 8),
+              Icon(Icons.rate_review, color: Color(0xFF1B5E20), size: 22),
+              SizedBox(width: 8),
               Expanded(
-                child: Text('Respond to Complaint', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1B5E20))),
+                child: Text('Respond to Complaint', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF1B5E20))),
               ),
             ],
           ),
@@ -160,7 +160,7 @@ class _ManagerComplaintsScreenState extends ConsumerState<ManagerComplaintsScree
           ),
           const Divider(height: 1),
 
-          // Real-time Firestore stream
+          // Real-time Firestore stream (No fake dummy data)
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance.collection('complaints').snapshots(),
@@ -176,32 +176,6 @@ class _ManagerComplaintsScreenState extends ConsumerState<ManagerComplaintsScree
                   return data;
                 }).toList();
 
-                // If empty in firestore, include default demo items for Hostel H4
-                if (list.isEmpty) {
-                  list = [
-                    {
-                      'id': 'cmp_sample_1',
-                      'title': 'Undercooked Rice during Lunch',
-                      'studentName': 'Priyanshu Gandhi',
-                      'roomNumber': '203',
-                      'category': 'Food Quality / Taste',
-                      'description': 'The plain rice served in today\'s lunch was hard and undercooked.',
-                      'status': 'In Progress',
-                      'response': 'Inspected kitchen. Cook instructed to recalibrate rice steamer timing.'
-                    },
-                    {
-                      'id': 'cmp_sample_2',
-                      'title': 'Water Filter Coolant Not Functioning',
-                      'studentName': 'Ayush Kumar Singh',
-                      'roomNumber': '101',
-                      'category': 'Hygiene & Cleanliness',
-                      'description': 'Cooler unit in main mess hall dispensing room temperature water.',
-                      'status': 'Pending',
-                      'response': ''
-                    },
-                  ];
-                }
-
                 final filtered = list.where((c) {
                   if (_selectedStatus == 'All') return true;
                   return (c['status'] ?? '').toString().toLowerCase() == _selectedStatus.toLowerCase();
@@ -214,7 +188,10 @@ class _ManagerComplaintsScreenState extends ConsumerState<ManagerComplaintsScree
                       children: [
                         Icon(Icons.check_circle_outline, size: 64, color: Colors.green.shade300),
                         const SizedBox(height: 12),
-                        Text('No complaints matching "$_selectedStatus"', style: TextStyle(color: Colors.grey.shade700, fontSize: 14, fontWeight: FontWeight.bold)),
+                        Text('No complaints matching "$_selectedStatus"',
+                            style: TextStyle(color: Colors.grey.shade700, fontSize: 14, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 4),
+                        Text('Student feedback will appear here in real time', style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
                       ],
                     ),
                   );
