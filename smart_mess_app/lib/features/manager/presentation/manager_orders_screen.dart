@@ -122,6 +122,7 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
               'isPaid': fields['isPaid']?['booleanValue'] ?? false,
               'paymentMethod': fields['paymentMethod']?['stringValue'] ?? 'Pay on Delivery',
               'status': fields['status']?['stringValue'] ?? 'Pending Approval',
+              'cancellationReason': fields['cancellationReason']?['stringValue'] ?? '',
               'estimatedDeliveryTime': fields['estimatedDeliveryTime']?['stringValue'] ?? '30 - 40 Mins',
               'orderedAt': fields['orderedAt']?['stringValue'] ?? '',
             });
@@ -175,6 +176,114 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
         );
       }
     }
+  }
+
+  Future<void> _cancelOrderWithReason(BuildContext context, String orderId, String cancellationReason) async {
+    try {
+      final dio = Dio();
+      await dio.patch(
+        'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/foodOrders/$orderId?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E&updateMask.fieldPaths=status&updateMask.fieldPaths=cancellationReason&updateMask.fieldPaths=updatedAt',
+        data: {
+          'fields': {
+            'status': {'stringValue': 'Cancelled'},
+            'cancellationReason': {'stringValue': cancellationReason},
+            'updatedAt': {'stringValue': DateTime.now().toIso8601String()},
+          }
+        },
+        options: Options(headers: {'Content-Type': 'application/json'}),
+      );
+
+      _fetchOrders(silent: true);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Order cancelled and reason sent to student!'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error cancelling order: $e'), backgroundColor: Colors.redAccent),
+        );
+      }
+    }
+  }
+
+  void _showCancelDialog(BuildContext context, Map<String, dynamic> order) {
+    final reasonController = TextEditingController(text: 'Kitchen out of ingredients / Heavy rush');
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.cancel_outlined, color: Colors.red, size: 22),
+              SizedBox(width: 8),
+              Text('Cancel Food Order', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Student: ${order['studentName']} (Room ${order['roomNo']})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              Text('Item: ${order['foodItemName']} (x${order['quantity']}) • ₹${order['totalBill']}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              const SizedBox(height: 14),
+              const Text('Enter Cancellation Reason:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: reasonController,
+                maxLines: 2,
+                decoration: InputDecoration(
+                  hintText: 'e.g. Out of eggs/paneer, kitchen closed, high rush...',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: [
+                  'Out of stock',
+                  'Kitchen heavy rush',
+                  'Delivery not possible now',
+                  'Item unavailable',
+                ].map((reason) {
+                  return ActionChip(
+                    label: Text(reason, style: const TextStyle(fontSize: 10)),
+                    onPressed: () => reasonController.text = reason,
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Back', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade700,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () {
+                final r = reasonController.text.trim();
+                Navigator.pop(ctx);
+                _cancelOrderWithReason(context, order['id'], r.isEmpty ? 'Order cancelled by mess manager' : r);
+              },
+              child: const Text('CONFIRM CANCEL', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showEditOrCreateDialog(BuildContext context, {SpecialFoodItem? item}) {
@@ -508,11 +617,13 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
                                 final phone = order['mobileNumber'] ?? '';
                                 final notes = order['specialNotes'] ?? '';
                                 final status = order['status'] ?? 'Pending Approval';
+                                final reason = order['cancellationReason'] ?? '';
                                 final estTime = order['estimatedDeliveryTime'] ?? '30 - 40 Mins';
 
                                 Color statusColor = Colors.orange;
                                 if (status == 'Delivered') statusColor = Colors.green;
                                 if (status == 'Preparing') statusColor = Colors.blue;
+                                if (status == 'Cancelled') statusColor = Colors.red;
 
                                 return Container(
                                   margin: const EdgeInsets.only(bottom: 12),
@@ -594,6 +705,28 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
                                           ),
                                         ),
                                       ],
+                                      if (status == 'Cancelled' && reason.isNotEmpty) ...[
+                                        const SizedBox(height: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFFFEBEE),
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: Border.all(color: const Color(0xFFFFCDD2)),
+                                          ),
+                                          child: Row(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              const Icon(Icons.cancel_outlined, size: 14, color: Colors.red),
+                                              const SizedBox(width: 6),
+                                              Expanded(
+                                                child: Text('Cancelled Reason: "$reason"',
+                                                    style: TextStyle(fontSize: 11, color: Colors.red.shade900, fontWeight: FontWeight.bold)),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                       const SizedBox(height: 8),
                                       Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -610,7 +743,18 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.end,
                                         children: [
-                                          if (status != 'Delivered') ...[
+                                          if (status != 'Delivered' && status != 'Cancelled') ...[
+                                            OutlinedButton.icon(
+                                              style: OutlinedButton.styleFrom(
+                                                foregroundColor: Colors.red.shade700,
+                                                side: BorderSide(color: Colors.red.shade300),
+                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                              ),
+                                              icon: const Icon(Icons.cancel_outlined, size: 15),
+                                              label: const Text('CANCEL ORDER', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                                              onPressed: () => _showCancelDialog(context, order),
+                                            ),
+                                            const SizedBox(width: 8),
                                             if (status == 'Pending Approval')
                                               ElevatedButton.icon(
                                                 style: ElevatedButton.styleFrom(

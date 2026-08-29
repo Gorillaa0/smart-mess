@@ -20,6 +20,7 @@ class _FoodOrderScreenState extends ConsumerState<FoodOrderScreen> {
 
   List<SpecialFoodItem> _menuItems = kDefaultSpecialFoodMenu;
   SpecialFoodItem _selectedItem = kDefaultSpecialFoodMenu[0];
+  List<Map<String, dynamic>> _myRecentOrders = [];
   int _quantity = 1;
   bool _isSubmitting = false;
   Timer? _menuTimer;
@@ -31,7 +32,11 @@ class _FoodOrderScreenState extends ConsumerState<FoodOrderScreen> {
     _roomController.text = student.roomNo;
     _phoneController.text = '9876543210';
     _fetchLiveSpecialFoodMenu();
-    _menuTimer = Timer.periodic(const Duration(seconds: 4), (_) => _fetchLiveSpecialFoodMenu());
+    _fetchMyRecentOrders();
+    _menuTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      _fetchLiveSpecialFoodMenu();
+      _fetchMyRecentOrders();
+    });
   }
 
   @override
@@ -41,6 +46,57 @@ class _FoodOrderScreenState extends ConsumerState<FoodOrderScreen> {
     _roomController.dispose();
     _instructionsController.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchMyRecentOrders() async {
+    try {
+      final student = ref.read(currentStudentProvider);
+      final dio = Dio();
+      final res = await dio.post(
+        'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents:runQuery?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
+        data: {
+          'structuredQuery': {
+            'from': [{'collectionId': 'foodOrders'}]
+          }
+        },
+        options: Options(headers: {'Content-Type': 'application/json'}),
+      ).timeout(const Duration(seconds: 3));
+
+      if (res.statusCode == 200 && res.data is List) {
+        final List data = res.data;
+        final list = <Map<String, dynamic>>[];
+
+        for (final item in data) {
+          if (item is Map && item['document'] != null) {
+            final doc = item['document'] as Map;
+            final fields = (doc['fields'] as Map?) ?? {};
+            final reg = fields['registrationNo']?['stringValue'] ?? '';
+            final roll = fields['rollNo']?['stringValue'] ?? '';
+
+            if (reg == student.registrationNo || roll == student.rollNo) {
+              list.add({
+                'id': fields['id']?['stringValue'] ?? '',
+                'foodItemName': fields['foodItemName']?['stringValue'] ?? 'Special Item',
+                'quantity': int.tryParse(fields['quantity']?['integerValue'] ?? '1') ?? 1,
+                'totalBill': int.tryParse(fields['totalBill']?['integerValue'] ?? '0') ?? 0,
+                'status': fields['status']?['stringValue'] ?? 'Pending Approval',
+                'cancellationReason': fields['cancellationReason']?['stringValue'] ?? '',
+                'estimatedDeliveryTime': fields['estimatedDeliveryTime']?['stringValue'] ?? '30 - 40 Mins',
+                'orderedAt': fields['orderedAt']?['stringValue'] ?? '',
+                'specialNotes': fields['specialNotes']?['stringValue'] ?? '',
+              });
+            }
+          }
+        }
+
+        list.sort((a, b) => (b['orderedAt'] ?? '').compareTo(a['orderedAt'] ?? ''));
+        if (mounted) {
+          setState(() {
+            _myRecentOrders = list;
+          });
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _fetchLiveSpecialFoodMenu() async {
@@ -230,6 +286,145 @@ class _FoodOrderScreenState extends ConsumerState<FoodOrderScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // LIVE ORDERS STATUS TRACKER (Shows pending, preparing, delivered, or cancelled with reason)
+          if (_myRecentOrders.isNotEmpty) ...[
+            Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1B5E20),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'MY RECENT ORDERS & STATUS',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5, color: Colors.black87, letterSpacing: 0.5),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ..._myRecentOrders.take(3).map((order) {
+              final status = order['status'] ?? 'Pending Approval';
+              final reason = order['cancellationReason'] ?? '';
+              final estTime = order['estimatedDeliveryTime'] ?? '30 - 40 Mins';
+              final isCancelled = status == 'Cancelled';
+              final isDelivered = status == 'Delivered';
+              final isPreparing = status == 'Preparing';
+
+              Color statusBg = Colors.orange.shade50;
+              Color statusBorder = Colors.orange.shade300;
+              Color statusText = Colors.orange.shade900;
+              IconData statusIcon = Icons.hourglass_top;
+
+              if (isDelivered) {
+                statusBg = Colors.green.shade50;
+                statusBorder = Colors.green.shade300;
+                statusText = Colors.green.shade900;
+                statusIcon = Icons.check_circle;
+              } else if (isPreparing) {
+                statusBg = Colors.blue.shade50;
+                statusBorder = Colors.blue.shade300;
+                statusText = Colors.blue.shade900;
+                statusIcon = Icons.soup_kitchen;
+              } else if (isCancelled) {
+                statusBg = Colors.red.shade50;
+                statusBorder = Colors.red.shade300;
+                statusText = Colors.red.shade900;
+                statusIcon = Icons.cancel;
+              }
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: statusBorder, width: 1.2),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 4, offset: const Offset(0, 2)),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '${order['foodItemName']} (x${order['quantity']})',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: statusBg,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: statusBorder),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(statusIcon, size: 12, color: statusText),
+                              const SizedBox(width: 4),
+                              Text(
+                                status,
+                                style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: statusText),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Bill: ₹${order['totalBill']} • Pay on Delivery',
+                          style: TextStyle(fontSize: 11.5, color: Colors.grey.shade700, fontWeight: FontWeight.w600),
+                        ),
+                        if (!isCancelled && !isDelivered)
+                          Text(
+                            'Est. Delivery: $estTime',
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20)),
+                          ),
+                      ],
+                    ),
+                    if (isCancelled && reason.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFEBEE),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFFFCDD2)),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.info_outline, color: Colors.red, size: 14),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'Cancellation Reason: $reason',
+                                style: TextStyle(fontSize: 11, color: Colors.red.shade900, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            }),
+            const SizedBox(height: 14),
+          ],
+
           // Student Details Card (Auto Filled + Editable Room + Notes Row)
           Container(
             padding: const EdgeInsets.all(14),

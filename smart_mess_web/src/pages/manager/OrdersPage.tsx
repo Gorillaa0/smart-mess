@@ -18,7 +18,8 @@ interface FoodOrder {
   totalBill: number;
   isPaid: boolean;
   paymentMethod: string;
-  status: 'Pending Approval' | 'Preparing' | 'Delivered';
+  status: 'Pending Approval' | 'Preparing' | 'Delivered' | 'Cancelled';
+  cancellationReason?: string;
   estimatedDeliveryTime: string;
   orderedAt: string;
 }
@@ -58,6 +59,8 @@ export const OrdersPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
   const [selectedTimeModalOrder, setSelectedTimeModalOrder] = useState<FoodOrder | null>(null);
+  const [selectedCancelModalOrder, setSelectedCancelModalOrder] = useState<FoodOrder | null>(null);
+  const [cancelReason, setCancelReason] = useState<string>('Kitchen out of stock / High rush');
   const [deliveryTime, setDeliveryTime] = useState<string>('30 - 40 Mins');
   
   // Edit/Create Menu Item Modal State
@@ -110,6 +113,7 @@ export const OrdersPage: React.FC = () => {
                 isPaid: f.isPaid?.booleanValue ?? false,
                 paymentMethod: f.paymentMethod?.stringValue || 'Pay on Delivery',
                 status: (f.status?.stringValue as any) || 'Pending Approval',
+                cancellationReason: f.cancellationReason?.stringValue || '',
                 estimatedDeliveryTime: f.estimatedDeliveryTime?.stringValue || '30 - 40 Mins',
                 orderedAt: f.orderedAt?.stringValue || new Date().toISOString()
               });
@@ -198,6 +202,31 @@ export const OrdersPage: React.FC = () => {
       setSelectedTimeModalOrder(null);
     } catch (_) {
       toast.error('Failed to update order status');
+    }
+  };
+
+  const handleCancelOrder = async (orderId: string, reason: string) => {
+    try {
+      await fetch(
+        `https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/foodOrders/${orderId}?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E&updateMask.fieldPaths=status&updateMask.fieldPaths=cancellationReason&updateMask.fieldPaths=updatedAt`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fields: {
+              status: { stringValue: 'Cancelled' },
+              cancellationReason: { stringValue: reason },
+              updatedAt: { stringValue: new Date().toISOString() }
+            }
+          })
+        }
+      );
+
+      toast.error(`Order cancelled and reason sent to student!`);
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'Cancelled' as any, cancellationReason: reason } : o));
+      setSelectedCancelModalOrder(null);
+    } catch (_) {
+      toast.error('Failed to cancel order');
     }
   };
 
@@ -398,19 +427,44 @@ export const OrdersPage: React.FC = () => {
                     </div>
                   )}
 
+                  {order.status === 'Cancelled' && order.cancellationReason && (
+                    <div className="p-2.5 bg-red-50 rounded-xl border border-red-200 text-xs flex items-start gap-2">
+                      <AlertCircle className="w-3.5 h-3.5 text-red-600 mt-0.5 shrink-0" />
+                      <div>
+                        <span className="font-bold text-red-900 block text-[11px]">Cancellation Reason:</span>
+                        <p className="text-red-800 font-semibold">{order.cancellationReason}</p>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between text-xs text-gray-600 pt-1">
                     <div className="flex items-center gap-1">
                       <Phone className="w-3.5 h-3.5 text-gray-400" />
                       <span>{order.mobileNumber}</span>
                     </div>
-                    <div className="flex items-center gap-1 font-semibold text-primary-800 bg-primary-50 px-2 py-1 rounded-lg">
-                      <Clock className="w-3.5 h-3.5 text-primary-700" />
-                      <span>Est. Time: {order.estimatedDeliveryTime}</span>
-                    </div>
+                    {order.status !== 'Cancelled' && (
+                      <div className="flex items-center gap-1 font-semibold text-primary-800 bg-primary-50 px-2 py-1 rounded-lg">
+                        <Clock className="w-3.5 h-3.5 text-primary-700" />
+                        <span>Est. Time: {order.estimatedDeliveryTime}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Action Buttons */}
                   <div className="pt-2 flex items-center justify-end gap-2 border-t border-gray-100">
+                    {order.status !== 'Delivered' && order.status !== 'Cancelled' && (
+                      <button
+                        onClick={() => {
+                          setSelectedCancelModalOrder(order);
+                          setCancelReason('Kitchen out of stock / High rush');
+                        }}
+                        className="border border-red-200 hover:bg-red-50 text-red-700 text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Cancel Order
+                      </button>
+                    )}
+
                     {order.status === 'Pending Approval' && (
                       <button
                         onClick={() => setSelectedTimeModalOrder(order)}
@@ -435,6 +489,13 @@ export const OrdersPage: React.FC = () => {
                       <span className="text-xs text-emerald-700 font-bold flex items-center gap-1">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                         Delivered to Room {order.roomNo}
+                      </span>
+                    )}
+
+                    {order.status === 'Cancelled' && (
+                      <span className="text-xs text-red-700 font-bold flex items-center gap-1">
+                        <AlertCircle className="w-4 h-4 text-red-600" />
+                        Order Cancelled
                       </span>
                     )}
                   </div>
@@ -645,6 +706,65 @@ export const OrdersPage: React.FC = () => {
                 className="bg-primary-800 hover:bg-primary-900 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition shadow-sm"
               >
                 Confirm & Notify Student
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Order with Reason Modal */}
+      {selectedCancelModalOrder && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl border border-gray-200 animate-in fade-in zoom-in-95">
+            <h3 className="text-lg font-display font-bold text-red-900 flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-red-600" />
+              Cancel Special Food Order
+            </h3>
+            <p className="text-xs text-gray-600">
+              State the reason why order for <strong className="text-gray-900">{selectedCancelModalOrder.studentName}</strong> (Room {selectedCancelModalOrder.roomNo} • {selectedCancelModalOrder.foodItemName}) is being cancelled. This will notify the student instantly!
+            </p>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-700 block">Cancellation Reason *</label>
+              <input
+                type="text"
+                value={cancelReason}
+                onChange={e => setCancelReason(e.target.value)}
+                placeholder="e.g. Out of eggs / paneer, Kitchen closed, High rush"
+                className="w-full p-2.5 text-xs border rounded-xl font-medium focus:ring-2 focus:ring-red-300"
+              />
+
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {[
+                  'Kitchen out of stock',
+                  'Heavy dinner rush',
+                  'Special chef unavailable',
+                  'Item temporarily sold out',
+                ].map(r => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setCancelReason(r)}
+                    className="text-[11px] bg-gray-100 hover:bg-gray-200 text-gray-700 px-2.5 py-1 rounded-lg font-semibold"
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
+              <button
+                onClick={() => setSelectedCancelModalOrder(null)}
+                className="px-4 py-2 text-xs font-bold text-gray-600 hover:text-gray-800"
+              >
+                Back
+              </button>
+              <button
+                onClick={() => handleCancelOrder(selectedCancelModalOrder.id, cancelReason.trim() || 'Order cancelled by mess manager')}
+                className="bg-red-700 hover:bg-red-800 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition shadow-sm"
+              >
+                Confirm Cancellation
               </button>
             </div>
           </div>
