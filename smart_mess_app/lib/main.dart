@@ -10,6 +10,15 @@ import 'core/constants/h4_students_data.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialize Firebase first
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    debugPrint('Firebase initialization error: $e');
+  }
+
   // Restore session from local storage only if valid and explicit
   bool isLoggedIn = false;
   String loggedRole = 'student';
@@ -44,12 +53,4 @@ void main() async {
       child: const SmartMessApp(),
     ),
   );
-
-  // Initialize Firebase in background safely
-  Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  ).catchError((e) {
-    debugPrint('Firebase initialization error: $e');
-    return Firebase.app();
-  });
 }

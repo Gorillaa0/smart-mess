@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -193,36 +194,63 @@ class _FoodOrderScreenState extends ConsumerState<FoodOrderScreen> {
       // Register immediately in global memory
       ref.read(liveOrdersGlobalProvider.notifier).pushNewOrder(newRecord);
 
-      final dio = Dio();
+      // 1. Write to Firestore via official SDK
       try {
-        await dio.patch(
-          'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/foodOrders/$orderId?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
-          data: {
-            'fields': {
-              'id': {'stringValue': orderId},
-              'studentName': {'stringValue': student.name},
-              'registrationNo': {'stringValue': student.registrationNo},
-              'rollNo': {'stringValue': student.rollNo},
-              'roomNo': {'stringValue': manualRoom},
-              'mobileNumber': {'stringValue': phone},
-              'specialNotes': {'stringValue': customNotes},
-              'foodItemId': {'stringValue': _selectedItem.id},
-              'foodItemName': {'stringValue': _selectedItem.name},
-              'foodItemHindi': {'stringValue': _selectedItem.hindiName},
-              'unitPrice': {'integerValue': _selectedItem.price.toString()},
-              'quantity': {'integerValue': _quantity.toString()},
-              'totalBill': {'integerValue': totalBill.toString()},
-              'isPaid': {'booleanValue': false}, // Offline / Cash on Delivery
-              'paymentMethod': {'stringValue': 'Pay on Delivery (Cash / Counter)'},
-              'status': {'stringValue': 'Pending Approval'},
-              'estimatedDeliveryTime': {'stringValue': '30 - 40 Mins'},
-              'orderedAt': {'stringValue': now.toIso8601String()},
-              'updatedAt': {'stringValue': now.toIso8601String()},
-            }
-          },
-          options: Options(headers: {'Content-Type': 'application/json'}),
-        ).timeout(const Duration(seconds: 4));
-      } catch (_) {}
+        await FirebaseFirestore.instance.collection('foodOrders').doc(orderId).set({
+          'id': orderId,
+          'studentName': student.name,
+          'registrationNo': student.registrationNo,
+          'rollNo': student.rollNo,
+          'roomNo': manualRoom,
+          'mobileNumber': phone,
+          'specialNotes': customNotes,
+          'foodItemId': _selectedItem.id,
+          'foodItemName': _selectedItem.name,
+          'foodItemHindi': _selectedItem.hindiName,
+          'unitPrice': _selectedItem.price,
+          'quantity': _quantity,
+          'totalBill': totalBill,
+          'isPaid': false,
+          'paymentMethod': 'Pay on Delivery (Cash / Counter)',
+          'status': 'Pending Approval',
+          'cancellationReason': '',
+          'estimatedDeliveryTime': '30 - 40 Mins',
+          'orderedAt': now.toIso8601String(),
+          'updatedAt': now.toIso8601String(),
+        });
+      } catch (e) {
+        // Fallback to REST patch
+        try {
+          final dio = Dio();
+          await dio.patch(
+            'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/foodOrders/$orderId?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
+            data: {
+              'fields': {
+                'id': {'stringValue': orderId},
+                'studentName': {'stringValue': student.name},
+                'registrationNo': {'stringValue': student.registrationNo},
+                'rollNo': {'stringValue': student.rollNo},
+                'roomNo': {'stringValue': manualRoom},
+                'mobileNumber': {'stringValue': phone},
+                'specialNotes': {'stringValue': customNotes},
+                'foodItemId': {'stringValue': _selectedItem.id},
+                'foodItemName': {'stringValue': _selectedItem.name},
+                'foodItemHindi': {'stringValue': _selectedItem.hindiName},
+                'unitPrice': {'integerValue': _selectedItem.price.toString()},
+                'quantity': {'integerValue': _quantity.toString()},
+                'totalBill': {'integerValue': totalBill.toString()},
+                'isPaid': {'booleanValue': false},
+                'paymentMethod': {'stringValue': 'Pay on Delivery (Cash / Counter)'},
+                'status': {'stringValue': 'Pending Approval'},
+                'estimatedDeliveryTime': {'stringValue': '30 - 40 Mins'},
+                'orderedAt': {'stringValue': now.toIso8601String()},
+                'updatedAt': {'stringValue': now.toIso8601String()},
+              }
+            },
+            options: Options(headers: {'Content-Type': 'application/json'}),
+          ).timeout(const Duration(seconds: 4));
+        } catch (_) {}
+      }
 
       // refresh local list
       _fetchMyRecentOrders();

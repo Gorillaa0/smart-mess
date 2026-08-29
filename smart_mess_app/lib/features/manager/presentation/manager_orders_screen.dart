@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -205,19 +206,29 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
   }
 
   Future<void> _updateOrderStatus(BuildContext context, String orderId, String newStatus, String deliveryTime) async {
+    ref.read(liveOrdersGlobalProvider.notifier).updateStatus(orderId, newStatus, deliveryTime: deliveryTime);
+
     try {
-      final dio = Dio();
-      await dio.patch(
-        'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/foodOrders/$orderId?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E&updateMask.fieldPaths=status&updateMask.fieldPaths=estimatedDeliveryTime&updateMask.fieldPaths=updatedAt',
-        data: {
-          'fields': {
-            'status': {'stringValue': newStatus},
-            'estimatedDeliveryTime': {'stringValue': deliveryTime},
-            'updatedAt': {'stringValue': DateTime.now().toIso8601String()},
-          }
-        },
-        options: Options(headers: {'Content-Type': 'application/json'}),
-      );
+      try {
+        await FirebaseFirestore.instance.collection('foodOrders').doc(orderId).update({
+          'status': newStatus,
+          'estimatedDeliveryTime': deliveryTime,
+          'updatedAt': DateTime.now().toIso8601String(),
+        });
+      } catch (_) {
+        final dio = Dio();
+        await dio.patch(
+          'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/foodOrders/$orderId?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E&updateMask.fieldPaths=status&updateMask.fieldPaths=estimatedDeliveryTime&updateMask.fieldPaths=updatedAt',
+          data: {
+            'fields': {
+              'status': {'stringValue': newStatus},
+              'estimatedDeliveryTime': {'stringValue': deliveryTime},
+              'updatedAt': {'stringValue': DateTime.now().toIso8601String()},
+            }
+          },
+          options: Options(headers: {'Content-Type': 'application/json'}),
+        );
+      }
 
       _fetchOrders(silent: true);
 
@@ -239,19 +250,29 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
   }
 
   Future<void> _cancelOrderWithReason(BuildContext context, String orderId, String cancellationReason) async {
+    ref.read(liveOrdersGlobalProvider.notifier).updateStatus(orderId, 'Cancelled', cancellationReason: cancellationReason);
+
     try {
-      final dio = Dio();
-      await dio.patch(
-        'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/foodOrders/$orderId?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E&updateMask.fieldPaths=status&updateMask.fieldPaths=cancellationReason&updateMask.fieldPaths=updatedAt',
-        data: {
-          'fields': {
-            'status': {'stringValue': 'Cancelled'},
-            'cancellationReason': {'stringValue': cancellationReason},
-            'updatedAt': {'stringValue': DateTime.now().toIso8601String()},
-          }
-        },
-        options: Options(headers: {'Content-Type': 'application/json'}),
-      );
+      try {
+        await FirebaseFirestore.instance.collection('foodOrders').doc(orderId).update({
+          'status': 'Cancelled',
+          'cancellationReason': cancellationReason,
+          'updatedAt': DateTime.now().toIso8601String(),
+        });
+      } catch (_) {
+        final dio = Dio();
+        await dio.patch(
+          'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/foodOrders/$orderId?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E&updateMask.fieldPaths=status&updateMask.fieldPaths=cancellationReason&updateMask.fieldPaths=updatedAt',
+          data: {
+            'fields': {
+              'status': {'stringValue': 'Cancelled'},
+              'cancellationReason': {'stringValue': cancellationReason},
+              'updatedAt': {'stringValue': DateTime.now().toIso8601String()},
+            }
+          },
+          options: Options(headers: {'Content-Type': 'application/json'}),
+        );
+      }
 
       _fetchOrders(silent: true);
 
