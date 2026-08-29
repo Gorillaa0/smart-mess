@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Clock, CheckCircle2, Phone, User, Check, AlertCircle, RefreshCw, Edit3, Plus, Utensils, Trash2 } from 'lucide-react';
+import { ShoppingBag, Clock, CheckCircle2, Phone, User, Check, AlertCircle, RefreshCw, Edit3, Plus, Utensils, Trash2, MessageSquare } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface FoodOrder {
@@ -9,6 +9,7 @@ interface FoodOrder {
   rollNo: string;
   roomNo: string;
   mobileNumber: string;
+  specialNotes?: string;
   foodItemId: string;
   foodItemName: string;
   foodItemHindi: string;
@@ -123,6 +124,7 @@ export const OrdersPage: React.FC = () => {
                 rollNo: f.rollNo?.stringValue || '',
                 roomNo: f.roomNo?.stringValue || '',
                 mobileNumber: f.mobileNumber?.stringValue || '',
+                specialNotes: f.specialNotes?.stringValue || '',
                 foodItemId: f.foodItemId?.stringValue || '',
                 foodItemName: f.foodItemName?.stringValue || 'Special Item',
                 foodItemHindi: f.foodItemHindi?.stringValue || '',
@@ -399,7 +401,7 @@ export const OrdersPage: React.FC = () => {
                     <div>
                       <span className="text-gray-400 block font-medium">Resident Details</span>
                       <p className="font-bold text-gray-800 mt-0.5">{order.studentName}</p>
-                      <p className="text-gray-500">Room {order.roomNo} • Roll: {order.rollNo}</p>
+                      <p className="text-gray-500">Room: <strong className="text-gray-900">{order.roomNo}</strong> • Roll: {order.rollNo}</p>
                     </div>
                     <div className="text-right">
                       <span className="text-gray-400 block font-medium">Total Bill</span>
@@ -409,6 +411,16 @@ export const OrdersPage: React.FC = () => {
                       </span>
                     </div>
                   </div>
+
+                  {order.specialNotes && (
+                    <div className="p-2.5 bg-amber-50/70 rounded-xl border border-amber-200 text-xs flex items-start gap-2">
+                      <MessageSquare className="w-3.5 h-3.5 text-amber-700 mt-0.5 shrink-0" />
+                      <div>
+                        <span className="font-bold text-amber-900 block text-[11px]">Special Instructions:</span>
+                        <p className="text-gray-800 font-medium">{order.specialNotes}</p>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="flex items-center justify-between text-xs text-gray-600 pt-1">
                     <div className="flex items-center gap-1">

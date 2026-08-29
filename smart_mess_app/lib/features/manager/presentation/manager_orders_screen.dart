@@ -112,6 +112,7 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
               'rollNo': fields['rollNo']?['stringValue'] ?? '',
               'roomNo': fields['roomNo']?['stringValue'] ?? '101',
               'mobileNumber': fields['mobileNumber']?['stringValue'] ?? '',
+              'specialNotes': fields['specialNotes']?['stringValue'] ?? '',
               'foodItemId': fields['foodItemId']?['stringValue'] ?? '',
               'foodItemName': fields['foodItemName']?['stringValue'] ?? 'Special Item',
               'foodItemHindi': fields['foodItemHindi']?['stringValue'] ?? '',
@@ -505,6 +506,7 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
                                 final student = order['studentName'] ?? 'Student';
                                 final room = order['roomNo'] ?? '101';
                                 final phone = order['mobileNumber'] ?? '';
+                                final notes = order['specialNotes'] ?? '';
                                 final status = order['status'] ?? 'Pending Approval';
                                 final estTime = order['estimatedDeliveryTime'] ?? '30 - 40 Mins';
 
@@ -547,7 +549,7 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
-                                          Text('Student: $student (Room $room, H4)', style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.w600)),
+                                          Text('Student: $student (Room $room, H4)', style: const TextStyle(fontSize: 12, color: Colors.black87, fontWeight: FontWeight.w700)),
                                           Text('₹$total', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Color(0xFFE65100))),
                                         ],
                                       ),
@@ -570,6 +572,28 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
                                           ),
                                         ],
                                       ),
+                                      if (notes.isNotEmpty) ...[
+                                        const SizedBox(height: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFFFF8E1),
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: Border.all(color: const Color(0xFFFFE082)),
+                                          ),
+                                          child: Row(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              const Icon(Icons.note_alt_outlined, size: 14, color: Color(0xFFE65100)),
+                                              const SizedBox(width: 6),
+                                              Expanded(
+                                                child: Text('Special Mention: "$notes"',
+                                                    style: const TextStyle(fontSize: 11, color: Color(0xFFBF360C), fontWeight: FontWeight.bold, fontStyle: FontStyle.italic)),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                       const SizedBox(height: 8),
                                       Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

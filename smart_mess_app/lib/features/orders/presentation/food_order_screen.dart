@@ -15,7 +15,8 @@ class FoodOrderScreen extends ConsumerStatefulWidget {
 
 class _FoodOrderScreenState extends ConsumerState<FoodOrderScreen> {
   final _phoneController = TextEditingController();
-  final _notesController = TextEditingController();
+  final _roomController = TextEditingController();
+  final _instructionsController = TextEditingController();
 
   List<SpecialFoodItem> _menuItems = kDefaultSpecialFoodMenu;
   SpecialFoodItem _selectedItem = kDefaultSpecialFoodMenu[0];
@@ -26,6 +27,8 @@ class _FoodOrderScreenState extends ConsumerState<FoodOrderScreen> {
   @override
   void initState() {
     super.initState();
+    final student = ref.read(currentStudentProvider);
+    _roomController.text = student.roomNo;
     _phoneController.text = '9876543210';
     _fetchLiveSpecialFoodMenu();
     _menuTimer = Timer.periodic(const Duration(seconds: 4), (_) => _fetchLiveSpecialFoodMenu());
@@ -35,7 +38,8 @@ class _FoodOrderScreenState extends ConsumerState<FoodOrderScreen> {
   void dispose() {
     _menuTimer?.cancel();
     _phoneController.dispose();
-    _notesController.dispose();
+    _roomController.dispose();
+    _instructionsController.dispose();
     super.dispose();
   }
 
@@ -83,6 +87,15 @@ class _FoodOrderScreenState extends ConsumerState<FoodOrderScreen> {
   void _placeOrder() async {
     final student = ref.read(currentStudentProvider);
     final phone = _phoneController.text.trim();
+    final manualRoom = _roomController.text.trim();
+    final customNotes = _instructionsController.text.trim();
+
+    if (manualRoom.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter delivery room number'), backgroundColor: Colors.redAccent),
+      );
+      return;
+    }
 
     if (phone.isEmpty || phone.length < 10) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -107,8 +120,9 @@ class _FoodOrderScreenState extends ConsumerState<FoodOrderScreen> {
             'studentName': {'stringValue': student.name},
             'registrationNo': {'stringValue': student.registrationNo},
             'rollNo': {'stringValue': student.rollNo},
-            'roomNo': {'stringValue': student.roomNo},
+            'roomNo': {'stringValue': manualRoom},
             'mobileNumber': {'stringValue': phone},
+            'specialNotes': {'stringValue': customNotes},
             'foodItemId': {'stringValue': _selectedItem.id},
             'foodItemName': {'stringValue': _selectedItem.name},
             'foodItemHindi': {'stringValue': _selectedItem.hindiName},
@@ -119,7 +133,6 @@ class _FoodOrderScreenState extends ConsumerState<FoodOrderScreen> {
             'paymentMethod': {'stringValue': 'Pay on Delivery (Cash / Counter)'},
             'status': {'stringValue': 'Pending Approval'},
             'estimatedDeliveryTime': {'stringValue': '30 - 40 Mins'},
-            'specialNotes': {'stringValue': _notesController.text.trim()},
             'orderedAt': {'stringValue': now.toIso8601String()},
             'updatedAt': {'stringValue': now.toIso8601String()},
           }
@@ -149,7 +162,11 @@ class _FoodOrderScreenState extends ConsumerState<FoodOrderScreen> {
                 const SizedBox(height: 2),
                 const Text('Payment Mode: Pay on Delivery (Cash / Counter)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black87)),
                 const SizedBox(height: 6),
-                Text('Delivery to: Room ${student.roomNo}, Hostel 4', style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+                Text('Delivery to: Room $manualRoom, Hostel 4', style: const TextStyle(fontSize: 12, color: Colors.black87, fontWeight: FontWeight.w600)),
+                if (customNotes.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text('Special Mention: "$customNotes"', style: const TextStyle(fontSize: 11.5, color: Color(0xFF1B5E20), fontStyle: FontStyle.italic)),
+                ],
                 const SizedBox(height: 10),
                 Container(
                   padding: const EdgeInsets.all(8),
@@ -213,7 +230,7 @@ class _FoodOrderScreenState extends ConsumerState<FoodOrderScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Student Details Card (Auto Filled)
+          // Student Details Card (Auto Filled + Editable Room + Notes Row)
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -238,6 +255,7 @@ class _FoodOrderScreenState extends ConsumerState<FoodOrderScreen> {
                 Row(
                   children: [
                     Expanded(
+                      flex: 3,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -247,23 +265,60 @@ class _FoodOrderScreenState extends ConsumerState<FoodOrderScreen> {
                       ),
                     ),
                     Expanded(
+                      flex: 2,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Room & Hostel', style: TextStyle(fontSize: 10.5, color: Colors.grey, fontWeight: FontWeight.bold)),
-                          Text('Room ${student.roomNo}, Hostel 4', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          const Text('Hostel', style: TextStyle(fontSize: 10.5, color: Colors.grey, fontWeight: FontWeight.bold)),
+                          const Text('Hostel 4', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                         ],
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
+
+                // Editable Room Number & Mobile Number
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: TextField(
+                        controller: _roomController,
+                        decoration: InputDecoration(
+                          labelText: 'Room Number *',
+                          hintText: 'e.g. 101 / 204B',
+                          prefixIcon: const Icon(Icons.meeting_room, size: 18, color: Color(0xFF1B5E20)),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      flex: 3,
+                      child: TextField(
+                        controller: _phoneController,
+                        keyboardType: TextInputType.phone,
+                        decoration: InputDecoration(
+                          labelText: 'Mobile Number *',
+                          prefixIcon: const Icon(Icons.phone_android, size: 18, color: Color(0xFF1B5E20)),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Special Mention / Custom Instructions Row
                 TextField(
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
+                  controller: _instructionsController,
                   decoration: InputDecoration(
-                    labelText: 'Mobile Number for Delivery Updates',
-                    prefixIcon: const Icon(Icons.phone_android, size: 18),
+                    labelText: 'Special Mention / Cooking Preference (Optional)',
+                    hintText: 'e.g. Extra spicy, less oil, deliver near lift, no onions...',
+                    prefixIcon: const Icon(Icons.note_alt_outlined, size: 18, color: Color(0xFFE65100)),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   ),

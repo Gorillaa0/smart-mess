@@ -124,6 +124,7 @@ export const DashboardPage: React.FC = () => {
                 rollNo: f.rollNo?.stringValue || '',
                 roomNo: f.roomNo?.stringValue || '',
                 mobileNumber: f.mobileNumber?.stringValue || '',
+                specialNotes: f.specialNotes?.stringValue || '',
                 foodItemId: f.foodItemId?.stringValue || '',
                 foodItemName: f.foodItemName?.stringValue || 'Special Item',
                 foodItemHindi: f.foodItemHindi?.stringValue || '',
@@ -565,10 +566,15 @@ export const DashboardPage: React.FC = () => {
                   </div>
                   <div className="flex justify-between text-[11px] text-gray-500">
                     <span>Phone: {order.mobileNumber}</span>
-                    <span className={`font-bold ${order.isPaid ? 'text-emerald-600' : 'text-red-600'}`}>
+                    <span className={`font-bold ${order.isPaid ? 'text-emerald-600' : 'text-amber-700'}`}>
                       {order.isPaid ? '✓ Paid Online' : 'Pay on Delivery'}
                     </span>
                   </div>
+                  {order.specialNotes && (
+                    <div className="pt-1 text-[11px] text-amber-800 italic bg-amber-50/70 px-2 py-0.5 rounded border border-amber-200">
+                      Note: "{order.specialNotes}"
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-between pt-1">
