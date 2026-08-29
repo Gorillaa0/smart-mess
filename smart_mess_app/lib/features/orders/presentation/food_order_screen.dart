@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/h4_students_data.dart';
 import '../../../core/models/special_food_item.dart';
 import '../../../core/router/app_router.dart';
+import '../../../core/services/shared_orders_store.dart';
 
 class FoodOrderScreen extends ConsumerStatefulWidget {
   const FoodOrderScreen({super.key});
@@ -167,34 +168,64 @@ class _FoodOrderScreenState extends ConsumerState<FoodOrderScreen> {
       final orderId = 'ORD_${DateTime.now().millisecondsSinceEpoch}_${student.rollNo}';
       final now = DateTime.now();
 
-      final dio = Dio();
-      await dio.patch(
-        'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/foodOrders/$orderId?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
-        data: {
-          'fields': {
-            'id': {'stringValue': orderId},
-            'studentName': {'stringValue': student.name},
-            'registrationNo': {'stringValue': student.registrationNo},
-            'rollNo': {'stringValue': student.rollNo},
-            'roomNo': {'stringValue': manualRoom},
-            'mobileNumber': {'stringValue': phone},
-            'specialNotes': {'stringValue': customNotes},
-            'foodItemId': {'stringValue': _selectedItem.id},
-            'foodItemName': {'stringValue': _selectedItem.name},
-            'foodItemHindi': {'stringValue': _selectedItem.hindiName},
-            'unitPrice': {'integerValue': _selectedItem.price.toString()},
-            'quantity': {'integerValue': _quantity.toString()},
-            'totalBill': {'integerValue': totalBill.toString()},
-            'isPaid': {'booleanValue': false}, // Offline / Cash on Delivery
-            'paymentMethod': {'stringValue': 'Pay on Delivery (Cash / Counter)'},
-            'status': {'stringValue': 'Pending Approval'},
-            'estimatedDeliveryTime': {'stringValue': '30 - 40 Mins'},
-            'orderedAt': {'stringValue': now.toIso8601String()},
-            'updatedAt': {'stringValue': now.toIso8601String()},
-          }
-        },
-        options: Options(headers: {'Content-Type': 'application/json'}),
+      final newRecord = SharedOrderRecord(
+        id: orderId,
+        studentName: student.name,
+        registrationNo: student.registrationNo,
+        rollNo: student.rollNo,
+        roomNo: manualRoom,
+        mobileNumber: phone,
+        specialNotes: customNotes,
+        foodItemId: _selectedItem.id,
+        foodItemName: _selectedItem.name,
+        foodItemHindi: _selectedItem.hindiName,
+        unitPrice: _selectedItem.price,
+        quantity: _quantity,
+        totalBill: totalBill,
+        isPaid: false,
+        paymentMethod: 'Pay on Delivery (Cash / Counter)',
+        status: 'Pending Approval',
+        cancellationReason: '',
+        estimatedDeliveryTime: '30 - 40 Mins',
+        orderedAt: now.toIso8601String(),
       );
+
+      // Register immediately in global memory
+      ref.read(liveOrdersGlobalProvider.notifier).pushNewOrder(newRecord);
+
+      final dio = Dio();
+      try {
+        await dio.patch(
+          'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/foodOrders/$orderId?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
+          data: {
+            'fields': {
+              'id': {'stringValue': orderId},
+              'studentName': {'stringValue': student.name},
+              'registrationNo': {'stringValue': student.registrationNo},
+              'rollNo': {'stringValue': student.rollNo},
+              'roomNo': {'stringValue': manualRoom},
+              'mobileNumber': {'stringValue': phone},
+              'specialNotes': {'stringValue': customNotes},
+              'foodItemId': {'stringValue': _selectedItem.id},
+              'foodItemName': {'stringValue': _selectedItem.name},
+              'foodItemHindi': {'stringValue': _selectedItem.hindiName},
+              'unitPrice': {'integerValue': _selectedItem.price.toString()},
+              'quantity': {'integerValue': _quantity.toString()},
+              'totalBill': {'integerValue': totalBill.toString()},
+              'isPaid': {'booleanValue': false}, // Offline / Cash on Delivery
+              'paymentMethod': {'stringValue': 'Pay on Delivery (Cash / Counter)'},
+              'status': {'stringValue': 'Pending Approval'},
+              'estimatedDeliveryTime': {'stringValue': '30 - 40 Mins'},
+              'orderedAt': {'stringValue': now.toIso8601String()},
+              'updatedAt': {'stringValue': now.toIso8601String()},
+            }
+          },
+          options: Options(headers: {'Content-Type': 'application/json'}),
+        ).timeout(const Duration(seconds: 4));
+      } catch (_) {}
+
+      // refresh local list
+      _fetchMyRecentOrders();
 
       if (mounted) {
         showDialog(

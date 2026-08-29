@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/special_food_item.dart';
+import '../../../core/services/shared_orders_store.dart';
 
 class ManagerOrdersScreen extends ConsumerStatefulWidget {
   const ManagerOrdersScreen({super.key});
@@ -130,9 +131,42 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
         }
 
         list.sort((a, b) => (b['orderedAt'] ?? '').compareTo(a['orderedAt'] ?? ''));
+        
+        // Also merge local orders
+        final mergedMap = <String, Map<String, dynamic>>{};
+        for (final o in SharedOrdersStore.localOrders) {
+          mergedMap[o.id] = {
+            'id': o.id,
+            'studentName': o.studentName,
+            'registrationNo': o.registrationNo,
+            'rollNo': o.rollNo,
+            'roomNo': o.roomNo,
+            'mobileNumber': o.mobileNumber,
+            'specialNotes': o.specialNotes,
+            'foodItemId': o.foodItemId,
+            'foodItemName': o.foodItemName,
+            'foodItemHindi': o.foodItemHindi,
+            'unitPrice': o.unitPrice,
+            'quantity': o.quantity,
+            'totalBill': o.totalBill,
+            'isPaid': o.isPaid,
+            'paymentMethod': o.paymentMethod,
+            'status': o.status,
+            'cancellationReason': o.cancellationReason,
+            'estimatedDeliveryTime': o.estimatedDeliveryTime,
+            'orderedAt': o.orderedAt,
+          };
+        }
+        for (final o in list) {
+          mergedMap[o['id']] = o;
+        }
+
+        final combinedList = mergedMap.values.toList();
+        combinedList.sort((a, b) => (b['orderedAt'] ?? '').compareTo(a['orderedAt'] ?? ''));
+
         if (mounted) {
           setState(() {
-            _orders = list;
+            _orders = combinedList;
             _isLoading = false;
           });
         }
@@ -140,7 +174,33 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
         if (mounted) setState(() => _isLoading = false);
       }
     } catch (_) {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        final combinedList = SharedOrdersStore.localOrders.map((o) => {
+          'id': o.id,
+          'studentName': o.studentName,
+          'registrationNo': o.registrationNo,
+          'rollNo': o.rollNo,
+          'roomNo': o.roomNo,
+          'mobileNumber': o.mobileNumber,
+          'specialNotes': o.specialNotes,
+          'foodItemId': o.foodItemId,
+          'foodItemName': o.foodItemName,
+          'foodItemHindi': o.foodItemHindi,
+          'unitPrice': o.unitPrice,
+          'quantity': o.quantity,
+          'totalBill': o.totalBill,
+          'isPaid': o.isPaid,
+          'paymentMethod': o.paymentMethod,
+          'status': o.status,
+          'cancellationReason': o.cancellationReason,
+          'estimatedDeliveryTime': o.estimatedDeliveryTime,
+          'orderedAt': o.orderedAt,
+        }).toList();
+        setState(() {
+          _orders = combinedList;
+          _isLoading = false;
+        });
+      }
     }
   }
 
