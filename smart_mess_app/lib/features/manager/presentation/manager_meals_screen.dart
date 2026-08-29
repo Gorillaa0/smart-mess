@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/constants/weekly_menu.dart';
@@ -227,8 +228,36 @@ class _ManagerMealsScreenState extends State<ManagerMealsScreen> {
                   },
                 }).toList();
 
+                final webFormatDays = _menuList.map((d) => {
+                  'id': d.dayEnglish.toLowerCase().substring(0, 3),
+                  'dayEnglish': d.dayEnglish,
+                  'dayHindi': d.dayHindi,
+                  'breakfast': {
+                    'itemsEnglish': d.breakfast.itemsEnglish,
+                    'itemsHindi': d.breakfast.itemsHindi,
+                    'time': d.breakfast.servingTime,
+                    'cutoff': d.breakfast.cutoffTime,
+                    'price': d.breakfast.price,
+                  },
+                  'lunch': {
+                    'itemsEnglish': d.lunch.itemsEnglish,
+                    'itemsHindi': d.lunch.itemsHindi,
+                    'time': d.lunch.servingTime,
+                    'cutoff': d.lunch.cutoffTime,
+                    'price': d.lunch.price,
+                  },
+                  'dinner': {
+                    'itemsEnglish': d.dinner.itemsEnglish,
+                    'itemsHindi': d.dinner.itemsHindi,
+                    'time': d.dinner.servingTime,
+                    'cutoff': d.dinner.cutoffTime,
+                    'price': d.dinner.price,
+                  },
+                }).toList();
+
                 await FirebaseFirestore.instance.collection('settings').doc('weekly_menu').set({
                   'days': daysJson,
+                  'daysJson': jsonEncode(webFormatDays),
                   'updatedAt': DateTime.now().toIso8601String(),
                 }, SetOptions(merge: true));
 

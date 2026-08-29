@@ -223,12 +223,32 @@ export const MealsPage: React.FC = () => {
   const [editingDay, setEditingDay] = useState<WeeklyMenuItem | null>(null);
   const [activeTab, setActiveTab] = useState<'weekly' | 'rules'>('weekly');
 
-  const handleSaveEdit = (e: React.FormEvent<HTMLFormElement>) => {
+  React.useEffect(() => {
+    const fetchCloudMenu = async () => {
+      try {
+        const res = await fetch(
+          'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/settings/weekly_menu?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E'
+        );
+        if (res.ok) {
+          const doc = await res.json();
+          if (doc.fields && doc.fields.daysJson?.stringValue) {
+            const parsed = JSON.parse(doc.fields.daysJson.stringValue);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setWeeklyMenu(parsed);
+            }
+          }
+        }
+      } catch (_) {}
+    };
+    fetchCloudMenu();
+  }, []);
+
+  const handleSaveEdit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!editingDay) return;
     const formData = new FormData(e.currentTarget);
     
-    setWeeklyMenu(prev => prev.map(day => {
+    const updatedMenu = weeklyMenu.map(day => {
       if (day.id === editingDay.id) {
         return {
           ...day,
@@ -256,10 +276,28 @@ export const MealsPage: React.FC = () => {
         };
       }
       return day;
-    }));
+    });
 
+    setWeeklyMenu(updatedMenu);
     toast.success(`Updated menu schedule for ${editingDay.dayEnglish}!`);
     setEditingDay(null);
+
+    // Persist to Cloud Firestore for Flutter app sync
+    try {
+      await fetch(
+        'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/settings/weekly_menu?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fields: {
+              daysJson: { stringValue: JSON.stringify(updatedMenu) },
+              updatedAt: { stringValue: new Date().toISOString() }
+            }
+          })
+        }
+      );
+    } catch (_) {}
   };
 
   return (
