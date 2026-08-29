@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/h4_students_data.dart';
 import '../../../core/constants/weekly_menu.dart';
 import '../../../core/services/auth_service.dart';
-import '../../../core/services/shared_orders_store.dart';
 import '../../attendance/providers/attendance_provider.dart';
 
 class ManagerDashboardScreen extends ConsumerStatefulWidget {
@@ -330,11 +329,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
 
             // 3.1 AI SUGGESTED MOST DEMANDED MEAL & CROWD PEAKS
             _buildMostDemandedFoodCard(context),
-            const SizedBox(height: 18),
-
-            // 3.2 LIVE STUDENT SPECIAL FOOD ORDERS DESK (JUST BELOW MOST DEMANDED FOOD)
-            _buildLiveOrdersDeskCard(context),
-            const SizedBox(height: 20),
+            const SizedBox(height: 22),
 
             // 4. FULL MESS OPERATIONS & CONTROL MODULES (ALL WEB FEATURES)
             Row(
@@ -813,192 +808,6 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                 ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  // 3.2 LIVE STUDENT FAST FOOD & SPECIAL MEAL ORDERS DESK (EXACT MATCH TO WEB DASHBOARD)
-  Widget _buildLiveOrdersDeskCard(BuildContext context) {
-    final allOrders = ref.watch(liveOrdersGlobalProvider);
-    final pendingOrders = allOrders.where((o) => o.status != 'Delivered' && o.status != 'Cancelled').toList();
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFF80CBC4), width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF00695C).withOpacity(0.06),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE0F2F1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(Icons.fastfood, color: Color(0xFF00695C), size: 16),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Special Food Orders Desk',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Color(0xFF00695C)),
-                  ),
-                ],
-              ),
-              GestureDetector(
-                onTap: () => context.push('/manager/orders'),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE0F2F1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF80CBC4)),
-                  ),
-                  child: Text(
-                    '${allOrders.length} Total • Full Desk ➔',
-                    style: const TextStyle(color: Color(0xFF004D40), fontSize: 11, fontWeight: FontWeight.w800),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          if (allOrders.isEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFAFAFA),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade200, style: BorderStyle.solid),
-              ),
-              child: Column(
-                children: [
-                  Icon(Icons.shopping_bag_outlined, color: Colors.grey.shade400, size: 28),
-                  const SizedBox(height: 6),
-                  const Text('No special food orders right now', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
-                  const SizedBox(height: 2),
-                  Text('When students order food items (Egg Roll, Paneer Roll), they will appear here with live accept & cancel actions.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
-                ],
-              ),
-            )
-          else ...[
-            ...allOrders.take(3).map((order) {
-              final isCancelled = order.status == 'Cancelled';
-              final isDelivered = order.status == 'Delivered';
-              final isPreparing = order.status == 'Preparing';
-
-              Color statusBg = Colors.orange.shade50;
-              Color statusBorder = Colors.orange.shade300;
-              Color statusText = Colors.orange.shade900;
-
-              if (isDelivered) {
-                statusBg = Colors.green.shade50;
-                statusBorder = Colors.green.shade300;
-                statusText = Colors.green.shade900;
-              } else if (isPreparing) {
-                statusBg = Colors.blue.shade50;
-                statusBorder = Colors.blue.shade300;
-                statusText = Colors.blue.shade900;
-              } else if (isCancelled) {
-                statusBg = Colors.red.shade50;
-                statusBorder = Colors.red.shade300;
-                statusText = Colors.red.shade900;
-              }
-
-              return Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFBFDFB),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: statusBorder),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          '${order.foodItemName} (x${order.quantity})',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: statusBg,
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: statusBorder),
-                          ),
-                          child: Text(
-                            order.status.toUpperCase(),
-                            style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: statusText),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 3),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          '${order.studentName} • Room ${order.roomNo}',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey.shade800),
-                        ),
-                        Text(
-                          '₹${order.totalBill} • Pay on Delivery',
-                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF004D40)),
-                        ),
-                      ],
-                    ),
-                    if (order.specialNotes.isNotEmpty) ...[
-                      const SizedBox(height: 3),
-                      Text('Note: "${order.specialNotes}"',
-                          style: const TextStyle(fontSize: 10.5, fontStyle: FontStyle.italic, color: Color(0xFFE65100), fontWeight: FontWeight.bold)),
-                    ],
-                    if (isCancelled && order.cancellationReason.isNotEmpty) ...[
-                      const SizedBox(height: 3),
-                      Text('Reason: ${order.cancellationReason}',
-                          style: TextStyle(fontSize: 10.5, color: Colors.red.shade900, fontWeight: FontWeight.bold)),
-                    ],
-                  ],
-                ),
-              );
-            }),
-            const SizedBox(height: 4),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF00695C),
-                  side: const BorderSide(color: Color(0xFF80CBC4)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                icon: const Icon(Icons.receipt_long, size: 16),
-                label: const Text('MANAGE ALL ORDERS & DISPATCH', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5)),
-                onPressed: () => context.push('/manager/orders'),
-              ),
-            ),
-          ],
         ],
       ),
     );
