@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../core/constants/h4_students_data.dart';
 
 class ManagerMessOffsScreen extends ConsumerStatefulWidget {
   const ManagerMessOffsScreen({super.key});
