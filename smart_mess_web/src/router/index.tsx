@@ -15,6 +15,8 @@ import { HostelsPage } from '../pages/admin/HostelsPage';
 import { EventsPage } from '../pages/admin/EventsPage';
 import { AdminComplaintsPage } from '../pages/admin/AdminComplaintsPage';
 import { OrdersPage } from '../pages/manager/OrdersPage';
+import { NotificationsPage } from '../pages/manager/NotificationsPage';
+import { WastagePage, FoodPrepPage, SystemAnalyticsPage } from '../pages/manager/OtherPages';
 
 export const router = createBrowserRouter([
   {
