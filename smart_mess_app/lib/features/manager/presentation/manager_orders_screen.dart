@@ -573,7 +573,41 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
 
   @override
   Widget build(BuildContext context) {
-    final filtered = _orders.where((o) {
+    final liveGlobalOrders = ref.watch(liveOrdersGlobalProvider);
+    
+    // Merge liveGlobalOrders with _orders
+    final mergedMap = <String, Map<String, dynamic>>{};
+    for (final o in liveGlobalOrders) {
+      mergedMap[o.id] = {
+        'id': o.id,
+        'studentName': o.studentName,
+        'registrationNo': o.registrationNo,
+        'rollNo': o.rollNo,
+        'roomNo': o.roomNo,
+        'mobileNumber': o.mobileNumber,
+        'specialNotes': o.specialNotes,
+        'foodItemId': o.foodItemId,
+        'foodItemName': o.foodItemName,
+        'foodItemHindi': o.foodItemHindi,
+        'unitPrice': o.unitPrice,
+        'quantity': o.quantity,
+        'totalBill': o.totalBill,
+        'isPaid': o.isPaid,
+        'paymentMethod': o.paymentMethod,
+        'status': o.status,
+        'cancellationReason': o.cancellationReason,
+        'estimatedDeliveryTime': o.estimatedDeliveryTime,
+        'orderedAt': o.orderedAt,
+      };
+    }
+    for (final o in _orders) {
+      mergedMap[o['id']] = o;
+    }
+
+    final allOrdersList = mergedMap.values.toList();
+    allOrdersList.sort((a, b) => (b['orderedAt'] ?? '').compareTo(a['orderedAt'] ?? ''));
+
+    final filtered = allOrdersList.where((o) {
       if (_selectedStatus == 'All') return true;
       return (o['status'] ?? '').toString().toLowerCase() == _selectedStatus.toLowerCase();
     }).toList();

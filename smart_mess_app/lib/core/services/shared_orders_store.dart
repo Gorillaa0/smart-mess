@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -127,14 +128,69 @@ final liveOrdersGlobalProvider = StateNotifierProvider<LiveOrdersGlobalNotifier,
 
 class LiveOrdersGlobalNotifier extends StateNotifier<List<SharedOrderRecord>> {
   Timer? _timer;
+  StreamSubscription? _firestoreSub;
 
   LiveOrdersGlobalNotifier() : super(SharedOrdersStore.localOrders) {
+    _initFirestoreListener();
     syncLiveOrders();
-    _timer = Timer.periodic(const Duration(seconds: 3), (_) => syncLiveOrders());
+    _timer = Timer.periodic(const Duration(seconds: 4), (_) => syncLiveOrders());
+  }
+
+  void _initFirestoreListener() {
+    try {
+      _firestoreSub = FirebaseFirestore.instance
+          .collection('foodOrders')
+          .orderBy('orderedAt', descending: true)
+          .snapshots()
+          .listen((snapshot) {
+        final list = <SharedOrderRecord>[];
+        for (final doc in snapshot.docs) {
+          final d = doc.data();
+          final record = SharedOrderRecord(
+            id: doc.id,
+            studentName: d['studentName']?.toString() ?? 'Student',
+            registrationNo: d['registrationNo']?.toString() ?? '',
+            rollNo: d['rollNo']?.toString() ?? '',
+            roomNo: d['roomNo']?.toString() ?? '101',
+            mobileNumber: d['mobileNumber']?.toString() ?? '',
+            specialNotes: d['specialNotes']?.toString() ?? '',
+            foodItemId: d['foodItemId']?.toString() ?? '',
+            foodItemName: d['foodItemName']?.toString() ?? 'Special Item',
+            foodItemHindi: d['foodItemHindi']?.toString() ?? '',
+            unitPrice: int.tryParse(d['unitPrice']?.toString() ?? '0') ?? 0,
+            quantity: int.tryParse(d['quantity']?.toString() ?? '1') ?? 1,
+            totalBill: int.tryParse(d['totalBill']?.toString() ?? '0') ?? 0,
+            isPaid: d['isPaid'] == true,
+            paymentMethod: d['paymentMethod']?.toString() ?? 'Pay on Delivery',
+            status: d['status']?.toString() ?? 'Pending Approval',
+            cancellationReason: d['cancellationReason']?.toString() ?? '',
+            estimatedDeliveryTime: d['estimatedDeliveryTime']?.toString() ?? '30 - 40 Mins',
+            orderedAt: d['orderedAt']?.toString() ?? DateTime.now().toIso8601String(),
+          );
+          list.add(record);
+          SharedOrdersStore.addOrder(record);
+        }
+
+        final mergedMap = <String, SharedOrderRecord>{};
+        for (final o in SharedOrdersStore.localOrders) {
+          mergedMap[o.id] = o;
+        }
+        for (final o in list) {
+          mergedMap[o.id] = o;
+        }
+
+        final combined = mergedMap.values.toList();
+        combined.sort((a, b) => b.orderedAt.compareTo(a.orderedAt));
+        state = combined;
+      }, onError: (e) {
+        // Fallback to REST polling
+      });
+    } catch (_) {}
   }
 
   @override
   void dispose() {
+    _firestoreSub?.cancel();
     _timer?.cancel();
     super.dispose();
   }

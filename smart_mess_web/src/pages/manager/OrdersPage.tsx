@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingBag, Clock, CheckCircle2, Phone, User, Check, AlertCircle, RefreshCw, Edit3, Plus, Utensils, Trash2, MessageSquare } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 
 interface FoodOrder {
   id: string;
@@ -171,31 +173,85 @@ export const OrdersPage: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchOrders();
+    // 1. Real-time Firestore SDK listener
+    let unsubscribe = () => {};
+    try {
+      const q = query(collection(db, 'foodOrders'), orderBy('orderedAt', 'desc'));
+      unsubscribe = onSnapshot(q, (snapshot) => {
+        const list: FoodOrder[] = [];
+        snapshot.forEach((doc) => {
+          const d = doc.data();
+          list.push({
+            id: doc.id,
+            studentName: d.studentName || 'Student',
+            registrationNo: d.registrationNo || '',
+            rollNo: d.rollNo || '',
+            roomNo: d.roomNo || '101',
+            mobileNumber: d.mobileNumber || '',
+            specialNotes: d.specialNotes || '',
+            foodItemId: d.foodItemId || '',
+            foodItemName: d.foodItemName || 'Special Item',
+            foodItemHindi: d.foodItemHindi || '',
+            unitPrice: Number(d.unitPrice) || 0,
+            quantity: Number(d.quantity) || 1,
+            totalBill: Number(d.totalBill) || 0,
+            isPaid: Boolean(d.isPaid),
+            paymentMethod: d.paymentMethod || 'Pay on Delivery',
+            status: d.status || 'Pending Approval',
+            cancellationReason: d.cancellationReason || '',
+            estimatedDeliveryTime: d.estimatedDeliveryTime || '30 - 40 Mins',
+            orderedAt: d.orderedAt || new Date().toISOString(),
+          });
+        });
+        setOrders(list);
+        setLoading(false);
+      }, (err) => {
+        console.warn('Firestore snapshot error, using polling fallback:', err);
+        fetchOrders();
+      });
+    } catch (_) {
+      fetchOrders();
+    }
+
+    // Menu items
     fetchMenuItems();
     const interval = setInterval(() => {
       fetchOrders();
       fetchMenuItems();
-    }, 3000);
-    return () => clearInterval(interval);
+    }, 4000);
+
+    return () => {
+      unsubscribe();
+      clearInterval(interval);
+    };
   }, []);
 
   const handleUpdateStatus = async (orderId: string, newStatus: string, estTime?: string) => {
     try {
-      await fetch(
-        `https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/foodOrders/${orderId}?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E&updateMask.fieldPaths=status&updateMask.fieldPaths=estimatedDeliveryTime&updateMask.fieldPaths=updatedAt`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            fields: {
-              status: { stringValue: newStatus },
-              estimatedDeliveryTime: { stringValue: estTime || '30 - 40 Mins' },
-              updatedAt: { stringValue: new Date().toISOString() }
-            }
-          })
-        }
-      );
+      // 1. Update via Firestore SDK
+      try {
+        await updateDoc(doc(db, 'foodOrders', orderId), {
+          status: newStatus,
+          estimatedDeliveryTime: estTime || '30 - 40 Mins',
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (_) {
+        // Fallback to REST
+        await fetch(
+          `https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/foodOrders/${orderId}?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E&updateMask.fieldPaths=status&updateMask.fieldPaths=estimatedDeliveryTime&updateMask.fieldPaths=updatedAt`,
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fields: {
+                status: { stringValue: newStatus },
+                estimatedDeliveryTime: { stringValue: estTime || '30 - 40 Mins' },
+                updatedAt: { stringValue: new Date().toISOString() }
+              }
+            })
+          }
+        );
+      }
 
       toast.success(`Order marked as "${newStatus}"!`);
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus as any, estimatedDeliveryTime: estTime || o.estimatedDeliveryTime } : o));
@@ -207,20 +263,30 @@ export const OrdersPage: React.FC = () => {
 
   const handleCancelOrder = async (orderId: string, reason: string) => {
     try {
-      await fetch(
-        `https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/foodOrders/${orderId}?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E&updateMask.fieldPaths=status&updateMask.fieldPaths=cancellationReason&updateMask.fieldPaths=updatedAt`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            fields: {
-              status: { stringValue: 'Cancelled' },
-              cancellationReason: { stringValue: reason },
-              updatedAt: { stringValue: new Date().toISOString() }
-            }
-          })
-        }
-      );
+      // 1. Update via Firestore SDK
+      try {
+        await updateDoc(doc(db, 'foodOrders', orderId), {
+          status: 'Cancelled',
+          cancellationReason: reason,
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (_) {
+        // Fallback to REST
+        await fetch(
+          `https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/foodOrders/${orderId}?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E&updateMask.fieldPaths=status&updateMask.fieldPaths=cancellationReason&updateMask.fieldPaths=updatedAt`,
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fields: {
+                status: { stringValue: 'Cancelled' },
+                cancellationReason: { stringValue: reason },
+                updatedAt: { stringValue: new Date().toISOString() }
+              }
+            })
+          }
+        );
+      }
 
       toast.error(`Order cancelled and reason sent to student!`);
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'Cancelled' as any, cancellationReason: reason } : o));

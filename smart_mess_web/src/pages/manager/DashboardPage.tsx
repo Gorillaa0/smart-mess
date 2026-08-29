@@ -4,6 +4,8 @@ import { useAuthStore } from '../../store/authStore';
 import { H4_STUDENTS_LIST } from '../../data/h4StudentsData';
 import { CheckCircle2, TrendingUp, Users, CalendarOff, AlertCircle, ChefHat, Sparkles, Utensils, MessageSquare, QrCode, Flame, Award, Star, ShoppingBag, Phone, Clock, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 
 export const DashboardPage: React.FC = () => {
   const { user } = useAuthStore();
@@ -146,34 +148,84 @@ export const DashboardPage: React.FC = () => {
     } catch (_) {}
   };
 
+  useEffect(() => {
+    // 1. Real-time Firestore SDK listener for live food orders
+    let unsubOrders = () => {};
+    try {
+      const q = query(collection(db, 'foodOrders'), orderBy('orderedAt', 'desc'));
+      unsubOrders = onSnapshot(q, (snapshot) => {
+        const list: any[] = [];
+        snapshot.forEach((doc) => {
+          const d = doc.data();
+          list.push({
+            id: doc.id,
+            studentName: d.studentName || 'Student',
+            registrationNo: d.registrationNo || '',
+            rollNo: d.rollNo || '',
+            roomNo: d.roomNo || '101',
+            mobileNumber: d.mobileNumber || '',
+            specialNotes: d.specialNotes || '',
+            foodItemId: d.foodItemId || '',
+            foodItemName: d.foodItemName || 'Special Item',
+            foodItemHindi: d.foodItemHindi || '',
+            unitPrice: Number(d.unitPrice) || 0,
+            quantity: Number(d.quantity) || 1,
+            totalBill: Number(d.totalBill) || 0,
+            isPaid: Boolean(d.isPaid),
+            paymentMethod: d.paymentMethod || 'Pay on Delivery',
+            status: d.status || 'Pending Approval',
+            estimatedDeliveryTime: d.estimatedDeliveryTime || '30 - 40 Mins',
+            orderedAt: d.orderedAt || new Date().toISOString(),
+          });
+        });
+        setLiveOrders(list);
+      }, () => {
+        fetchLiveCounts();
+      });
+    } catch (_) {
+      fetchLiveCounts();
+    }
+
+    fetchLiveCounts();
+    const interval = setInterval(fetchLiveCounts, 4000);
+
+    return () => {
+      unsubOrders();
+      clearInterval(interval);
+    };
+  }, []);
+
   const handleUpdateOrderStatus = async (orderId: string, newStatus: string, estTime: string = '30 - 40 Mins') => {
     try {
-      await fetch(
-        `https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/foodOrders/${orderId}?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E&updateMask.fieldPaths=status&updateMask.fieldPaths=estimatedDeliveryTime&updateMask.fieldPaths=updatedAt`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            fields: {
-              status: { stringValue: newStatus },
-              estimatedDeliveryTime: { stringValue: estTime },
-              updatedAt: { stringValue: new Date().toISOString() }
-            }
-          })
-        }
-      );
+      try {
+        await updateDoc(doc(db, 'foodOrders', orderId), {
+          status: newStatus,
+          estimatedDeliveryTime: estTime,
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (_) {
+        await fetch(
+          `https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/foodOrders/${orderId}?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E&updateMask.fieldPaths=status&updateMask.fieldPaths=estimatedDeliveryTime&updateMask.fieldPaths=updatedAt`,
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fields: {
+                status: { stringValue: newStatus },
+                estimatedDeliveryTime: { stringValue: estTime },
+                updatedAt: { stringValue: new Date().toISOString() }
+              }
+            })
+          }
+        );
+      }
+
       toast.success(`Order marked as "${newStatus}"!`);
       setLiveOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus, estimatedDeliveryTime: estTime } : o));
     } catch (_) {
       toast.error('Failed to update order status');
     }
   };
-
-  useEffect(() => {
-    fetchLiveCounts();
-    const interval = setInterval(fetchLiveCounts, 3000);
-    return () => clearInterval(interval);
-  }, []);
 
   const predictedDemand = Math.max(0, totalActiveStudents - liveMessOffCount);
   const recommendedCooking = Math.round(predictedDemand * 1.03);

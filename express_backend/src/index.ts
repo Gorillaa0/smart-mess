@@ -13,6 +13,7 @@ import wastageRoutes from './routes/wastage';
 import billingRoutes from './routes/billing';
 import notificationsRoutes from './routes/notifications';
 import eventsRoutes from './routes/events';
+import ordersRoutes from './routes/orders';
 
 // Initialize Firebase Admin SDK
 const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || './service_account.json';
@@ -52,6 +53,7 @@ app.use('/wastage', wastageRoutes);
 app.use('/billing', billingRoutes);
 app.use('/notifications', notificationsRoutes);
 app.use('/events', eventsRoutes);
+app.use('/orders', ordersRoutes);
 
 app.use((req, res) => res.status(404).json({ error: `Route ${req.method} ${req.path} not found` }));
 
