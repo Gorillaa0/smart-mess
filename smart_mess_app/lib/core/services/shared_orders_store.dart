@@ -137,18 +137,24 @@ final liveOrdersGlobalProvider = StateNotifierProvider<LiveOrdersGlobalNotifier,
 
 class LiveOrdersGlobalNotifier extends StateNotifier<List<SharedOrderRecord>> {
   StreamSubscription? _firestoreSub;
+  Timer? _fallbackTimer;
+  bool _streamActive = false;
 
   LiveOrdersGlobalNotifier() : super(SharedOrdersStore.localOrders) {
     _initFirestoreListener();
   }
 
   void _initFirestoreListener() {
+    _firestoreSub?.cancel();
+    _streamActive = false;
     try {
       _firestoreSub = FirebaseFirestore.instance
           .collection('foodOrders')
           .orderBy('orderedAt', descending: true)
           .snapshots()
           .listen((snapshot) {
+        _streamActive = true;
+        _fallbackTimer?.cancel(); // Stream is live, no need for polling fallback
         final list = <SharedOrderRecord>[];
         for (final doc in snapshot.docs) {
           final d = doc.data();
@@ -179,17 +185,35 @@ class LiveOrdersGlobalNotifier extends StateNotifier<List<SharedOrderRecord>> {
         SharedOrdersStore.replaceAll(list);
         list.sort((a, b) => b.orderedAt.compareTo(a.orderedAt));
         state = list;
-      }, onError: (e) {
-        syncLiveOrders();
+      }, onError: (_) {
+        _streamActive = false;
+        // Stream failed — start periodic REST fallback every 30s until stream recovers
+        _startFallbackPolling();
+        // Also attempt to reconnect the stream after 10s
+        Future.delayed(const Duration(seconds: 10), () {
+          if (!_streamActive) _initFirestoreListener();
+        });
       });
     } catch (_) {
-      syncLiveOrders();
+      _streamActive = false;
+      _startFallbackPolling();
     }
+  }
+
+  void _startFallbackPolling() {
+    _fallbackTimer?.cancel();
+    // Do an immediate sync first
+    syncLiveOrders();
+    // Then poll every 30s as a fallback (not aggressive — avoids 429 quota errors)
+    _fallbackTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (!_streamActive) syncLiveOrders();
+    });
   }
 
   @override
   void dispose() {
     _firestoreSub?.cancel();
+    _fallbackTimer?.cancel();
     super.dispose();
   }
 

@@ -16,24 +16,23 @@ class ManagerOrdersScreen extends ConsumerStatefulWidget {
 class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   String _selectedStatus = 'All';
-  List<Map<String, dynamic>> _orders = [];
   List<SpecialFoodItem> _menuItems = kDefaultSpecialFoodMenu;
-  bool _isLoading = true;
   bool _isMenuLoading = false;
-  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _fetchOrders();
     _fetchMenuItems();
+    // Trigger a fresh Firestore sync immediately when the manager opens this screen
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(liveOrdersGlobalProvider.notifier).syncLiveOrders();
+    });
   }
 
   @override
   void dispose() {
     _tabController.dispose();
-    _timer?.cancel();
     super.dispose();
   }
 
@@ -79,128 +78,6 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
     }
   }
 
-  Future<void> _fetchOrders({bool silent = false}) async {
-    if (!silent && mounted) setState(() => _isLoading = true);
-    try {
-      final dio = Dio();
-      final res = await dio.post(
-        'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents:runQuery?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
-        data: {
-          'structuredQuery': {
-            'from': [{'collectionId': 'foodOrders'}]
-          }
-        },
-        options: Options(headers: {'Content-Type': 'application/json'}),
-      ).timeout(const Duration(seconds: 4));
-
-      if (res.statusCode == 200 && res.data is List) {
-        final List data = res.data;
-        final list = <Map<String, dynamic>>[];
-
-        for (final item in data) {
-          if (item is Map && item['document'] != null) {
-            final doc = item['document'] as Map;
-            final fields = (doc['fields'] as Map?) ?? {};
-            final docName = (doc['name'] as String? ?? '').split('/').isNotEmpty ? (doc['name'] as String? ?? '').split('/').last : '';
-
-            list.add({
-              'id': fields['id']?['stringValue'] ?? docName,
-              'studentName': fields['studentName']?['stringValue'] ?? 'Student',
-              'registrationNo': fields['registrationNo']?['stringValue'] ?? '',
-              'rollNo': fields['rollNo']?['stringValue'] ?? '',
-              'roomNo': fields['roomNo']?['stringValue'] ?? '101',
-              'mobileNumber': fields['mobileNumber']?['stringValue'] ?? '',
-              'specialNotes': fields['specialNotes']?['stringValue'] ?? '',
-              'foodItemId': fields['foodItemId']?['stringValue'] ?? '',
-              'foodItemName': fields['foodItemName']?['stringValue'] ?? 'Special Item',
-              'foodItemHindi': fields['foodItemHindi']?['stringValue'] ?? '',
-              'unitPrice': int.tryParse(fields['unitPrice']?['integerValue'] ?? '0') ?? 0,
-              'quantity': int.tryParse(fields['quantity']?['integerValue'] ?? '1') ?? 1,
-              'totalBill': int.tryParse(fields['totalBill']?['integerValue'] ?? '0') ?? 0,
-              'isPaid': fields['isPaid']?['booleanValue'] ?? false,
-              'paymentMethod': fields['paymentMethod']?['stringValue'] ?? 'Pay on Delivery',
-              'status': fields['status']?['stringValue'] ?? 'Pending Approval',
-              'cancellationReason': fields['cancellationReason']?['stringValue'] ?? '',
-              'estimatedDeliveryTime': fields['estimatedDeliveryTime']?['stringValue'] ?? '30 - 40 Mins',
-              'orderedAt': fields['orderedAt']?['stringValue'] ?? '',
-            });
-          }
-        }
-
-        list.sort((a, b) => (b['orderedAt'] ?? '').compareTo(a['orderedAt'] ?? ''));
-        
-        // Also merge local orders
-        final mergedMap = <String, Map<String, dynamic>>{};
-        for (final o in SharedOrdersStore.localOrders) {
-          mergedMap[o.id] = {
-            'id': o.id,
-            'studentName': o.studentName,
-            'registrationNo': o.registrationNo,
-            'rollNo': o.rollNo,
-            'roomNo': o.roomNo,
-            'mobileNumber': o.mobileNumber,
-            'specialNotes': o.specialNotes,
-            'foodItemId': o.foodItemId,
-            'foodItemName': o.foodItemName,
-            'foodItemHindi': o.foodItemHindi,
-            'unitPrice': o.unitPrice,
-            'quantity': o.quantity,
-            'totalBill': o.totalBill,
-            'isPaid': o.isPaid,
-            'paymentMethod': o.paymentMethod,
-            'status': o.status,
-            'cancellationReason': o.cancellationReason,
-            'estimatedDeliveryTime': o.estimatedDeliveryTime,
-            'orderedAt': o.orderedAt,
-          };
-        }
-        for (final o in list) {
-          mergedMap[o['id']] = o;
-        }
-
-        final combinedList = mergedMap.values.toList();
-        combinedList.sort((a, b) => (b['orderedAt'] ?? '').compareTo(a['orderedAt'] ?? ''));
-
-        if (mounted) {
-          setState(() {
-            _orders = combinedList;
-            _isLoading = false;
-          });
-        }
-      } else {
-        if (mounted) setState(() => _isLoading = false);
-      }
-    } catch (_) {
-      if (mounted) {
-        final combinedList = SharedOrdersStore.localOrders.map((o) => {
-          'id': o.id,
-          'studentName': o.studentName,
-          'registrationNo': o.registrationNo,
-          'rollNo': o.rollNo,
-          'roomNo': o.roomNo,
-          'mobileNumber': o.mobileNumber,
-          'specialNotes': o.specialNotes,
-          'foodItemId': o.foodItemId,
-          'foodItemName': o.foodItemName,
-          'foodItemHindi': o.foodItemHindi,
-          'unitPrice': o.unitPrice,
-          'quantity': o.quantity,
-          'totalBill': o.totalBill,
-          'isPaid': o.isPaid,
-          'paymentMethod': o.paymentMethod,
-          'status': o.status,
-          'cancellationReason': o.cancellationReason,
-          'estimatedDeliveryTime': o.estimatedDeliveryTime,
-          'orderedAt': o.orderedAt,
-        }).toList();
-        setState(() {
-          _orders = combinedList;
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
   Future<void> _updateOrderStatus(BuildContext context, String orderId, String newStatus, String deliveryTime) async {
     ref.read(liveOrdersGlobalProvider.notifier).updateStatus(orderId, newStatus, deliveryTime: deliveryTime);
 
@@ -226,7 +103,7 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
         ).timeout(const Duration(seconds: 3));
       }
 
-      _fetchOrders(silent: true);
+      ref.read(liveOrdersGlobalProvider.notifier).syncLiveOrders();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -270,7 +147,7 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
         ).timeout(const Duration(seconds: 3));
       }
 
-      _fetchOrders(silent: true);
+      ref.read(liveOrdersGlobalProvider.notifier).syncLiveOrders();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -632,7 +509,7 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
-              _fetchOrders();
+              ref.read(liveOrdersGlobalProvider.notifier).syncLiveOrders();
               _fetchMenuItems();
             },
           ),
@@ -664,7 +541,7 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
                   child: Row(
                     children: ['All', 'Pending Approval', 'Preparing', 'Delivered'].map((st) {
                       final isSelected = _selectedStatus == st;
-                      final count = st == 'All' ? _orders.length : _orders.where((o) => (o['status'] ?? '').toString().toLowerCase() == st.toLowerCase()).length;
+                      final count = st == 'All' ? allOrdersList.length : allOrdersList.where((o) => (o['status'] ?? '').toString().toLowerCase() == st.toLowerCase()).length;
                       return Padding(
                         padding: const EdgeInsets.only(right: 8),
                         child: ChoiceChip(
@@ -689,8 +566,22 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
               const Divider(height: 1),
 
               Expanded(
-                child: _isLoading
-                    ? const Center(child: CircularProgressIndicator(color: Color(0xFF1B5E20)))
+                child: liveGlobalOrders.isEmpty && SharedOrdersStore.localOrders.isEmpty
+                    ? filtered.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.soup_kitchen_outlined, size: 64, color: Colors.green.shade300),
+                                const SizedBox(height: 12),
+                                Text('No food orders matching "$_selectedStatus"',
+                                    style: TextStyle(color: Colors.grey.shade700, fontSize: 14, fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 4),
+                                Text('Orders placed by students will arrive here in real time', style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                              ],
+                            ),
+                          )
+                        : const SizedBox.shrink()
                     : filtered.isEmpty
                         ? Center(
                             child: Column(
@@ -706,7 +597,7 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
                             ),
                           )
                         : RefreshIndicator(
-                            onRefresh: _fetchOrders,
+                            onRefresh: () => ref.read(liveOrdersGlobalProvider.notifier).syncLiveOrders(),
                             child: ListView.builder(
                               padding: const EdgeInsets.all(16),
                               itemCount: filtered.length,
