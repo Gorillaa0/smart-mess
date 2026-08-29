@@ -215,14 +215,9 @@ export const OrdersPage: React.FC = () => {
 
     // Menu items
     fetchMenuItems();
-    const interval = setInterval(() => {
-      fetchOrders();
-      fetchMenuItems();
-    }, 4000);
 
     return () => {
       unsubscribe();
-      clearInterval(interval);
     };
   }, []);
 

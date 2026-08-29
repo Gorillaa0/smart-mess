@@ -110,6 +110,15 @@ class SharedOrdersStore {
     _inMemoryOrders.insert(0, order);
   }
 
+  static void replaceAll(List<SharedOrderRecord> orders) {
+    _inMemoryOrders.clear();
+    _inMemoryOrders.addAll(orders);
+  }
+
+  static void clearAll() {
+    _inMemoryOrders.clear();
+  }
+
   static void updateOrderStatus(String orderId, String newStatus, {String? cancellationReason, String? deliveryTime}) {
     final idx = _inMemoryOrders.indexWhere((o) => o.id == orderId);
     if (idx != -1) {
@@ -127,13 +136,10 @@ final liveOrdersGlobalProvider = StateNotifierProvider<LiveOrdersGlobalNotifier,
 });
 
 class LiveOrdersGlobalNotifier extends StateNotifier<List<SharedOrderRecord>> {
-  Timer? _timer;
   StreamSubscription? _firestoreSub;
 
   LiveOrdersGlobalNotifier() : super(SharedOrdersStore.localOrders) {
     _initFirestoreListener();
-    syncLiveOrders();
-    _timer = Timer.periodic(const Duration(seconds: 4), (_) => syncLiveOrders());
   }
 
   void _initFirestoreListener() {
@@ -168,30 +174,22 @@ class LiveOrdersGlobalNotifier extends StateNotifier<List<SharedOrderRecord>> {
             orderedAt: d['orderedAt']?.toString() ?? DateTime.now().toIso8601String(),
           );
           list.add(record);
-          SharedOrdersStore.addOrder(record);
         }
 
-        final mergedMap = <String, SharedOrderRecord>{};
-        for (final o in SharedOrdersStore.localOrders) {
-          mergedMap[o.id] = o;
-        }
-        for (final o in list) {
-          mergedMap[o.id] = o;
-        }
-
-        final combined = mergedMap.values.toList();
-        combined.sort((a, b) => b.orderedAt.compareTo(a.orderedAt));
-        state = combined;
+        SharedOrdersStore.replaceAll(list);
+        list.sort((a, b) => b.orderedAt.compareTo(a.orderedAt));
+        state = list;
       }, onError: (e) {
-        // Fallback to REST polling
+        syncLiveOrders();
       });
-    } catch (_) {}
+    } catch (_) {
+      syncLiveOrders();
+    }
   }
 
   @override
   void dispose() {
     _firestoreSub?.cancel();
-    _timer?.cancel();
     super.dispose();
   }
 
@@ -219,26 +217,14 @@ class LiveOrdersGlobalNotifier extends StateNotifier<List<SharedOrderRecord>> {
             final docName = (doc['name'] as String? ?? '').split('/').last;
             final record = SharedOrderRecord.fromFirestoreJson(Map<String, dynamic>.from(fields), docName);
             list.add(record);
-            SharedOrdersStore.addOrder(record);
           }
         }
 
-        // Merge with local cache
-        final mergedMap = <String, SharedOrderRecord>{};
-        for (final o in SharedOrdersStore.localOrders) {
-          mergedMap[o.id] = o;
-        }
-        for (final o in list) {
-          mergedMap[o.id] = o;
-        }
-
-        final combined = mergedMap.values.toList();
-        combined.sort((a, b) => b.orderedAt.compareTo(a.orderedAt));
-        state = combined;
+        SharedOrdersStore.replaceAll(list);
+        list.sort((a, b) => b.orderedAt.compareTo(a.orderedAt));
+        state = list;
       }
-    } catch (_) {
-      state = SharedOrdersStore.localOrders;
-    }
+    } catch (_) {}
   }
 
   void pushNewOrder(SharedOrderRecord order) {
@@ -249,5 +235,10 @@ class LiveOrdersGlobalNotifier extends StateNotifier<List<SharedOrderRecord>> {
   void updateStatus(String orderId, String newStatus, {String? cancellationReason, String? deliveryTime}) {
     SharedOrdersStore.updateOrderStatus(orderId, newStatus, cancellationReason: cancellationReason, deliveryTime: deliveryTime);
     state = SharedOrdersStore.localOrders;
+  }
+
+  void clearOrders() {
+    SharedOrdersStore.clearAll();
+    state = [];
   }
 }

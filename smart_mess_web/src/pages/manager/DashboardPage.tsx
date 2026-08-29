@@ -187,11 +187,9 @@ export const DashboardPage: React.FC = () => {
     }
 
     fetchLiveCounts();
-    const interval = setInterval(fetchLiveCounts, 4000);
 
     return () => {
       unsubOrders();
-      clearInterval(interval);
     };
   }, []);
 
