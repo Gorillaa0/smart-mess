@@ -324,6 +324,10 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
 
             // 3. LIVE MEAL ATTENDANCE CARD (REAL-TIME SCANS)
             _buildLiveAttendanceCard(context, todayScansCount, totalStudents),
+            const SizedBox(height: 18),
+
+            // 3.1 AI SUGGESTED MOST DEMANDED MEAL & CROWD PEAKS
+            _buildMostDemandedFoodCard(context),
             const SizedBox(height: 20),
 
             // 4. FULL MESS OPERATIONS & CONTROL MODULES (ALL WEB FEATURES)
@@ -555,6 +559,183 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
             children: [
               Text('${(ratio * 100).toStringAsFixed(1)}% Present Today', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20))),
               Text('${totalStudents - todayScansCount} Remaining', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 3.1 AI SUGGESTED MOST DEMANDED FOOD CARD (CROWD & SCAN ANALYSIS)
+  Widget _buildMostDemandedFoodCard(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFFFB74D), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.amber.withOpacity(0.06),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF3E0),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.local_fire_department, color: Color(0xFFE65100), size: 18),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Most Demanded Meal & Crowd Analysis',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5, color: Color(0xFFE65100)),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF3E0),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFFFCC80)),
+                ),
+                child: const Text('ML Suggested', style: TextStyle(color: Color(0xFFE65100), fontSize: 10.5, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Top Pick Hero Box
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFFF8E1), Color(0xFFFFECB3)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFFFD54F)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(color: Colors.amber.withOpacity(0.2), blurRadius: 4, offset: const Offset(0, 2)),
+                    ],
+                  ),
+                  child: const Icon(Icons.restaurant, color: Color(0xFFE65100), size: 24),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Sunday Lunch: Special Feast',
+                            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5, color: Color(0xFFBF360C)),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(color: const Color(0xFFE65100), borderRadius: BorderRadius.circular(6)),
+                            child: const Text('98.2% Turnout', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      const Text(
+                        'Pulao, Chicken (2 pcs) / Mushroom (4 pcs), Sweet, Salad',
+                        style: TextStyle(fontSize: 11.5, color: Colors.black87, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Peak historical scans (110 / 112 students) with lowest mess-offs (<2%).',
+                        style: TextStyle(fontSize: 10.5, color: Colors.brown.shade700),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Secondary Ranked Highlights
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9FBE7),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFDCE775)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.star, color: Color(0xFF827717), size: 14),
+                          SizedBox(width: 4),
+                          Text('2nd: Wednesday Dinner', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5, color: Color(0xFF827717))),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      const Text('Paneer Butter / Chicken Tadka', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Colors.black87)),
+                      const SizedBox(height: 2),
+                      Text('96.4% turnout • 108 scans', style: TextStyle(fontSize: 9.5, color: Colors.grey.shade700)),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3E5F5),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFCE93D8)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.star_half, color: Color(0xFF6A1B9A), size: 14),
+                          SizedBox(width: 4),
+                          Text('3rd: Saturday Breakfast', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5, color: Color(0xFF6A1B9A))),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      const Text('Chole Bhature & Pickle', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Colors.black87)),
+                      const SizedBox(height: 2),
+                      Text('93.8% turnout • 105 scans', style: TextStyle(fontSize: 9.5, color: Colors.grey.shade700)),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ],

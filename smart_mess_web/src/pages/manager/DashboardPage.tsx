@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { H4_STUDENTS_LIST } from '../../data/h4StudentsData';
-import { CheckCircle2, TrendingUp, Users, CalendarOff, AlertCircle, ChefHat, Sparkles, Utensils, MessageSquare, QrCode } from 'lucide-react';
+import { CheckCircle2, TrendingUp, Users, CalendarOff, AlertCircle, ChefHat, Sparkles, Utensils, MessageSquare, QrCode, Flame, Award, Star } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export const DashboardPage: React.FC = () => {
@@ -283,6 +283,84 @@ export const DashboardPage: React.FC = () => {
             <span className="text-xs font-semibold text-gray-500 block">Pending Complaints</span>
             <p className="text-3xl font-extrabold text-gray-900 mt-1">{liveComplaintsCount}</p>
             <p className="text-xs text-blue-600 font-bold mt-1">Hostel 4 Students</p>
+          </div>
+        </div>
+      </div>
+
+      {/* SECTION 3: ML-POWERED MOST DEMANDED MEAL & PEAK CROWD ANALYSIS (JUST BENEATH LIVE ATTENDANCE) */}
+      <div className="bg-white rounded-2xl border border-amber-200 shadow-sm p-6 space-y-4">
+        <div className="flex items-center justify-between border-b border-amber-100 pb-3">
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-amber-50 rounded-lg text-amber-600">
+              <Flame className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="font-display font-bold text-gray-900 text-lg">Most Demanded Food & Crowd Peaks</h2>
+              <p className="text-xs text-gray-500">Historical QR Scans, Opt-Out Patterns & ML Food Popularity Rank</p>
+            </div>
+          </div>
+          <span className="bg-amber-100 text-amber-800 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+            AI Analytics Engine
+          </span>
+        </div>
+
+        {/* Top 1 Rank Hero Card */}
+        <div className="bg-gradient-to-r from-amber-50 via-orange-50 to-amber-100/60 p-4 rounded-xl border border-amber-300 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="p-3 bg-white rounded-xl shadow-sm text-orange-600 border border-amber-200">
+              <Utensils className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs bg-orange-600 text-white font-extrabold px-2 py-0.5 rounded">#1 MOST DEMANDED</span>
+                <span className="text-xs font-bold text-orange-800">Sunday Lunch (01:00 PM – 02:30 PM)</span>
+              </div>
+              <p className="font-bold text-gray-900 text-base mt-1">
+                पुलाव, चिकन - 2 पीस / मशरूम 4- पीस, मिठाई, सलाद
+              </p>
+              <p className="text-xs text-gray-600 mt-0.5">
+                Special Chicken / Mushroom Pulao Feast • Lowest mess-off opt-out rate (&lt;1.8%) across the semester.
+              </p>
+            </div>
+          </div>
+          <div className="text-left md:text-right shrink-0 bg-white/80 px-4 py-2 rounded-xl border border-amber-200">
+            <span className="text-xs font-bold text-emerald-700 block">98.2% Historical Turnout</span>
+            <p className="text-lg font-black text-gray-900">110 / 112 Scans</p>
+            <span className="text-[10px] text-gray-500 block font-medium">Avg ~1.5 kg Min Wastage</span>
+          </div>
+        </div>
+
+        {/* 2nd & 3rd Ranked Food Items Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+          <div className="p-3.5 bg-lime-50/70 rounded-xl border border-lime-200 flex items-start justify-between gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center gap-1.5 text-lime-800 font-bold text-xs">
+                <Award className="w-4 h-4 text-lime-700" />
+                #2 Demand Rank: Wednesday Dinner
+              </div>
+              <p className="text-xs font-bold text-gray-900">Paneer Butter Masala (4 pcs) / Chicken Tadka</p>
+              <p className="text-[11px] text-gray-500">रोटी, चावल, दाल तड़का, पनीर-4 / चिकन-2 पीस, सलाद</p>
+            </div>
+            <div className="text-right shrink-0">
+              <span className="text-xs font-extrabold text-lime-800 block">96.4% Turnout</span>
+              <span className="text-[10px] text-gray-500 block">108 Scans</span>
+            </div>
+          </div>
+
+          <div className="p-3.5 bg-purple-50/70 rounded-xl border border-purple-200 flex items-start justify-between gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center gap-1.5 text-purple-800 font-bold text-xs">
+                <Star className="w-4 h-4 text-purple-700" />
+                #3 Demand Rank: Saturday Breakfast
+              </div>
+              <p className="text-xs font-bold text-gray-900">Chole Bhature (2 pcs) with Mango Pickle</p>
+              <p className="text-[11px] text-gray-500">छोला भटूरा-2, अचार, विशेष नाश्ता</p>
+            </div>
+            <div className="text-right shrink-0">
+              <span className="text-xs font-extrabold text-purple-800 block">93.8% Turnout</span>
+              <span className="text-[10px] text-gray-500 block">105 Scans</span>
+            </div>
           </div>
         </div>
       </div>
