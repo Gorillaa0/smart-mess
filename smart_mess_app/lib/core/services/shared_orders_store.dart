@@ -46,27 +46,82 @@ class SharedOrderRecord {
     required this.orderedAt,
   });
 
-  factory SharedOrderRecord.fromFirestoreJson(Map<String, dynamic> fields, String fallbackId) {
+  factory SharedOrderRecord.fromFirestoreMap(Map<String, dynamic> d, String docId) {
+    int extractInt(dynamic val, [int fallback = 0]) {
+      if (val == null) return fallback;
+      if (val is int) return val;
+      if (val is num) return val.toInt();
+      return int.tryParse(val.toString()) ?? fallback;
+    }
+
     return SharedOrderRecord(
-      id: fields['id']?['stringValue'] ?? fallbackId,
-      studentName: fields['studentName']?['stringValue'] ?? 'Student',
-      registrationNo: fields['registrationNo']?['stringValue'] ?? '',
-      rollNo: fields['rollNo']?['stringValue'] ?? '',
-      roomNo: fields['roomNo']?['stringValue'] ?? '101',
-      mobileNumber: fields['mobileNumber']?['stringValue'] ?? '',
-      specialNotes: fields['specialNotes']?['stringValue'] ?? '',
-      foodItemId: fields['foodItemId']?['stringValue'] ?? '',
-      foodItemName: fields['foodItemName']?['stringValue'] ?? 'Special Item',
-      foodItemHindi: fields['foodItemHindi']?['stringValue'] ?? '',
-      unitPrice: int.tryParse(fields['unitPrice']?['integerValue'] ?? '0') ?? 0,
-      quantity: int.tryParse(fields['quantity']?['integerValue'] ?? '1') ?? 1,
-      totalBill: int.tryParse(fields['totalBill']?['integerValue'] ?? '0') ?? 0,
-      isPaid: fields['isPaid']?['booleanValue'] ?? false,
-      paymentMethod: fields['paymentMethod']?['stringValue'] ?? 'Pay on Delivery',
-      status: fields['status']?['stringValue'] ?? 'Pending Approval',
-      cancellationReason: fields['cancellationReason']?['stringValue'] ?? '',
-      estimatedDeliveryTime: fields['estimatedDeliveryTime']?['stringValue'] ?? '30 - 40 Mins',
-      orderedAt: fields['orderedAt']?['stringValue'] ?? '',
+      id: d['id']?.toString() ?? docId,
+      studentName: d['studentName']?.toString() ?? 'Student',
+      registrationNo: d['registrationNo']?.toString() ?? '',
+      rollNo: d['rollNo']?.toString() ?? '',
+      roomNo: d['roomNo']?.toString() ?? '101',
+      mobileNumber: d['mobileNumber']?.toString() ?? '',
+      specialNotes: d['specialNotes']?.toString() ?? '',
+      foodItemId: d['foodItemId']?.toString() ?? '',
+      foodItemName: d['foodItemName']?.toString() ?? 'Special Item',
+      foodItemHindi: d['foodItemHindi']?.toString() ?? '',
+      unitPrice: extractInt(d['unitPrice'], 0),
+      quantity: extractInt(d['quantity'], 1),
+      totalBill: extractInt(d['totalBill'], 0),
+      isPaid: d['isPaid'] == true,
+      paymentMethod: d['paymentMethod']?.toString() ?? 'Pay on Delivery',
+      status: d['status']?.toString() ?? 'Pending Approval',
+      cancellationReason: d['cancellationReason']?.toString() ?? '',
+      estimatedDeliveryTime: d['estimatedDeliveryTime']?.toString() ?? '30 - 40 Mins',
+      orderedAt: d['orderedAt']?.toString() ?? DateTime.now().toIso8601String(),
+    );
+  }
+
+  factory SharedOrderRecord.fromFirestoreJson(Map<String, dynamic> fields, String fallbackId) {
+    String extractString(dynamic val, [String fallback = '']) {
+      if (val == null) return fallback;
+      if (val is Map) return val['stringValue']?.toString() ?? val['timestampValue']?.toString() ?? val['integerValue']?.toString() ?? fallback;
+      return val.toString();
+    }
+
+    int extractInt(dynamic val, [int fallback = 0]) {
+      if (val == null) return fallback;
+      if (val is int) return val;
+      if (val is num) return val.toInt();
+      if (val is Map) {
+        final str = val['integerValue']?.toString() ?? val['stringValue']?.toString() ?? val['doubleValue']?.toString();
+        return int.tryParse(str ?? '') ?? fallback;
+      }
+      return int.tryParse(val.toString()) ?? fallback;
+    }
+
+    bool extractBool(dynamic val, [bool fallback = false]) {
+      if (val == null) return fallback;
+      if (val is bool) return val;
+      if (val is Map) return val['booleanValue'] == true;
+      return val == true || val.toString().toLowerCase() == 'true';
+    }
+
+    return SharedOrderRecord(
+      id: extractString(fields['id'], fallbackId),
+      studentName: extractString(fields['studentName'], 'Student'),
+      registrationNo: extractString(fields['registrationNo'], ''),
+      rollNo: extractString(fields['rollNo'], ''),
+      roomNo: extractString(fields['roomNo'], '101'),
+      mobileNumber: extractString(fields['mobileNumber'], ''),
+      specialNotes: extractString(fields['specialNotes'], ''),
+      foodItemId: extractString(fields['foodItemId'], ''),
+      foodItemName: extractString(fields['foodItemName'], 'Special Item'),
+      foodItemHindi: extractString(fields['foodItemHindi'], ''),
+      unitPrice: extractInt(fields['unitPrice'], 0),
+      quantity: extractInt(fields['quantity'], 1),
+      totalBill: extractInt(fields['totalBill'], 0),
+      isPaid: extractBool(fields['isPaid'], false),
+      paymentMethod: extractString(fields['paymentMethod'], 'Pay on Delivery'),
+      status: extractString(fields['status'], 'Pending Approval'),
+      cancellationReason: extractString(fields['cancellationReason'], ''),
+      estimatedDeliveryTime: extractString(fields['estimatedDeliveryTime'], '30 - 40 Mins'),
+      orderedAt: extractString(fields['orderedAt'], DateTime.now().toIso8601String()),
     );
   }
 
@@ -137,87 +192,59 @@ final liveOrdersGlobalProvider = StateNotifierProvider<LiveOrdersGlobalNotifier,
 
 class LiveOrdersGlobalNotifier extends StateNotifier<List<SharedOrderRecord>> {
   StreamSubscription? _firestoreSub;
-  Timer? _fallbackTimer;
-  bool _streamActive = false;
 
   LiveOrdersGlobalNotifier() : super(SharedOrdersStore.localOrders) {
     _initFirestoreListener();
+    syncLiveOrders();
   }
 
   void _initFirestoreListener() {
     _firestoreSub?.cancel();
-    _streamActive = false;
     try {
       _firestoreSub = FirebaseFirestore.instance
           .collection('foodOrders')
-          .orderBy('orderedAt', descending: true)
           .snapshots()
           .listen((snapshot) {
-        _streamActive = true;
-        _fallbackTimer?.cancel(); // Stream is live, no need for polling fallback
         final list = <SharedOrderRecord>[];
         for (final doc in snapshot.docs) {
-          final d = doc.data();
-          final record = SharedOrderRecord(
-            id: doc.id,
-            studentName: d['studentName']?.toString() ?? 'Student',
-            registrationNo: d['registrationNo']?.toString() ?? '',
-            rollNo: d['rollNo']?.toString() ?? '',
-            roomNo: d['roomNo']?.toString() ?? '101',
-            mobileNumber: d['mobileNumber']?.toString() ?? '',
-            specialNotes: d['specialNotes']?.toString() ?? '',
-            foodItemId: d['foodItemId']?.toString() ?? '',
-            foodItemName: d['foodItemName']?.toString() ?? 'Special Item',
-            foodItemHindi: d['foodItemHindi']?.toString() ?? '',
-            unitPrice: int.tryParse(d['unitPrice']?.toString() ?? '0') ?? 0,
-            quantity: int.tryParse(d['quantity']?.toString() ?? '1') ?? 1,
-            totalBill: int.tryParse(d['totalBill']?.toString() ?? '0') ?? 0,
-            isPaid: d['isPaid'] == true,
-            paymentMethod: d['paymentMethod']?.toString() ?? 'Pay on Delivery',
-            status: d['status']?.toString() ?? 'Pending Approval',
-            cancellationReason: d['cancellationReason']?.toString() ?? '',
-            estimatedDeliveryTime: d['estimatedDeliveryTime']?.toString() ?? '30 - 40 Mins',
-            orderedAt: d['orderedAt']?.toString() ?? DateTime.now().toIso8601String(),
-          );
-          list.add(record);
+          list.add(SharedOrderRecord.fromFirestoreMap(doc.data(), doc.id));
         }
 
         SharedOrdersStore.replaceAll(list);
         list.sort((a, b) => b.orderedAt.compareTo(a.orderedAt));
         state = list;
       }, onError: (_) {
-        _streamActive = false;
-        // Stream failed — start periodic REST fallback every 30s until stream recovers
-        _startFallbackPolling();
-        // Also attempt to reconnect the stream after 10s
-        Future.delayed(const Duration(seconds: 10), () {
-          if (!_streamActive) _initFirestoreListener();
-        });
+        syncLiveOrders();
       });
     } catch (_) {
-      _streamActive = false;
-      _startFallbackPolling();
+      syncLiveOrders();
     }
-  }
-
-  void _startFallbackPolling() {
-    _fallbackTimer?.cancel();
-    // Do an immediate sync first
-    syncLiveOrders();
-    // Then poll every 30s as a fallback (not aggressive — avoids 429 quota errors)
-    _fallbackTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      if (!_streamActive) syncLiveOrders();
-    });
   }
 
   @override
   void dispose() {
     _firestoreSub?.cancel();
-    _fallbackTimer?.cancel();
     super.dispose();
   }
 
   Future<void> syncLiveOrders() async {
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('foodOrders')
+          .get()
+          .timeout(const Duration(seconds: 4));
+
+      final list = <SharedOrderRecord>[];
+      for (final doc in snap.docs) {
+        list.add(SharedOrderRecord.fromFirestoreMap(doc.data(), doc.id));
+      }
+      SharedOrdersStore.replaceAll(list);
+      list.sort((a, b) => b.orderedAt.compareTo(a.orderedAt));
+      state = list;
+      return;
+    } catch (_) {}
+
+    // Fallback REST
     try {
       final dio = Dio();
       final res = await dio.post(

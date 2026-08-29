@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/h4_students_data.dart';
@@ -49,6 +50,19 @@ class H4MealScanRecord {
     };
   }
 
+  factory H4MealScanRecord.fromFirestoreMap(Map<String, dynamic> data, String docId) {
+    return H4MealScanRecord(
+      id: data['id']?.toString() ?? docId,
+      registrationNo: data['registrationNo']?.toString() ?? '',
+      studentName: data['studentName']?.toString() ?? '',
+      rollNo: data['rollNo']?.toString() ?? '',
+      branch: data['branch']?.toString() ?? '',
+      mealType: data['mealType']?.toString() ?? '',
+      scannedAt: DateTime.tryParse(data['scannedAt']?.toString() ?? '') ?? DateTime.now(),
+      roomNo: data['roomNo']?.toString() ?? '',
+    );
+  }
+
   factory H4MealScanRecord.fromFirestoreJson(Map<String, dynamic> fields) {
     return H4MealScanRecord(
       id: fields['id']?['stringValue'] ?? '',
@@ -64,14 +78,58 @@ class H4MealScanRecord {
 }
 
 class AttendanceNotifier extends StateNotifier<List<H4MealScanRecord>> {
-  Timer? _pollTimer;
+  StreamSubscription? _sub;
 
   AttendanceNotifier() : super([]) {
+    _initListener();
     _fetchLiveScans();
-    _pollTimer = Timer.periodic(const Duration(seconds: 4), (_) => _fetchLiveScans());
+  }
+
+  void _initListener() {
+    _sub?.cancel();
+    try {
+      _sub = FirebaseFirestore.instance
+          .collection('mealAttendance')
+          .snapshots()
+          .listen((snapshot) {
+        final list = <H4MealScanRecord>[];
+        for (final doc in snapshot.docs) {
+          list.add(H4MealScanRecord.fromFirestoreMap(doc.data(), doc.id));
+        }
+        list.sort((a, b) => b.scannedAt.compareTo(a.scannedAt));
+        state = list;
+      }, onError: (_) {
+        _fetchLiveScans();
+      });
+    } catch (_) {
+      _fetchLiveScans();
+    }
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
   }
 
   Future<void> _fetchLiveScans() async {
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('mealAttendance')
+          .get()
+          .timeout(const Duration(seconds: 4));
+
+      if (snap.docs.isNotEmpty) {
+        final list = <H4MealScanRecord>[];
+        for (final doc in snap.docs) {
+          list.add(H4MealScanRecord.fromFirestoreMap(doc.data(), doc.id));
+        }
+        list.sort((a, b) => b.scannedAt.compareTo(a.scannedAt));
+        state = list;
+        return;
+      }
+    } catch (_) {}
+
     try {
       final dio = Dio();
       final res = await dio.post(
@@ -157,12 +215,6 @@ class AttendanceNotifier extends StateNotifier<List<H4MealScanRecord>> {
             r.scannedAt.month == today.month &&
             r.scannedAt.year == today.year)
         .length;
-  }
-
-  @override
-  void dispose() {
-    _pollTimer?.cancel();
-    super.dispose();
   }
 }
 

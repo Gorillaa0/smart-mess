@@ -24,7 +24,6 @@ class _FoodOrderScreenState extends ConsumerState<FoodOrderScreen> {
   SpecialFoodItem _selectedItem = kDefaultSpecialFoodMenu[0];
   int _quantity = 1;
   bool _isSubmitting = false;
-  Timer? _menuTimer;
 
   @override
   void initState() {
@@ -33,22 +32,42 @@ class _FoodOrderScreenState extends ConsumerState<FoodOrderScreen> {
     _roomController.text = student.roomNo;
     _phoneController.text = '9876543210';
     _fetchLiveSpecialFoodMenu();
-    _menuTimer = Timer.periodic(const Duration(seconds: 4), (_) {
-      _fetchLiveSpecialFoodMenu();
-    });
   }
 
   @override
   void dispose() {
-    _menuTimer?.cancel();
     _phoneController.dispose();
     _roomController.dispose();
     _instructionsController.dispose();
     super.dispose();
   }
 
-
   Future<void> _fetchLiveSpecialFoodMenu() async {
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('specialFoodMenu')
+          .get()
+          .timeout(const Duration(seconds: 4));
+
+      if (snap.docs.isNotEmpty) {
+        final list = <SpecialFoodItem>[];
+        for (final doc in snap.docs) {
+          list.add(SpecialFoodItem.fromFirestoreMap(doc.data(), doc.id));
+        }
+        if (list.isNotEmpty && mounted) {
+          setState(() {
+            _menuItems = list;
+            final match = _menuItems.where((i) => i.id == _selectedItem.id).toList();
+            if (match.isNotEmpty) {
+              _selectedItem = match.first;
+            } else {
+              _selectedItem = list.first;
+            }
+          });
+          return;
+        }
+      }
+    } catch (_) {}
     try {
       final dio = Dio();
       final res = await dio.post(

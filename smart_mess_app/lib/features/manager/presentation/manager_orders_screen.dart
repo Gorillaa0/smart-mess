@@ -39,6 +39,26 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
   Future<void> _fetchMenuItems({bool silent = false}) async {
     if (!silent && mounted) setState(() => _isMenuLoading = true);
     try {
+      final snap = await FirebaseFirestore.instance
+          .collection('specialFoodMenu')
+          .get()
+          .timeout(const Duration(seconds: 4));
+
+      if (snap.docs.isNotEmpty) {
+        final list = <SpecialFoodItem>[];
+        for (final doc in snap.docs) {
+          list.add(SpecialFoodItem.fromFirestoreMap(doc.data(), doc.id));
+        }
+        if (list.isNotEmpty && mounted) {
+          setState(() {
+            _menuItems = list;
+            _isMenuLoading = false;
+          });
+          return;
+        }
+      }
+    } catch (_) {}
+    try {
       final dio = Dio();
       final res = await dio.post(
         'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents:runQuery?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',

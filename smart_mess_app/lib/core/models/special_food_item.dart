@@ -46,6 +46,17 @@ class SpecialFoodItem {
     };
   }
 
+  factory SpecialFoodItem.fromFirestoreMap(Map<String, dynamic> data, String docId) {
+    return SpecialFoodItem(
+      id: data['id']?.toString() ?? docId,
+      name: data['name']?.toString() ?? 'Special Item',
+      hindiName: data['hindiName']?.toString() ?? '',
+      price: int.tryParse(data['price']?.toString() ?? '0') ?? 0,
+      description: data['description']?.toString() ?? '',
+      isAvailable: data['isAvailable'] == true || data['isAvailable'] == null,
+    );
+  }
+
   factory SpecialFoodItem.fromFirestoreJson(Map<String, dynamic> fields) {
     return SpecialFoodItem(
       id: fields['id']?['stringValue'] ?? '',
