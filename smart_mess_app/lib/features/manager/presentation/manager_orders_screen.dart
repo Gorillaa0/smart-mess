@@ -214,7 +214,7 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
           'status': newStatus,
           'estimatedDeliveryTime': deliveryTime,
           'updatedAt': DateTime.now().toIso8601String(),
-        });
+        }).timeout(const Duration(seconds: 2));
       } catch (_) {
         final dio = Dio();
         await dio.patch(
@@ -227,7 +227,7 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
             }
           },
           options: Options(headers: {'Content-Type': 'application/json'}),
-        );
+        ).timeout(const Duration(seconds: 3));
       }
 
       _fetchOrders(silent: true);
@@ -258,7 +258,7 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
           'status': 'Cancelled',
           'cancellationReason': cancellationReason,
           'updatedAt': DateTime.now().toIso8601String(),
-        });
+        }).timeout(const Duration(seconds: 2));
       } catch (_) {
         final dio = Dio();
         await dio.patch(
@@ -271,7 +271,7 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
             }
           },
           options: Options(headers: {'Content-Type': 'application/json'}),
-        );
+        ).timeout(const Duration(seconds: 3));
       }
 
       _fetchOrders(silent: true);
