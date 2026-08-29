@@ -264,17 +264,15 @@ class DashboardScreen extends ConsumerWidget {
                 Expanded(
                   child: _colorfulSummaryCard(
                     context,
-                    title: 'Upcoming Events',
-                    value: '${eventsList.length} Events',
-                    subtitle: eventsList.isNotEmpty
-                        ? eventsList.first.title
-                        : 'Exams, Festivals & Holidays',
-                    icon: Icons.celebration,
-                    startColor: const Color(0xFFE8EAF6),
-                    endColor: const Color(0xFFC5CAE9),
-                    borderColor: const Color(0xFF9FA8DA),
-                    textColor: const Color(0xFF283593),
-                    onTap: () => context.push('/events'),
+                    title: 'Order Special Food',
+                    value: 'Rolls & Fast Food',
+                    subtitle: 'Egg Roll, Chowmein, Burger',
+                    icon: Icons.fastfood,
+                    startColor: const Color(0xFFFFEBEE),
+                    endColor: const Color(0xFFFFCDD2),
+                    borderColor: const Color(0xFFEF9A9A),
+                    textColor: const Color(0xFFC62828),
+                    onTap: () => context.push('/order-food'),
                   ),
                 ),
               ],

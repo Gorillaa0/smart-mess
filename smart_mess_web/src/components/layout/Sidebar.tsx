@@ -5,7 +5,7 @@ import { useMessStore } from '../../store/messStore';
 import { 
   LayoutDashboard, Utensils, QrCode, CalendarOff, 
   TrendingUp, ChefHat, Trash2, MessageSquare, 
-  Bell, BarChart3, Users, Building, Calendar, LogOut
+  Bell, BarChart3, Users, Building, Calendar, LogOut, ShoppingBag
 } from 'lucide-react';
 import { auth } from '../../lib/firebase';
 import clsx from 'clsx';
@@ -25,7 +25,7 @@ export const Sidebar: React.FC = () => {
     { to: '/wastage', icon: Trash2, label: 'Wastage' },
     { to: '/complaints', icon: MessageSquare, label: 'Complaints' },
     { to: '/notifications', icon: Bell, label: 'Notifications' },
-    { to: '/analytics', icon: BarChart3, label: 'Analytics' },
+    { to: '/orders', icon: ShoppingBag, label: 'Food Orders' },
   ];
 
   const adminLinks = [

@@ -14,8 +14,7 @@ import { MessesPage } from '../pages/admin/MessesPage';
 import { HostelsPage } from '../pages/admin/HostelsPage';
 import { EventsPage } from '../pages/admin/EventsPage';
 import { AdminComplaintsPage } from '../pages/admin/AdminComplaintsPage';
-import { NotificationsPage } from '../pages/manager/NotificationsPage';
-import { WastagePage, FoodPrepPage, SystemAnalyticsPage } from '../pages/manager/OtherPages';
+import { OrdersPage } from '../pages/manager/OrdersPage';
 
 export const router = createBrowserRouter([
   {
@@ -41,7 +40,8 @@ export const router = createBrowserRouter([
       { path: 'wastage', element: <WastagePage /> },
       { path: 'complaints', element: <ComplaintsPage /> },
       { path: 'notifications', element: <NotificationsPage /> },
-      { path: 'analytics', element: <AnalyticsPage /> },
+      { path: 'orders', element: <OrdersPage /> },
+      { path: 'analytics', element: <OrdersPage /> },
       
       // Admin Routes
       { path: 'admin/complaints', element: <AdminComplaintsPage /> },

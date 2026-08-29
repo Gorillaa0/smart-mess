@@ -224,7 +224,7 @@ export const DashboardPage: React.FC = () => {
       </div>
 
       {/* SECTION 2: LIVE ATTENDANCE & QUICK ACTION CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Live Attendance Counter */}
         <div
           onClick={() => navigate('/qr-attendance')}
@@ -234,15 +234,15 @@ export const DashboardPage: React.FC = () => {
             <div className="p-3 bg-emerald-50 rounded-xl text-emerald-700">
               <QrCode className="w-6 h-6" />
             </div>
-            <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full">
-              Open QR Scanner ➔
+            <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-full">
+              QR Scanner ➔
             </span>
           </div>
           <div>
             <span className="text-xs font-semibold text-gray-500 block">Live Counter Scans</span>
             <p className="text-3xl font-extrabold text-gray-900 mt-1">{liveScansCount} / {totalActiveStudents}</p>
             <p className="text-xs text-emerald-600 font-bold mt-1">
-              {totalActiveStudents > 0 ? ((liveScansCount / totalActiveStudents) * 100).toFixed(1) : 0}% Students Eaten
+              {totalActiveStudents > 0 ? ((liveScansCount / totalActiveStudents) * 100).toFixed(1) : 0}% Turnout
             </p>
           </div>
         </div>
@@ -256,15 +256,15 @@ export const DashboardPage: React.FC = () => {
             <div className="p-3 bg-amber-50 rounded-xl text-amber-700">
               <CalendarOff className="w-6 h-6" />
             </div>
-            <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full">
-              View Mess-Offs ➔
+            <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded-full">
+              Mess-Offs ➔
             </span>
           </div>
           <div>
-            <span className="text-xs font-semibold text-gray-500 block">Exemptions / Mess-Offs</span>
+            <span className="text-xs font-semibold text-gray-500 block">Exemptions / Opt-Outs</span>
             <p className="text-3xl font-extrabold text-gray-900 mt-1">{liveMessOffCount}</p>
             <p className="text-xs text-amber-700 font-bold mt-1">
-              ₹{liveMessOffCount * 50} Rebate Credited
+              ₹{liveMessOffCount * 50} Rebate
             </p>
           </div>
         </div>
@@ -278,14 +278,34 @@ export const DashboardPage: React.FC = () => {
             <div className="p-3 bg-blue-50 rounded-xl text-blue-700">
               <MessageSquare className="w-6 h-6" />
             </div>
-            <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full">
-              Grievance Desk ➔
+            <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded-full">
+              Grievances ➔
             </span>
           </div>
           <div>
             <span className="text-xs font-semibold text-gray-500 block">Pending Complaints</span>
             <p className="text-3xl font-extrabold text-gray-900 mt-1">{liveComplaintsCount}</p>
             <p className="text-xs text-blue-600 font-bold mt-1">Hostel 4 Students</p>
+          </div>
+        </div>
+
+        {/* Special Food Orders */}
+        <div
+          onClick={() => navigate('/orders')}
+          className="bg-white p-5 rounded-2xl border border-teal-200 shadow-sm hover:border-teal-600 transition cursor-pointer space-y-3"
+        >
+          <div className="flex items-center justify-between">
+            <div className="p-3 bg-teal-50 rounded-xl text-teal-700">
+              <ShoppingBag className="w-6 h-6" />
+            </div>
+            <span className="text-xs font-bold text-teal-700 bg-teal-50 px-2 py-1 rounded-full">
+              Orders Desk ➔
+            </span>
+          </div>
+          <div>
+            <span className="text-xs font-semibold text-gray-500 block">Special Food Orders</span>
+            <p className="text-3xl font-extrabold text-teal-900 mt-1">Live Desk</p>
+            <p className="text-xs text-teal-700 font-bold mt-1">Egg Roll, Chowmein, Burger</p>
           </div>
         </div>
       </div>

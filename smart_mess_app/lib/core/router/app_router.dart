@@ -14,6 +14,7 @@ import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/events/presentation/events_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/mess_off/presentation/mess_off_screen.dart';
+import '../../features/orders/presentation/food_order_screen.dart';
 
 // Manager Screens
 import '../../features/manager/presentation/manager_dashboard_screen.dart';
@@ -24,7 +25,7 @@ import '../../features/manager/presentation/manager_meals_screen.dart';
 import '../../features/manager/presentation/manager_mess_offs_screen.dart';
 import '../../features/manager/presentation/manager_complaints_screen.dart';
 import '../../features/manager/presentation/manager_broadcast_screen.dart';
-import '../../features/manager/presentation/manager_analytics_screen.dart';
+import '../../features/manager/presentation/manager_orders_screen.dart';
 
 import '../constants/h4_students_data.dart';
 import '../widgets/top_notification_overlay.dart';
@@ -57,6 +58,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/mess-off', builder: (context, state) => const MessOffScreen()),
       GoRoute(path: '/meal-history', builder: (context, state) => const MealHistoryScreen()),
       GoRoute(path: '/bill', builder: (context, state) => const BillScreen()),
+      GoRoute(path: '/order-food', builder: (context, state) => const FoodOrderScreen()),
       GoRoute(path: '/complaints', builder: (context, state) => const ComplaintsScreen(),
         routes: [
           GoRoute(path: 'submit', builder: (context, state) => const SubmitComplaintScreen()),
@@ -75,7 +77,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/manager/wastage', builder: (context, state) => const ManagerWastageScreen()),
       GoRoute(path: '/manager/complaints', builder: (context, state) => const ManagerComplaintsScreen()),
       GoRoute(path: '/manager/broadcast', builder: (context, state) => const ManagerBroadcastScreen()),
-      GoRoute(path: '/manager/analytics', builder: (context, state) => const ManagerAnalyticsScreen()),
+      GoRoute(path: '/manager/orders', builder: (context, state) => const ManagerOrdersScreen()),
     ],
   );
 });

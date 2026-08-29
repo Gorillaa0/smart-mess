@@ -887,14 +887,14 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
         route: '/manager/broadcast',
       ),
       _ManagerActionItem(
-        title: 'Analytics & Insights',
-        subtitle: 'Attendance & Waste Trends',
-        icon: Icons.insights_outlined,
+        title: 'Special Food Orders',
+        subtitle: 'Student Fast Food Desk',
+        icon: Icons.fastfood_outlined,
         startColor: const Color(0xFFE0F2F1),
         endColor: const Color(0xFFB2DFDB),
         borderColor: const Color(0xFF80CBC4),
         iconColor: const Color(0xFF00695C),
-        route: '/manager/analytics',
+        route: '/manager/orders',
       ),
     ];
 
