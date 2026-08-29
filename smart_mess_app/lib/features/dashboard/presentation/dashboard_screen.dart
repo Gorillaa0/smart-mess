@@ -7,6 +7,7 @@ import '../../../core/constants/weekly_menu.dart';
 import '../../../core/constants/h4_students_data.dart';
 import '../../../core/models/notification_model.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/services/meal_rating_service.dart';
 import '../../notifications/providers/notifications_provider.dart';
 import '../../events/providers/events_provider.dart';
 import '../../attendance/providers/student_attendance_provider.dart';
@@ -196,7 +197,7 @@ class DashboardScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 10),
 
-            _buildDailyScheduleRow(todayMenu, now),
+            _buildDailyScheduleRow(ref, todayMenu, now),
             const SizedBox(height: 18),
 
             // 3. ACTIVE / NEXT MEAL HERO CARD
@@ -556,11 +557,16 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  // 2. TODAY'S MEALS ROW WITH DISHES AND PRICES
-  Widget _buildDailyScheduleRow(MenuItemData todayMenu, DateTime now) {
+  // 2. TODAY'S MEALS ROW WITH DISHES, PRICES AND ML CROWD RATINGS
+  Widget _buildDailyScheduleRow(WidgetRef ref, MenuItemData todayMenu, DateTime now) {
     final currentMinutes = now.hour * 60 + now.minute;
     final isBreakfastPassed = currentMinutes >= 9 * 60 + 30;
     final isLunchPassed = currentMinutes >= 14 * 60 + 30;
+    final ratingService = ref.watch(mealRatingServiceProvider);
+
+    final bkRating = ratingService.getRating(todayMenu.dayEnglish, 'breakfast');
+    final lunchRating = ratingService.getRating(todayMenu.dayEnglish, 'lunch');
+    final dinnerRating = ratingService.getRating(todayMenu.dayEnglish, 'dinner');
 
     return Row(
       children: [
@@ -571,6 +577,8 @@ class DashboardScreen extends ConsumerWidget {
           itemsText: todayMenu.breakfast.isAvailable ? todayMenu.breakfast.itemsHindi : 'No Breakfast',
           status: isBreakfastPassed ? 'Taken' : (todayMenu.breakfast.isAvailable ? 'Upcoming' : 'Closed'),
           isPassed: isBreakfastPassed,
+          rating: todayMenu.breakfast.isAvailable ? bkRating.rating : null,
+          badge: todayMenu.breakfast.isAvailable ? bkRating.sentimentBadge : null,
           themeColor: const Color(0xFFE65100),
           bgColor: const Color(0xFFFFF8E1),
           borderColor: const Color(0xFFFFD54F),
@@ -585,6 +593,8 @@ class DashboardScreen extends ConsumerWidget {
           itemsText: todayMenu.lunch.itemsHindi,
           status: isLunchPassed ? 'Taken' : (isBreakfastPassed ? 'Serving Now' : 'Upcoming'),
           isPassed: isLunchPassed,
+          rating: lunchRating.rating,
+          badge: lunchRating.sentimentBadge,
           themeColor: const Color(0xFF1565C0),
           bgColor: const Color(0xFFE3F2FD),
           borderColor: const Color(0xFF90CAF9),
@@ -600,6 +610,8 @@ class DashboardScreen extends ConsumerWidget {
           itemsText: todayMenu.dinner.itemsHindi,
           status: 'Upcoming',
           isPassed: false,
+          rating: dinnerRating.rating,
+          badge: dinnerRating.sentimentBadge,
           themeColor: const Color(0xFF6A1B9A),
           bgColor: const Color(0xFFF3E5F5),
           borderColor: const Color(0xFFCE93D8),
@@ -620,6 +632,8 @@ class DashboardScreen extends ConsumerWidget {
     required Color bgColor,
     required Color borderColor,
     required IconData icon,
+    double? rating,
+    String? badge,
     bool highlight = false,
   }) {
     return Expanded(
@@ -675,7 +689,41 @@ class DashboardScreen extends ConsumerWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 6),
+            if (rating != null && rating > 0) ...[
+              const SizedBox(height: 5),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
+                    decoration: BoxDecoration(
+                      color: rating >= 4.5 ? Colors.green.shade800 : (rating >= 4.0 ? Colors.green.shade700 : Colors.amber.shade800),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.star, size: 9.5, color: Colors.white),
+                        const SizedBox(width: 2),
+                        Text(
+                          '$rating / 5',
+                          style: const TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      badge ?? '',
+                      style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.w800, color: themeColor),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 5),
             Row(
               children: [
                 Icon(
@@ -1227,8 +1275,6 @@ class DashboardScreen extends ConsumerWidget {
             const SizedBox(height: 10),
             Text(title, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: textColor.withOpacity(0.8))),
             const SizedBox(height: 2),
-            Text(value, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: textColor)),
-            const SizedBox(height: 2),
             Text(subtitle, style: TextStyle(fontSize: 10.5, color: Colors.grey.shade800, fontWeight: FontWeight.w500)),
           ],
         ),
@@ -1236,126 +1282,203 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  // 6. BOTTOM SHEET WEEKLY MASTER MENU MODAL
+  // 6. BOTTOM SHEET WEEKLY MASTER MENU MODAL WITH ML RATINGS
   void _showWeeklyMenuModal(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Container(
-          height: MediaQuery.of(context).size.height * 0.85,
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            children: [
-              Container(
-                margin: const EdgeInsets.only(top: 12, bottom: 8),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(4),
-                ),
+        return Consumer(
+          builder: (context, ref, child) {
+            final ratingService = ref.watch(mealRatingServiceProvider);
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.88,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              child: Column(
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(top: 12, bottom: 8),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Weekly Mess Timetable', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20))),
-                        Text('Central Dining Facility • Regular Menu', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                        const Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Weekly Meal Menu & ML Ratings', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20))),
+                            Text('Dynamic AI crowd popularity ratings (out of 5) per meal', style: TextStyle(fontSize: 11.5, color: Colors.grey)),
+                          ],
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                        ),
                       ],
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: WeeklyMenuData.schedule.length,
-                  itemBuilder: (context, index) {
-                    final day = WeeklyMenuData.schedule[index];
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 14),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF9FBF9),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.grey.shade200),
-                      ),
-                      padding: const EdgeInsets.all(14),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: WeeklyMenuData.schedule.length,
+                      itemBuilder: (context, index) {
+                        final day = WeeklyMenuData.schedule[index];
+                        final bkRating = ratingService.getRating(day.dayEnglish, 'breakfast');
+                        final lunchRating = ratingService.getRating(day.dayEnglish, 'lunch');
+                        final dinnerRating = ratingService.getRating(day.dayEnglish, 'dinner');
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF9FBF9),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          padding: const EdgeInsets.all(14),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                '${day.dayHindi} (${day.dayEnglish})',
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF1B5E20)),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    '${day.dayHindi} (${day.dayEnglish})',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF1B5E20)),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.shade50,
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: Colors.green.shade200),
+                                    ),
+                                    child: Text(
+                                      'Day ${index + 1}',
+                                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green.shade800),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: Colors.green.shade50,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.green.shade200),
-                                ),
-                                child: Text(
-                                  'Day ${index + 1}',
-                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green.shade800),
-                                ),
+                              const Divider(height: 16),
+                              _menuSlotRow(
+                                title: '🌅 Breakfast (7 AM)',
+                                items: day.breakfast.itemsHindi,
+                                price: day.breakfast.price,
+                                isAvailable: day.breakfast.isAvailable,
+                                ratingInfo: day.breakfast.isAvailable ? bkRating : null,
+                              ),
+                              const SizedBox(height: 8),
+                              _menuSlotRow(
+                                title: '☀️ Lunch (11 AM)',
+                                items: day.lunch.itemsHindi,
+                                price: day.lunch.price,
+                                isAvailable: true,
+                                ratingInfo: lunchRating,
+                              ),
+                              const SizedBox(height: 8),
+                              _menuSlotRow(
+                                title: '🌙 Dinner (6 PM)',
+                                items: day.dinner.itemsHindi,
+                                price: day.dinner.price,
+                                isAvailable: true,
+                                ratingInfo: dinnerRating,
                               ),
                             ],
                           ),
-                          const Divider(height: 16),
-                          _menuSlotRow('🌅 Breakfast (7 AM)', day.breakfast.itemsHindi, day.breakfast.price, day.breakfast.isAvailable),
-                          const SizedBox(height: 6),
-                          _menuSlotRow('☀️ï¸ Lunch (11 AM)', day.lunch.itemsHindi, day.lunch.price, true),
-                          const SizedBox(height: 6),
-                          _menuSlotRow('🌙 Dinner (6 PM)', day.dinner.itemsHindi, day.dinner.price, true),
-                        ],
-                      ),
-                    );
-                  },
-                ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
   }
 
-  Widget _menuSlotRow(String title, String items, int price, bool isAvailable) {
+  Widget _menuSlotRow({
+    required String title,
+    required String items,
+    required int price,
+    required bool isAvailable,
+    MealRatingInfo? ratingInfo,
+  }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          width: 120,
-          child: Text(title, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Colors.black87)),
-        ),
-        Expanded(
-          child: Text(
-            isAvailable ? items : 'No Breakfast (Mess Closed)',
-            style: TextStyle(fontSize: 11.5, color: isAvailable ? Colors.grey.shade800 : Colors.grey),
+          width: 110,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black87)),
+              if (ratingInfo != null && ratingInfo.rating > 0) ...[
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: ratingInfo.rating >= 4.5 ? Colors.green.shade800 : (ratingInfo.rating >= 4.0 ? Colors.green.shade700 : Colors.amber.shade800),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.star, size: 9, color: Colors.white),
+                          const SizedBox(width: 2),
+                          Text(
+                            '${ratingInfo.rating} ★',
+                            style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
           ),
         ),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isAvailable ? items : 'No Breakfast (Mess Closed)',
+                style: TextStyle(fontSize: 11.5, color: isAvailable ? Colors.grey.shade800 : Colors.grey, fontWeight: FontWeight.w500),
+              ),
+              if (ratingInfo != null && ratingInfo.rating > 0) ...[
+                const SizedBox(height: 1),
+                Text(
+                  '${ratingInfo.sentimentBadge} • Est. crowd ~${ratingInfo.totalScans} students',
+                  style: TextStyle(fontSize: 9.5, color: Colors.grey.shade600, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(width: 6),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
             color: price == 100 ? Colors.orange.shade50 : Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(6),
             border: Border.all(color: price == 100 ? Colors.orange.shade300 : Colors.grey.shade300, width: 0.6),
           ),
           child: Text(

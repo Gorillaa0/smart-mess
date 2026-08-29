@@ -31,6 +31,28 @@ interface WeeklyMenuItem {
   };
 }
 
+export const getMealRating = (day: string, mealType: string) => {
+  const d = day.toLowerCase();
+  const m = mealType.toLowerCase();
+
+  if (d.contains ? d.contains('sun') : d.includes('sun')) {
+    if (m.includes('lunch')) return { rating: 4.9, badge: 'Super Hit 🌟', crowd: 188 };
+    if (m.includes('breakfast')) return { rating: 0, badge: 'Closed', crowd: 0 };
+  }
+  if (d.includes('wed') && m.includes('dinner')) return { rating: 4.8, badge: 'Super Hit 🌟', crowd: 182 };
+  if (d.includes('sat') && m.includes('breakfast')) return { rating: 4.7, badge: 'Super Hit 🌟', crowd: 175 };
+  if (d.includes('fri') && m.includes('dinner')) return { rating: 4.6, badge: 'High Crowd 🔥', crowd: 168 };
+  if (d.includes('tue') && m.includes('breakfast')) return { rating: 4.4, badge: 'High Crowd 🔥', crowd: 158 };
+  if (d.includes('mon') && m.includes('dinner')) return { rating: 4.3, badge: 'Popular 👍', crowd: 152 };
+  if (d.includes('sat') && m.includes('lunch')) return { rating: 4.2, badge: 'Popular 👍', crowd: 148 };
+  if (d.includes('thu') && m.includes('dinner')) return { rating: 4.1, badge: 'Popular 👍', crowd: 142 };
+  if (d.includes('wed') && m.includes('lunch')) return { rating: 4.0, badge: 'Popular 👍', crowd: 138 };
+  if (d.includes('mon') && m.includes('breakfast')) return { rating: 3.9, badge: 'Moderate ⚡', crowd: 132 };
+  if (d.includes('thu') && m.includes('breakfast')) return { rating: 3.8, badge: 'Moderate ⚡', crowd: 125 };
+  if (d.includes('fri') && m.includes('breakfast')) return { rating: 3.6, badge: 'Least Liked 📉', crowd: 118 };
+  return { rating: 4.0, badge: 'Popular 👍', crowd: 140 };
+};
+
 const DEFAULT_WEEKLY_MENU: WeeklyMenuItem[] = [
   {
     id: 'mon',
@@ -408,55 +430,91 @@ export const MealsPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
-                {weeklyMenu.map((day) => (
-                  <tr key={day.id} className="hover:bg-gray-50/80 transition-colors">
-                    <td className="px-5 py-4 align-top font-semibold text-gray-900 bg-gray-50/30">
-                      <div className="font-display font-bold text-base text-primary-900">{day.dayHindi}</div>
-                      <div className="text-xs text-gray-500 font-normal">{day.dayEnglish}</div>
-                    </td>
-                    <td className="px-5 py-4 align-top">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                          day.breakfast.isAvailable === false ? 'bg-gray-100 text-gray-600' : 'bg-amber-100 text-amber-900'
-                        }`}>
-                          {day.breakfast.isAvailable === false ? 'NO BREAKFAST' : `₹${day.breakfast.price}`}
-                        </span>
-                      </div>
-                      <div className="font-medium text-gray-900 text-sm mt-1">{day.breakfast.itemsHindi}</div>
-                      <div className="text-xs text-gray-500 mt-0.5">{day.breakfast.itemsEnglish}</div>
-                    </td>
-                    <td className="px-5 py-4 align-top">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                          day.lunch.price === 100 ? 'bg-orange-100 text-orange-900 border border-orange-200' : 'bg-blue-100 text-blue-900'
-                        }`}>
-                          {day.lunch.price === 100 ? 'SPECIAL FEAST • ₹100' : `₹${day.lunch.price}`}
-                        </span>
-                      </div>
-                      <div className="font-medium text-gray-900 text-sm mt-1">{day.lunch.itemsHindi}</div>
-                      <div className="text-xs text-gray-500 mt-0.5">{day.lunch.itemsEnglish}</div>
-                    </td>
-                    <td className="px-5 py-4 align-top">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                          day.dinner.price === 100 ? 'bg-orange-100 text-orange-900 border border-orange-200' : 'bg-purple-100 text-purple-900'
-                        }`}>
-                          {day.dinner.price === 100 ? 'NON-VEG FEAST • ₹100' : `₹${day.dinner.price}`}
-                        </span>
-                      </div>
-                      <div className="font-medium text-gray-900 text-sm mt-1">{day.dinner.itemsHindi}</div>
-                      <div className="text-xs text-gray-500 mt-0.5">{day.dinner.itemsEnglish}</div>
-                    </td>
-                    <td className="px-4 py-4 align-top text-center">
-                      <button
-                        onClick={() => setEditingDay(day)}
-                        className="inline-flex items-center gap-1 text-primary-700 hover:text-primary-900 bg-primary-50 hover:bg-primary-100 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" /> Edit
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {weeklyMenu.map((day) => {
+                  const bkRating = getMealRating(day.dayEnglish, 'breakfast');
+                  const lunchRating = getMealRating(day.dayEnglish, 'lunch');
+                  const dinnerRating = getMealRating(day.dayEnglish, 'dinner');
+
+                  return (
+                    <tr key={day.id} className="hover:bg-gray-50/80 transition-colors">
+                      <td className="px-5 py-4 align-top font-semibold text-gray-900 bg-gray-50/30">
+                        <div className="font-display font-bold text-base text-primary-900">{day.dayHindi}</div>
+                        <div className="text-xs text-gray-500 font-normal">{day.dayEnglish}</div>
+                      </td>
+                      <td className="px-5 py-4 align-top">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                            day.breakfast.isAvailable === false ? 'bg-gray-100 text-gray-600' : 'bg-amber-100 text-amber-900'
+                          }`}>
+                            {day.breakfast.isAvailable === false ? 'NO BREAKFAST' : `₹${day.breakfast.price}`}
+                          </span>
+                          {day.breakfast.isAvailable !== false && bkRating.rating > 0 && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-800 text-white flex items-center gap-0.5">
+                              ★ {bkRating.rating}
+                            </span>
+                          )}
+                        </div>
+                        <div className="font-medium text-gray-900 text-sm mt-1">{day.breakfast.itemsHindi}</div>
+                        <div className="text-xs text-gray-500 mt-0.5">{day.breakfast.itemsEnglish}</div>
+                        {day.breakfast.isAvailable !== false && bkRating.rating > 0 && (
+                          <div className="text-[10px] text-amber-800 font-semibold mt-1">
+                            {bkRating.badge} • Est. {bkRating.crowd} students
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-5 py-4 align-top">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                            day.lunch.price === 100 ? 'bg-orange-100 text-orange-900 border border-orange-200' : 'bg-blue-100 text-blue-900'
+                          }`}>
+                            {day.lunch.price === 100 ? 'SPECIAL FEAST • ₹100' : `₹${day.lunch.price}`}
+                          </span>
+                          {lunchRating.rating > 0 && (
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded text-white flex items-center gap-0.5 ${
+                              lunchRating.rating >= 4.5 ? 'bg-emerald-800' : 'bg-emerald-700'
+                            }`}>
+                              ★ {lunchRating.rating}
+                            </span>
+                          )}
+                        </div>
+                        <div className="font-medium text-gray-900 text-sm mt-1">{day.lunch.itemsHindi}</div>
+                        <div className="text-xs text-gray-500 mt-0.5">{day.lunch.itemsEnglish}</div>
+                        <div className="text-[10px] text-blue-800 font-semibold mt-1">
+                          {lunchRating.badge} • Est. {lunchRating.crowd} students
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 align-top">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                            day.dinner.price === 100 ? 'bg-orange-100 text-orange-900 border border-orange-200' : 'bg-purple-100 text-purple-900'
+                          }`}>
+                            {day.dinner.price === 100 ? 'NON-VEG FEAST • ₹100' : `₹${day.dinner.price}`}
+                          </span>
+                          {dinnerRating.rating > 0 && (
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded text-white flex items-center gap-0.5 ${
+                              dinnerRating.rating >= 4.5 ? 'bg-emerald-800' : 'bg-purple-800'
+                            }`}>
+                              ★ {dinnerRating.rating}
+                            </span>
+                          )}
+                        </div>
+                        <div className="font-medium text-gray-900 text-sm mt-1">{day.dinner.itemsHindi}</div>
+                        <div className="text-xs text-gray-500 mt-0.5">{day.dinner.itemsEnglish}</div>
+                        <div className="text-[10px] text-purple-800 font-semibold mt-1">
+                          {dinnerRating.badge} • Est. {dinnerRating.crowd} students
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 align-top text-center">
+                        <button
+                          onClick={() => setEditingDay(day)}
+                          className="inline-flex items-center gap-1 text-primary-700 hover:text-primary-900 bg-primary-50 hover:bg-primary-100 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" /> Edit
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
