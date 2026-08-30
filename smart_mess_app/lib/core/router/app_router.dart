@@ -34,22 +34,46 @@ final authStateProvider = StateProvider<bool>((ref) => false);
 final userRoleProvider = StateProvider<String>((ref) => 'student'); // 'student' or 'manager'
 final currentStudentProvider = StateProvider<H4Student>((ref) => H4StudentDirectory.students[0]);
 
+class RouterNotifier extends ChangeNotifier {
+  final Ref _ref;
+
+  RouterNotifier(this._ref) {
+    _ref.listen<bool>(authStateProvider, (_, __) => notifyListeners());
+    _ref.listen<String>(userRoleProvider, (_, __) => notifyListeners());
+  }
+}
+
+final routerNotifierProvider = Provider<RouterNotifier>((ref) {
+  return RouterNotifier(ref);
+});
+
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final isAuth = ref.watch(authStateProvider);
-  final role = ref.watch(userRoleProvider);
+  final notifier = ref.watch(routerNotifierProvider);
 
   return GoRouter(
     navigatorKey: rootNavigatorKey,
+    refreshListenable: notifier,
     initialLocation: '/login',
     redirect: (context, state) {
-      final loggingIn = state.uri.toString() == '/login';
+      final isAuth = ref.read(authStateProvider);
+      final role = ref.read(userRoleProvider);
+      final loc = state.matchedLocation;
+      final loggingIn = loc == '/login';
       if (!isAuth && !loggingIn) return '/login';
-      if (isAuth && loggingIn) {
+      if (isAuth && (loggingIn || loc == '/')) {
         return role == 'manager' ? '/manager-dashboard' : '/dashboard';
       }
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/',
+        redirect: (context, state) {
+          final isAuth = ref.read(authStateProvider);
+          final role = ref.read(userRoleProvider);
+          return isAuth ? (role == 'manager' ? '/manager-dashboard' : '/dashboard') : '/login';
+        },
+      ),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       
       // Student Routes

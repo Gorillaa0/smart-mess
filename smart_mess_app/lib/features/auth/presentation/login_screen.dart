@@ -25,11 +25,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        ref.read(authStateProvider.notifier).state = false;
-      }
-    });
   }
 
   void _login() async {
