@@ -2,29 +2,34 @@ import React, { useState, useEffect } from 'react';
 import { H4_STUDENTS_LIST } from '../../data/h4StudentsData';
 import type { H4Student } from '../../data/h4StudentsData';
 import { 
-  Users, CheckCircle2, XCircle, CalendarOff, Search, Filter, 
-  Download, Building2, Utensils, Clock, Check, RefreshCw, UserCheck
+  Users, CheckCircle2, CalendarOff, Search,
+  Download, Building2, Utensils, Clock, Check, RefreshCw,
+  Receipt, X, CreditCard, ChevronRight, ShieldCheck, DollarSign
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export type StudentMealStatus = 'present' | 'mess-off' | 'absent';
 
-export interface StudentAttendanceEntry {
-  student: H4Student;
-  status: StudentMealStatus;
-  scannedAt?: string;
-  plateToken?: string;
+export interface DailyBillItem {
+  date: string;
+  dayName: string;
+  dateFormatted: string;
+  breakfast: { eaten: boolean; price: number };
+  lunch: { eaten: boolean; price: number };
+  dinner: { eaten: boolean; price: number };
+  dayTotal: number;
 }
 
 export const AttendanceLedgerPage: React.FC = () => {
   const [selectedMeal, setSelectedMeal] = useState<'Breakfast' | 'Lunch' | 'Dinner'>('Lunch');
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [statusFilter, setStatusFilter] = useState<string>('All');
+  const [statusFilter, setStatusFilter] = useState<string>('Present'); // Default to eaten only
   const [branchFilter, setBranchFilter] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [liveScans, setLiveScans] = useState<any[]>([]);
   const [liveMessOffs, setLiveMessOffs] = useState<any[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedStudentForBill, setSelectedStudentForBill] = useState<H4Student | null>(null);
 
   const fetchLiveFirestoreData = async () => {
     try {
@@ -50,6 +55,7 @@ export const AttendanceLedgerPage: React.FC = () => {
               const f = item.document.fields;
               scans.push({
                 registrationNo: f.registrationNo?.stringValue || '',
+                rollNo: f.rollNo?.stringValue || '',
                 mealType: f.mealType?.stringValue || '',
                 scannedAt: f.scannedAt?.stringValue || '',
                 id: f.id?.stringValue || ''
@@ -106,7 +112,7 @@ export const AttendanceLedgerPage: React.FC = () => {
     const scanMatch = liveScans.find((sc) => {
       const scanDate = sc.scannedAt ? sc.scannedAt.split('T')[0] : '';
       return (
-        sc.registrationNo === s.registrationNo &&
+        (sc.registrationNo === s.registrationNo || sc.rollNo === s.rollNo) &&
         sc.mealType.toLowerCase() === selectedMeal.toLowerCase() &&
         (scanDate === selectedDate || !scanDate)
       );
@@ -162,10 +168,89 @@ export const AttendanceLedgerPage: React.FC = () => {
     toast.success(`Downloaded ${selectedMeal} Attendance Report!`);
   };
 
+  const computeStudentBill = (student: H4Student) => {
+    const cleanReg = student.registrationNo.trim().toLowerCase();
+    const cleanRoll = student.rollNo.trim().toLowerCase();
+
+    const studentScans = liveScans.filter((s: any) => {
+      const sr = (s.registrationNo || '').trim().toLowerCase();
+      const sl = (s.rollNo || '').trim().toLowerCase();
+      return sr === cleanReg || sr === cleanRoll || sl === cleanReg || sl === cleanRoll;
+    });
+
+    const studentMessOffs = liveMessOffs.filter((m: any) => {
+      const mr = (m.registrationNo || '').trim().toLowerCase();
+      return mr === cleanReg || mr === cleanRoll;
+    });
+
+    // Group by unique calendar dates
+    const datesMap: Record<string, any[]> = {};
+    studentScans.forEach((s: any) => {
+      const d = s.scannedAt ? s.scannedAt.split('T')[0] : new Date().toISOString().split('T')[0];
+      if (!datesMap[d]) datesMap[d] = [];
+      datesMap[d].push(s);
+    });
+
+    const dailyItems: DailyBillItem[] = [];
+    Object.entries(datesMap).forEach(([dateStr, dayScans]) => {
+      const dateObj = new Date(dateStr);
+      const dayOfWeek = dateObj.getDay(); // 0 = Sun, 3 = Wed
+      const isSunday = dayOfWeek === 0;
+      const isWednesday = dayOfWeek === 3;
+
+      const bEaten = dayScans.some((s: any) => (s.mealType || '').toLowerCase().includes('breakfast'));
+      const lEaten = dayScans.some((s: any) => (s.mealType || '').toLowerCase().includes('lunch'));
+      const dEaten = dayScans.some((s: any) => (s.mealType || '').toLowerCase().includes('dinner'));
+
+      const bPrice = isSunday ? 0 : 25;
+      const lPrice = isSunday ? 100 : 50;
+      const dPrice = isWednesday ? 100 : 50;
+
+      const dayTotal = (bEaten ? bPrice : 0) + (lEaten ? lPrice : 0) + (dEaten ? dPrice : 0);
+
+      dailyItems.push({
+        date: dateStr,
+        dayName: dateObj.toLocaleDateString('en-US', { weekday: 'long' }),
+        dateFormatted: dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
+        breakfast: { eaten: bEaten, price: bPrice },
+        lunch: { eaten: lEaten, price: lPrice },
+        dinner: { eaten: dEaten, price: dPrice },
+        dayTotal,
+      });
+    });
+
+    dailyItems.sort((a, b) => b.date.localeCompare(a.date));
+
+    const totalMealsEaten = dailyItems.reduce(
+      (sum, d) => sum + (d.breakfast.eaten ? 1 : 0) + (d.lunch.eaten ? 1 : 0) + (d.dinner.eaten ? 1 : 0),
+      0
+    );
+    const totalMonthAmount = dailyItems.reduce((sum, d) => sum + d.dayTotal, 0);
+    const breakfastCount = dailyItems.filter((d) => d.breakfast.eaten).length;
+    const lunchCount = dailyItems.filter((d) => d.lunch.eaten).length;
+    const dinnerCount = dailyItems.filter((d) => d.dinner.eaten).length;
+    const messOffRebate = studentMessOffs.length * 50;
+    const advanceDeposit = 3000;
+    const netBalance = advanceDeposit - totalMonthAmount;
+
+    return {
+      totalMealsEaten,
+      totalMonthAmount,
+      breakfastCount,
+      lunchCount,
+      dinnerCount,
+      messOffCount: studentMessOffs.length,
+      messOffRebate,
+      advanceDeposit,
+      netBalance,
+      dailyItems,
+    };
+  };
+
   const filteredList = H4_STUDENTS_LIST.filter((student) => {
     const att = attendanceMap[student.registrationNo] || { status: 'absent' };
     
-    // Status Filter
+    // Status Filter (Default 'Present' shows only eaten students)
     if (statusFilter !== 'All' && att.status !== statusFilter.toLowerCase()) {
       return false;
     }
@@ -190,6 +275,8 @@ export const AttendanceLedgerPage: React.FC = () => {
     return true;
   });
 
+  const selectedBillDetails = selectedStudentForBill ? computeStudentBill(selectedStudentForBill) : null;
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Top Banner */}
@@ -200,10 +287,10 @@ export const AttendanceLedgerPage: React.FC = () => {
             <span>Hostel Number 4 • Central Dining Facility</span>
           </div>
           <h1 className="text-2xl font-bold font-display tracking-tight text-white mt-1">
-            Master Attendance Ledger ({totalCount} Registered Students)
+            Student Attendance & Bill Ledger ({totalCount} Boarders)
           </h1>
           <p className="text-primary-200 text-sm mt-1">
-            Live real-time student dining records, QR plate scans & advance mess-off exemptions.
+            Showing students who have eaten. Click on any student to inspect their live mess bill and deductions.
           </p>
         </div>
 
@@ -318,7 +405,7 @@ export const AttendanceLedgerPage: React.FC = () => {
             <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
             <input
               type="text"
-              placeholder="Search by student name, roll, reg no, room..."
+              placeholder="Search eaten students by name, roll, reg no, room..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full text-xs pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-600 focus:outline-none"
@@ -329,7 +416,7 @@ export const AttendanceLedgerPage: React.FC = () => {
           <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
             {/* Status Filter */}
             <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-xl border border-gray-200">
-              {['All', 'Present', 'Mess-Off', 'Absent'].map((tab) => (
+              {['Present', 'All', 'Mess-Off', 'Absent'].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setStatusFilter(tab)}
@@ -339,7 +426,7 @@ export const AttendanceLedgerPage: React.FC = () => {
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  {tab}
+                  {tab === 'Present' ? `Eaten (${presentCount})` : tab}
                 </button>
               ))}
             </div>
@@ -361,8 +448,17 @@ export const AttendanceLedgerPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Master 112 Students Attendance Table */}
+      {/* Master Students Attendance Table */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+          <div>
+            <h3 className="font-bold text-gray-900 text-sm">
+              {statusFilter === 'Present' ? `Students Who Have Eaten (${filteredList.length})` : `Attendance Ledger (${filteredList.length})`}
+            </h3>
+            <p className="text-xs text-gray-500">Click on any row or 'View Bill' to inspect student's real-time consumption bill & deductions.</p>
+          </div>
+        </div>
+
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-gray-50 text-gray-600 font-bold border-b border-gray-200 uppercase tracking-wider">
@@ -374,7 +470,8 @@ export const AttendanceLedgerPage: React.FC = () => {
                 <th className="py-3 px-4">Branch</th>
                 <th className="py-3 px-4">Room</th>
                 <th className="py-3 px-4 text-center">Status</th>
-                <th className="py-3 px-4">Verified Scan Time & Counter Token</th>
+                <th className="py-3 px-4">Scan Time & Plate Token</th>
+                <th className="py-3 px-4 text-center">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
@@ -386,7 +483,8 @@ export const AttendanceLedgerPage: React.FC = () => {
                 return (
                   <tr
                     key={student.registrationNo}
-                    className={`hover:bg-gray-50/80 transition-colors ${
+                    onClick={() => setSelectedStudentForBill(student)}
+                    className={`cursor-pointer hover:bg-emerald-50/50 transition-colors ${
                       isPresent ? 'bg-emerald-50/20' : isMessOff ? 'bg-amber-50/20' : ''
                     }`}
                   >
@@ -435,14 +533,26 @@ export const AttendanceLedgerPage: React.FC = () => {
                         <span className="text-gray-400 text-xs italic">Awaiting Student QR Camera Scan</span>
                       )}
                     </td>
+                    <td className="py-3 px-4 text-center">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedStudentForBill(student);
+                        }}
+                        className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 mx-auto transition-colors"
+                      >
+                        <Receipt className="w-3.5 h-3.5" />
+                        View Bill
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
 
               {filteredList.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="text-center py-8 text-gray-500 text-sm font-medium">
-                    No student records matched your search or filters.
+                  <td colSpan={9} className="text-center py-10 text-gray-500 text-sm font-medium">
+                    No students found matching your filters.
                   </td>
                 </tr>
               )}
@@ -450,6 +560,157 @@ export const AttendanceLedgerPage: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* STUDENT MESS BILL & CONSUMPTION MODAL */}
+      {selectedStudentForBill && selectedBillDetails && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in fade-in zoom-in duration-200">
+            {/* Header */}
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-primary-900 text-white">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-white/20 text-white flex items-center justify-center font-bold text-base">
+                  {selectedStudentForBill.name[0]}
+                </div>
+                <div>
+                  <h3 className="font-bold text-base">{selectedStudentForBill.name}</h3>
+                  <p className="text-xs text-primary-200">
+                    Roll: {selectedStudentForBill.rollNo} • Reg: {selectedStudentForBill.registrationNo} • Room {selectedStudentForBill.roomNo} ({selectedStudentForBill.branch})
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedStudentForBill(null)}
+                className="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Scrollable Bill Content */}
+            <div className="p-6 overflow-y-auto space-y-5 text-gray-800">
+              {/* Main Total Amount Card */}
+              <div className="bg-gradient-to-br from-primary-900 via-primary-800 to-primary-900 rounded-2xl p-5 text-white shadow-md">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-primary-200 tracking-wider uppercase">Current Month Consumption Bill</span>
+                  <span className="text-xs bg-white/20 px-2.5 py-0.5 rounded-full font-bold">
+                    {selectedBillDetails.totalMealsEaten} Verified Meals
+                  </span>
+                </div>
+                <div className="mt-2 flex items-baseline gap-2">
+                  <span className="text-3xl font-black">₹{selectedBillDetails.totalMonthAmount}</span>
+                  <span className="text-xs text-primary-200">total food eaten</span>
+                </div>
+
+                {/* 3 Metrics Strip */}
+                <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-white/20 text-xs">
+                  <div>
+                    <span className="text-primary-200 block text-[10px]">Advance Deposit</span>
+                    <span className="font-bold text-sm">₹{selectedBillDetails.advanceDeposit}</span>
+                  </div>
+                  <div>
+                    <span className="text-amber-300 block text-[10px]">Mess-Off Rebate</span>
+                    <span className="font-bold text-sm text-amber-300">₹{selectedBillDetails.messOffRebate}</span>
+                  </div>
+                  <div>
+                    <span className="text-primary-200 block text-[10px]">Remaining Balance</span>
+                    <span className={`font-bold text-sm ${selectedBillDetails.netBalance >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
+                      ₹{selectedBillDetails.netBalance}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Rate & Count Summary Chips */}
+              <div>
+                <h4 className="font-bold text-xs text-gray-700 uppercase tracking-wider mb-2">Meal Consumption Breakdown</h4>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl">
+                    <span className="text-xs font-bold text-amber-900 block">Breakfast</span>
+                    <span className="text-base font-black text-gray-900">{selectedBillDetails.breakfastCount}</span>
+                    <span className="text-[10px] text-amber-800 font-semibold block">@ ₹25 / plate</span>
+                  </div>
+
+                  <div className="bg-blue-50 border border-blue-200 p-3 rounded-xl">
+                    <span className="text-xs font-bold text-blue-900 block">Lunch</span>
+                    <span className="text-base font-black text-gray-900">{selectedBillDetails.lunchCount}</span>
+                    <span className="text-[10px] text-blue-800 font-semibold block">@ ₹50 / ₹100</span>
+                  </div>
+
+                  <div className="bg-purple-50 border border-purple-200 p-3 rounded-xl">
+                    <span className="text-xs font-bold text-purple-900 block">Dinner</span>
+                    <span className="text-base font-black text-gray-900">{selectedBillDetails.dinnerCount}</span>
+                    <span className="text-[10px] text-purple-800 font-semibold block">@ ₹50 / ₹100</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Daily Consumption Log */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-bold text-xs text-gray-700 uppercase tracking-wider">
+                    Daily Verified Attendance Log
+                  </h4>
+                  <span className="text-xs text-gray-500 font-medium">{selectedBillDetails.dailyItems.length} days recorded</span>
+                </div>
+
+                {selectedBillDetails.dailyItems.length === 0 ? (
+                  <div className="bg-gray-50 p-6 rounded-xl text-center text-gray-500 text-xs border border-gray-200">
+                    No verified attendance records found for this student this month.
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                    {selectedBillDetails.dailyItems.map((item) => (
+                      <div
+                        key={item.date}
+                        className="bg-gray-50 border border-gray-200 rounded-xl p-3 flex items-center justify-between text-xs"
+                      >
+                        <div>
+                          <span className="font-bold text-gray-900 block">{item.dayName}</span>
+                          <span className="text-[10px] text-gray-500">{item.dateFormatted}</span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            item.breakfast.eaten ? 'bg-amber-100 text-amber-900' : 'bg-gray-200 text-gray-500'
+                          }`}>
+                            B: {item.breakfast.eaten ? `₹${item.breakfast.price}` : '—'}
+                          </span>
+
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            item.lunch.eaten ? 'bg-blue-100 text-blue-900' : 'bg-gray-200 text-gray-500'
+                          }`}>
+                            L: {item.lunch.eaten ? `₹${item.lunch.price}` : '—'}
+                          </span>
+
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            item.dinner.eaten ? 'bg-purple-100 text-purple-900' : 'bg-gray-200 text-gray-500'
+                          }`}>
+                            D: {item.dinner.eaten ? `₹${item.dinner.price}` : '—'}
+                          </span>
+
+                          <span className="bg-emerald-100 text-emerald-900 font-bold px-2.5 py-0.5 rounded-lg ml-2">
+                            ₹{item.dayTotal}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end">
+              <button
+                onClick={() => setSelectedStudentForBill(null)}
+                className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-xl text-xs font-bold transition-colors"
+              >
+                Close Audit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
