@@ -1,4 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { collection, onSnapshot, doc, setDoc } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
+import toast from 'react-hot-toast';
 
 export const WastagePage: React.FC = () => (
   <div className="p-6 bg-white rounded-xl shadow-sm border border-gray-100">
@@ -30,6 +33,30 @@ export const FoodPrepPage: React.FC = () => {
     Lunch: false,
     Dinner: false
   });
+
+  useEffect(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const unsub = onSnapshot(collection(db, 'foodPreparation'), (snapshot) => {
+      snapshot.forEach((docSnap) => {
+        const d = docSnap.data();
+        if (d.date === todayStr) {
+          const mt = (d.mealType || '').toLowerCase();
+          const qty = d.approvedQuantity || 0;
+          if (mt.includes('breakfast')) {
+            setApprovedMap(prev => ({ ...prev, Breakfast: true }));
+            if (qty > 0) setManagerPortions(prev => ({ ...prev, Breakfast: qty }));
+          } else if (mt.includes('lunch')) {
+            setApprovedMap(prev => ({ ...prev, Lunch: true }));
+            if (qty > 0) setManagerPortions(prev => ({ ...prev, Lunch: qty }));
+          } else if (mt.includes('dinner')) {
+            setApprovedMap(prev => ({ ...prev, Dinner: true }));
+            if (qty > 0) setManagerPortions(prev => ({ ...prev, Dinner: qty }));
+          }
+        }
+      });
+    });
+    return () => unsub();
+  }, []);
 
   const mealsData = {
     Breakfast: {
@@ -187,7 +214,26 @@ export const FoodPrepPage: React.FC = () => {
             )}
 
             <button
-              onClick={() => setApprovedMap(prev => ({ ...prev, [selectedMeal]: true }))}
+              onClick={async () => {
+                const todayStr = new Date().toISOString().split('T')[0];
+                const docId = `${todayStr}_${selectedMeal.toLowerCase()}`;
+                setApprovedMap(prev => ({ ...prev, [selectedMeal]: true }));
+                toast.success(`✓ Locked & Approved: ${decidedQty} portions for ${selectedMeal}!`);
+
+                try {
+                  await setDoc(doc(db, 'foodPreparation', docId), {
+                    mealType: selectedMeal.toLowerCase(),
+                    date: todayStr,
+                    approvedQuantity: decidedQty,
+                    approvedAt: new Date().toISOString(),
+                    approvedBy: 'Mess Manager',
+                    messId: 'hostel_4_mess',
+                    status: 'approved'
+                  }, { merge: true });
+                } catch (e) {
+                  console.error('Error saving approval in FoodPrepPage:', e);
+                }
+              }}
               disabled={isApproved}
               className={`px-6 py-2.5 rounded-xl text-xs font-bold text-white transition shadow-sm ${
                 isApproved
