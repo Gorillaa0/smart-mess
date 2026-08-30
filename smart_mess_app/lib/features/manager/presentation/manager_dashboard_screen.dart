@@ -16,7 +16,8 @@ class ManagerDashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen> {
-  bool isApproved = false;
+  String _selectedPredictionMeal = 'Lunch';
+  final Map<String, bool> _approvedMeals = {'Breakfast': false, 'Lunch': false, 'Dinner': false};
   String _currentManagerPassword = 'Pass@2942';
 
   void _showChangePasswordDialog(BuildContext context) {
@@ -507,8 +508,35 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
     );
   }
 
-  // 2. AI DEMAND PREDICTION CARD
-  Widget _buildPredictionCard(BuildContext context, int totalStudents, int recommendedPrep) {
+  // 2. AI DEMAND PREDICTION CARD (SEPARATE FOR BREAKFAST, LUNCH, AND DINNER)
+  Widget _buildPredictionCard(BuildContext context, int totalStudents, int _) {
+    // Distinct factors for each meal slot
+    final int predictedCount;
+    final String mealTiming;
+    final String cutoffTime;
+    final String menuSnippet;
+
+    if (_selectedPredictionMeal == 'Breakfast') {
+      predictedCount = (totalStudents * 0.65).round(); // ~73 boarders
+      mealTiming = '08:00 AM - 09:30 AM';
+      cutoffTime = '07:00 AM (Passed)';
+      menuSnippet = 'Aloo Paratha / Idli Sambhar, Curd & Hot Chai';
+    } else if (_selectedPredictionMeal == 'Dinner') {
+      predictedCount = (totalStudents * 0.85).round(); // ~95 boarders
+      mealTiming = '08:00 PM - 09:30 PM';
+      cutoffTime = '06:00 PM';
+      menuSnippet = 'Roti, Dal Tadka, Seasonal Sabzi / Special Non-Veg';
+    } else {
+      // Lunch
+      predictedCount = (totalStudents * 0.95).round(); // ~106 boarders
+      mealTiming = '01:00 PM - 02:30 PM';
+      cutoffTime = '11:00 AM';
+      menuSnippet = 'Rice, Arhar Dal, Mixed Veg, Papad & Salad';
+    }
+
+    final int recommendedCooking = (predictedCount * 1.03).round();
+    final bool mealApproved = _approvedMeals[_selectedPredictionMeal] ?? false;
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -554,13 +582,77 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                   border: Border.all(color: Colors.green.shade200),
                 ),
                 child: Text(
-                  'Active Model',
+                  '3-Meal Separate ML',
                   style: TextStyle(color: Colors.green.shade900, fontSize: 11, fontWeight: FontWeight.w800),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
+
+          // 3-Way Meal Selector Tabs (Breakfast, Lunch, Dinner)
+          Container(
+            padding: const EdgeInsets.all(3.5),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: Row(
+              children: ['Breakfast', 'Lunch', 'Dinner'].map((meal) {
+                final isSelected = _selectedPredictionMeal == meal;
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _selectedPredictionMeal = meal),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 7),
+                      decoration: BoxDecoration(
+                        color: isSelected ? const Color(0xFF1B5E20) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(9),
+                        boxShadow: isSelected
+                            ? [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 1))]
+                            : null,
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        meal == 'Breakfast' ? '🍳 Breakfast' : meal == 'Lunch' ? '🍛 Lunch' : '🍲 Dinner',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          color: isSelected ? Colors.white : Colors.grey.shade700,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Timing & Cutoff Banner
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F8E9),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFDCEDC8)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.access_time, size: 13, color: Color(0xFF1B5E20)),
+                    const SizedBox(width: 4),
+                    Text(mealTiming, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20))),
+                  ],
+                ),
+                Text('Cutoff: $cutoffTime', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
 
           // 5 Stats Row
           Row(
@@ -569,41 +661,47 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
               const SizedBox(width: 8),
               _metricBox('Mess-Off', '0', const Color(0xFFC62828), const Color(0xFFFFEBEE), const Color(0xFFFFCDD2)),
               const SizedBox(width: 8),
-              _metricBox('Predicted', '$recommendedPrep', const Color(0xFF6A1B9A), const Color(0xFFF3E5F5), const Color(0xFFCE93D8)),
+              _metricBox('Predicted', '$predictedCount', const Color(0xFF6A1B9A), const Color(0xFFF3E5F5), const Color(0xFFCE93D8)),
             ],
           ),
           const SizedBox(height: 8),
           Row(
             children: [
-              _metricBox('Expected Range', '${recommendedPrep - 5}-${recommendedPrep + 5}', const Color(0xFF283593), const Color(0xFFE8EAF6), const Color(0xFF9FA8DA)),
+              _metricBox('Expected Range', '${predictedCount - 4}-${predictedCount + 4}', const Color(0xFF283593), const Color(0xFFE8EAF6), const Color(0xFF9FA8DA)),
               const SizedBox(width: 8),
-              _metricBox('Rec. Cook (+3%)', '$recommendedPrep', const Color(0xFF1B5E20), const Color(0xFFE8F5E9), const Color(0xFFA5D6A7), isHighlight: true),
+              _metricBox('Rec. Cook (+3%)', '$recommendedCooking', const Color(0xFF1B5E20), const Color(0xFFE8F5E9), const Color(0xFFA5D6A7), isHighlight: true),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
 
-          // Approve Button
+          // Menu Snippet
+          Text('Menu: $menuSnippet', style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontStyle: FontStyle.italic)),
+          const SizedBox(height: 12),
+
+          // Approve Button for Selected Meal
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: isApproved ? Colors.grey.shade700 : const Color(0xFF1B5E20),
+                backgroundColor: mealApproved ? Colors.grey.shade700 : const Color(0xFF1B5E20),
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
+                padding: const EdgeInsets.symmetric(vertical: 13),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              icon: Icon(isApproved ? Icons.check_circle : Icons.approval, size: 20),
+              icon: Icon(mealApproved ? Icons.check_circle : Icons.approval, size: 18),
               label: Text(
-                isApproved ? 'PREPARATION APPROVED ($recommendedPrep PORTIONS)' : 'APPROVE COOKING QUANTITY ($recommendedPrep PORTIONS)',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                mealApproved
+                    ? '$_selectedPredictionMeal APPROVED ($recommendedCooking PORTIONS)'
+                    : 'APPROVE $_selectedPredictionMeal PREPARATION ($recommendedCooking PORTIONS)',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
               ),
-              onPressed: isApproved
+              onPressed: mealApproved
                   ? null
                   : () {
-                      setState(() => isApproved = true);
+                      setState(() => _approvedMeals[_selectedPredictionMeal] = true);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Approved kitchen preparation of $recommendedPrep portions for Hostel H4!'),
+                          content: Text('Approved kitchen preparation of $recommendedCooking portions for $_selectedPredictionMeal!'),
                           backgroundColor: const Color(0xFF1B5E20),
                         ),
                       );

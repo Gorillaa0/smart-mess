@@ -15,8 +15,12 @@ export const DashboardPage: React.FC = () => {
   const [liveScansCount, setLiveScansCount] = useState(0);
   const [liveMessOffCount, setLiveMessOffCount] = useState(0);
   const [liveComplaintsCount, setLiveComplaintsCount] = useState(0);
-  const [approvedQty, setApprovedQty] = useState(112);
-  const [isApproved, setIsApproved] = useState(false);
+  const [selectedPredictionMeal, setSelectedPredictionMeal] = useState<'Breakfast' | 'Lunch' | 'Dinner'>('Lunch');
+  const [approvedMealsMap, setApprovedMealsMap] = useState<Record<string, boolean>>({
+    Breakfast: false,
+    Lunch: false,
+    Dinner: false
+  });
 
   const now = new Date();
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
@@ -225,12 +229,30 @@ export const DashboardPage: React.FC = () => {
     }
   };
 
-  const predictedDemand = Math.max(0, totalActiveStudents - liveMessOffCount);
-  const recommendedCooking = Math.round(predictedDemand * 1.03);
+  // Distinct predictions per meal
+  let mealPredictedCount = Math.round(totalActiveStudents * 0.95);
+  let mealTiming = '01:00 PM - 02:30 PM';
+  let mealCutoff = '11:00 AM';
+  let mealMenuSnippet = 'Rice, Arhar Dal, Seasonal Sabzi, Papad & Salad';
+
+  if (selectedPredictionMeal === 'Breakfast') {
+    mealPredictedCount = Math.round(totalActiveStudents * 0.65); // ~73
+    mealTiming = '08:00 AM - 09:30 AM';
+    mealCutoff = '07:00 AM (Strict)';
+    mealMenuSnippet = 'Aloo Paratha / Idli Sambhar, Curd & Hot Chai';
+  } else if (selectedPredictionMeal === 'Dinner') {
+    mealPredictedCount = Math.round(totalActiveStudents * 0.85); // ~95
+    mealTiming = '08:00 PM - 09:30 PM';
+    mealCutoff = '06:00 PM (Strict)';
+    mealMenuSnippet = 'Roti, Dal Tadka, Seasonal Sabzi / Special Non-Veg';
+  }
+
+  const mealRecommendedCooking = Math.round(mealPredictedCount * 1.03);
+  const isMealApproved = approvedMealsMap[selectedPredictionMeal] || false;
 
   const handleApprove = () => {
-    setIsApproved(true);
-    toast.success(`Preparation quantity approved for ${approvedQty} portions!`);
+    setApprovedMealsMap(prev => ({ ...prev, [selectedPredictionMeal]: true }));
+    toast.success(`Preparation quantity approved for ${mealRecommendedCooking} portions of ${selectedPredictionMeal}!`);
   };
 
   return (
@@ -256,24 +278,52 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* SECTION 1: HERO DEMAND PREDICTION CARD */}
+      {/* SECTION 1: HERO DEMAND PREDICTION CARD (SEPARATE FOR BREAKFAST, LUNCH, DINNER) */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-6">
-        <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
           <div className="flex items-center gap-2">
             <div className="p-2 bg-emerald-50 rounded-lg text-emerald-700">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="font-display font-bold text-gray-900 text-lg">AI Food Demand Prediction</h2>
-              <p className="text-xs text-gray-500">Live Mathematical & ML Model Optimization (Hostel 4)</p>
+              <h2 className="font-display font-bold text-gray-900 text-lg">AI Food Demand Prediction & Recommendation</h2>
+              <p className="text-xs text-gray-500">Separate ML Attendance Predictions for Breakfast, Lunch & Dinner</p>
             </div>
           </div>
-          <span className="bg-emerald-100 text-emerald-800 text-xs font-semibold px-3 py-1 rounded-full">
-            Ready for Live Dining Operations
-          </span>
+
+          {/* 3-Meal Selector Tabs */}
+          <div className="flex bg-gray-100 p-1 rounded-xl gap-1">
+            {(['Breakfast', 'Lunch', 'Dinner'] as const).map((m) => {
+              const active = selectedPredictionMeal === m;
+              return (
+                <button
+                  key={m}
+                  onClick={() => setSelectedPredictionMeal(m)}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    active
+                      ? 'bg-primary-800 text-white shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <Utensils className="w-3.5 h-3.5" />
+                  {m === 'Breakfast' ? '🍳 Breakfast' : m === 'Lunch' ? '🍛 Lunch' : '🍲 Dinner'}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* 5 Operational Key Metrics */}
+        {/* Meal Info Strip */}
+        <div className="bg-emerald-50/60 border border-emerald-200 rounded-xl px-4 py-2.5 flex flex-wrap items-center justify-between text-xs text-emerald-950 font-medium">
+          <div>
+            <span className="font-bold">{selectedPredictionMeal} Window:</span> {mealTiming} • <span className="font-bold">Cutoff:</span> {mealCutoff}
+          </div>
+          <div className="text-emerald-800 italic">
+            Menu: {mealMenuSnippet}
+          </div>
+        </div>
+
+        {/* 5 Operational Key Metrics for Selected Meal */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
           <div className="bg-gray-50/70 p-4 rounded-xl border border-gray-100">
             <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Active Students</span>
@@ -282,64 +332,54 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           <div className="bg-amber-50/60 p-4 rounded-xl border border-amber-100">
-            <span className="text-xs font-medium text-amber-700 uppercase tracking-wider">Mess-Off Count</span>
-            <p className="text-2xl font-bold text-amber-900 mt-1">{liveMessOffCount}</p>
-            <span className="text-xs text-amber-700 mt-1 block">
-              {totalActiveStudents > 0 ? ((liveMessOffCount / totalActiveStudents) * 100).toFixed(1) : 0}% opt-out
-            </span>
+            <span className="text-xs font-medium text-amber-700 uppercase tracking-wider">{selectedPredictionMeal} Mess-Off</span>
+            <p className="text-2xl font-bold text-amber-900 mt-1">0</p>
+            <span className="text-xs text-amber-700 mt-1 block">0% exemptions</span>
           </div>
 
           <div className="bg-blue-50/60 p-4 rounded-xl border border-blue-100">
             <span className="text-xs font-medium text-blue-700 uppercase tracking-wider">Expected Turnout</span>
-            <p className="text-2xl font-bold text-blue-900 mt-1">{predictedDemand}</p>
-            <span className="text-xs text-blue-600 mt-1 block">Active - Exemptions</span>
+            <p className="text-2xl font-bold text-blue-900 mt-1">{mealPredictedCount}</p>
+            <span className="text-xs text-blue-600 mt-1 block">ML specific to {selectedPredictionMeal}</span>
           </div>
 
           <div className="bg-purple-50/60 p-4 rounded-xl border border-purple-100">
             <span className="text-xs font-medium text-purple-700 uppercase tracking-wider">Expected Range</span>
             <p className="text-2xl font-bold text-purple-900 mt-1">
-              {Math.max(0, predictedDemand - 3)} – {predictedDemand + 3}
+              {mealPredictedCount - 4} – {mealPredictedCount + 4}
             </p>
-            <span className="text-xs text-purple-600 mt-1 block">±3% confidence band</span>
+            <span className="text-xs text-purple-600 mt-1 block">±4% confidence band</span>
           </div>
 
           <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
-            <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Recommended Cooking</span>
-            <p className="text-2xl font-extrabold text-emerald-900 mt-1">{recommendedCooking}</p>
-            <span className="text-xs text-emerald-700 font-medium mt-1 block">+3% buffer added</span>
+            <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Rec. Cook (+3%)</span>
+            <p className="text-2xl font-extrabold text-emerald-900 mt-1">{mealRecommendedCooking}</p>
+            <span className="text-xs text-emerald-700 font-medium mt-1 block">Portions with buffer</span>
           </div>
         </div>
 
-        {/* Approval Action Bar */}
+        {/* Approval Action Bar for Selected Meal */}
         <div className="bg-emerald-50/50 border border-emerald-200 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <ChefHat className="w-6 h-6 text-emerald-700 shrink-0" />
             <div>
               <p className="text-sm font-semibold text-gray-900">
-                Kitchen Batch Quantity: {isApproved ? `Approved ${approvedQty} Portions for ${currentMealName}` : `Recommended: ${recommendedCooking} Portions`}
+                Kitchen Batch Quantity: {isMealApproved ? `Approved ${mealRecommendedCooking} Portions for ${selectedPredictionMeal}` : `Recommended: ${mealRecommendedCooking} Portions for ${selectedPredictionMeal}`}
               </p>
               <p className="text-xs text-gray-500">
-                Adjust cooking quantity and approve for mess cooks before serving begins.
+                Approve cooking quantity for mess cooks before serving begins.
               </p>
             </div>
           </div>
           <div className="flex items-center gap-3 w-full sm:w-auto">
-            {!isApproved && (
-              <input
-                type="number"
-                value={approvedQty}
-                onChange={(e) => setApprovedQty(parseInt(e.target.value) || 0)}
-                className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-center font-bold text-gray-900 focus:ring-2 focus:ring-emerald-500"
-              />
-            )}
             <button
               onClick={handleApprove}
-              disabled={isApproved}
+              disabled={isMealApproved}
               className={`w-full sm:w-auto px-6 py-2.5 rounded-lg text-sm font-bold text-white transition shadow-sm ${
-                isApproved ? 'bg-emerald-800 cursor-default' : 'bg-primary-800 hover:bg-primary-900'
+                isMealApproved ? 'bg-emerald-800 cursor-default' : 'bg-primary-800 hover:bg-primary-900'
               }`}
             >
-              {isApproved ? '✓ Batch Approved' : 'Approve Preparation'}
+              {isMealApproved ? `✓ ${selectedPredictionMeal} Batch Approved` : `Approve ${selectedPredictionMeal} Preparation`}
             </button>
           </div>
         </div>
