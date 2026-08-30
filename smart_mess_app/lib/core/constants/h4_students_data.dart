@@ -79,6 +79,7 @@ class H4Student {
 
 class H4StudentDirectory {
   static final Map<String, String> userChangedPasswords = {};
+  static final Map<String, String> userChangedEmails = {};
 
   static final List<H4Student> students = [
     H4Student(slNo: 1, name: 'Ayush Kumar Singh', rollNo: '23508', mobile: '7370048028', branch: 'CSE', registrationNo: '23105108019', semester: '6th', cgpa: 9.11, roomNo: '101', password: 'Pass@8019'),
@@ -200,9 +201,12 @@ class H4StudentDirectory {
     for (final s in students) {
       if (s.registrationNo.toLowerCase() == clean ||
           s.rollNo.toLowerCase() == clean ||
-          s.mobile == clean) {
+          s.mobile == clean ||
+          (s.email != null && s.email!.toLowerCase() == clean) ||
+          (userChangedEmails[s.registrationNo] != null && userChangedEmails[s.registrationNo]!.toLowerCase() == clean)) {
         final currentPass = userChangedPasswords[s.registrationNo] ?? s.password;
-        return s.copyWith(password: currentPass);
+        final currentEmail = userChangedEmails[s.registrationNo] ?? s.email;
+        return s.copyWith(password: currentPass, email: currentEmail);
       }
     }
     return null;
@@ -210,6 +214,11 @@ class H4StudentDirectory {
 
   static bool updateStudentPassword(String registrationNo, String newPassword) {
     userChangedPasswords[registrationNo] = newPassword.trim();
+    return true;
+  }
+
+  static bool updateStudentEmail(String registrationNo, String newEmail) {
+    userChangedEmails[registrationNo] = newEmail.trim().toLowerCase();
     return true;
   }
 

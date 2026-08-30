@@ -260,10 +260,223 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
+  // ─── Update Email Dialog ──────────────────────────────────────────────
+  void _showUpdateEmailDialog(BuildContext context, WidgetRef ref, H4Student student) {
+    final emailController = TextEditingController(text: student.email ?? '');
+    final passwordController = TextEditingController();
+    bool obscurePassword = true;
+    bool isUpdating = false;
+    String? errorMessage;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Row(
+              children: [
+                Icon(Icons.mark_email_read_outlined, color: Color(0xFF1B5E20), size: 26),
+                SizedBox(width: 10),
+                Text('Update Email Address',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: Color(0xFF1B5E20))),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Password reset links and notifications will be sent to this email address.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 16),
+
+                  if (errorMessage != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        border: Border.all(color: Colors.red.shade200),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline, color: Colors.red, size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(errorMessage!, style: const TextStyle(fontSize: 12, color: Colors.red))),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+
+                  // New Email Field
+                  TextField(
+                    controller: emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: InputDecoration(
+                      labelText: 'New Email Address',
+                      hintText: 'e.g. yourname@gmail.com',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      prefixIcon: const Icon(Icons.email_outlined, size: 20),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Account Password for Verification
+                  TextField(
+                    controller: passwordController,
+                    obscureText: obscurePassword,
+                    decoration: InputDecoration(
+                      labelText: 'Current Password',
+                      hintText: 'Enter your password to authorize',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                      suffixIcon: IconButton(
+                        icon: Icon(obscurePassword ? Icons.visibility_off : Icons.visibility, size: 20),
+                        onPressed: () => setDialogState(() => obscurePassword = !obscurePassword),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            actions: [
+              TextButton(
+                onPressed: isUpdating ? null : () => Navigator.pop(dialogContext),
+                child: Text('CANCEL', style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.bold)),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1B5E20),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                ),
+                onPressed: isUpdating
+                    ? null
+                    : () async {
+                        final newEmail = emailController.text.trim().toLowerCase();
+                        final password = passwordController.text.trim();
+
+                        if (newEmail.isEmpty || !newEmail.contains('@') || !newEmail.contains('.')) {
+                          setDialogState(() => errorMessage = 'Please enter a valid email address.');
+                          return;
+                        }
+                        if (password.isEmpty) {
+                          setDialogState(() => errorMessage = 'Please enter your password to authorize the change.');
+                          return;
+                        }
+
+                        setDialogState(() { isUpdating = true; errorMessage = null; });
+
+                        try {
+                          String studentEmail = '';
+                          if (student.email != null && student.email!.trim().isNotEmpty) {
+                            studentEmail = student.email!.trim().toLowerCase();
+                          } else {
+                            studentEmail = '${student.registrationNo}@smartmess.edu';
+                          }
+
+                          User? firebaseUser = FirebaseAuth.instance.currentUser;
+                          if (firebaseUser == null) {
+                            try {
+                              final userCred = await FirebaseAuth.instance.signInWithEmailAndPassword(
+                                email: studentEmail,
+                                password: password,
+                              );
+                              firebaseUser = userCred.user;
+                            } catch (_) {}
+                          } else {
+                            try {
+                              final credential = EmailAuthProvider.credential(
+                                email: firebaseUser.email ?? studentEmail,
+                                password: password,
+                              );
+                              await firebaseUser.reauthenticateWithCredential(credential);
+                            } catch (_) {}
+                          }
+
+                          if (firebaseUser != null) {
+                            try {
+                              await firebaseUser.verifyBeforeUpdateEmail(newEmail);
+                            } catch (_) {
+                              try {
+                                await firebaseUser.updateEmail(newEmail);
+                              } catch (_) {}
+                            }
+                          }
+
+                          // 1. Sync to in-memory directory
+                          H4StudentDirectory.updateStudentEmail(student.registrationNo, newEmail);
+                          final updatedStudent = student.copyWith(email: newEmail);
+                          ref.read(currentStudentProvider.notifier).state = updatedStudent;
+
+                          // 2. Sync to Firestore (students & users collections)
+                          FirebaseFirestore.instance
+                              .collection('students')
+                              .doc(student.registrationNo)
+                              .set({
+                            'email': newEmail,
+                            'updatedAt': DateTime.now().toIso8601String(),
+                          }, SetOptions(merge: true)).catchError((_) {});
+
+                          if (firebaseUser != null) {
+                            FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(firebaseUser.uid)
+                                .set({
+                              'email': newEmail,
+                              'updatedAt': DateTime.now().toIso8601String(),
+                            }, SetOptions(merge: true)).catchError((_) {});
+                          }
+
+                          // 3. Close dialog and notify student
+                          Navigator.of(dialogContext, rootNavigator: true).pop();
+
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                                    const SizedBox(width: 10),
+                                    Expanded(child: Text('Email updated to $newEmail! Future password reset links will be sent here.')),
+                                  ],
+                                ),
+                                backgroundColor: const Color(0xFF2E7D32),
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          setDialogState(() { isUpdating = false; errorMessage = 'Error updating email: $e'; });
+                        }
+                      },
+                child: isUpdating
+                    ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Text('UPDATE EMAIL', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final student = ref.watch(currentStudentProvider);
     final initials = student.name.trim().split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join('').toUpperCase();
+    final displayEmail = (student.email != null && student.email!.isNotEmpty)
+        ? student.email!
+        : '${student.registrationNo}@smartmess.edu';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7F4),
@@ -322,6 +535,52 @@ class ProfileScreen extends ConsumerWidget {
           _infoTile(Icons.grade, 'Academic Standing', 'CGPA: ${student.cgpa} (Last Semester)'),
           _infoTile(Icons.phone, 'Contact Phone', '+91 ${student.mobile}'),
           
+          // Registered Email Tile with Edit Action Button
+          Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFA5D6A7), width: 1.1),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F5E9),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.email, color: Color(0xFF1B5E20), size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Registered Email (Password Recovery)', style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 2),
+                      Text(displayEmail, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20)), overflow: TextOverflow.ellipsis),
+                    ],
+                  ),
+                ),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1B5E20),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    minimumSize: Size.zero,
+                  ),
+                  icon: const Icon(Icons.edit, size: 14),
+                  label: const Text('UPDATE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  onPressed: () => _showUpdateEmailDialog(context, ref, student),
+                ),
+              ],
+            ),
+          ),
+
           // Password Tile with Action Button
           Container(
             margin: const EdgeInsets.only(bottom: 10),

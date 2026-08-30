@@ -247,10 +247,37 @@ export const LoginPage: React.FC = () => {
 
     // Resolve Manager / Admin Email
     let targetEmail = queryStr.includes('@') ? queryStr : '';
-    if (queryStr === '6200432942' || queryStr === 'manager') {
-      targetEmail = 'manager@smartmess.edu';
-    } else if (queryStr === 'admin') {
-      targetEmail = 'admin@smartmess.edu';
+
+    const savedManager = localStorage.getItem('SMART_MESS_MANAGER_DATA');
+    let managerCustomEmail = '';
+    if (savedManager) {
+      try {
+        const parsed = JSON.parse(savedManager);
+        managerCustomEmail = parsed.email || '';
+      } catch (e) {}
+    }
+
+    const savedAdmin = localStorage.getItem('SMART_MESS_ADMIN_DATA');
+    let adminCustomEmail = '';
+    if (savedAdmin) {
+      try {
+        const parsed = JSON.parse(savedAdmin);
+        adminCustomEmail = parsed.email || '';
+      } catch (e) {}
+    }
+
+    if (
+      queryStr === '6200432942' ||
+      queryStr === 'manager' ||
+      (managerCustomEmail && queryStr === managerCustomEmail.toLowerCase())
+    ) {
+      targetEmail = managerCustomEmail || 'manager@smartmess.edu';
+    } else if (
+      queryStr === 'admin' ||
+      queryStr === 'admin@smartmess.edu' ||
+      (adminCustomEmail && queryStr === adminCustomEmail.toLowerCase())
+    ) {
+      targetEmail = adminCustomEmail || 'admin@smartmess.edu';
     }
 
     if (!targetEmail || !targetEmail.includes('@')) {

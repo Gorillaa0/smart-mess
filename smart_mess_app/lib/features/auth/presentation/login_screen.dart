@@ -266,11 +266,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                           setSheetState(() => isSubmitting = true);
 
-                          // Check if email exists in roster or student database
+                          // Check if email exists in roster, userChangedEmails, or student database
                           final bool isRegistered = H4StudentDirectory.students.any(
                                 (s) => (s.email ?? '').trim().toLowerCase() == inputEmail,
                               ) ||
+                              H4StudentDirectory.userChangedEmails.values.any((e) => e.trim().toLowerCase() == inputEmail) ||
                               inputEmail == 'pawankr0745@gmail.com' ||
+                              inputEmail == 'manager@smartmess.edu' ||
+                              inputEmail == 'admin@smartmess.edu' ||
                               inputEmail.endsWith('@smartmess.edu');
 
                           if (!isRegistered) {
