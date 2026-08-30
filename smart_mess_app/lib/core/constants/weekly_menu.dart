@@ -1,4 +1,4 @@
-﻿class MenuItemData {
+class MenuItemData {
   final String dayHindi;
   final String dayEnglish;
   final MealSlot breakfast;
@@ -147,8 +147,8 @@ class WeeklyMenuData {
         price: 50,
       ),
       dinner: MealSlot(
-        nameHindi: 'रात्रि भोजन (Special Non-Veg/Paneer)',
-        nameEnglish: 'Dinner (Special Non-Veg/Paneer)',
+        nameHindi: 'रात्रि भोजन',
+        nameEnglish: 'Special Feast Dinner',
         servingTime: '08:00 PM - 09:30 PM',
         cutoffTime: '06:00 PM',
         cutoffHour: 18,
@@ -281,8 +281,8 @@ class WeeklyMenuData {
       dayHindi: 'रविवार',
       dayEnglish: 'Sunday',
       breakfast: MealSlot(
-        nameHindi: 'नाश्ता (बंद / No Breakfast)',
-        nameEnglish: 'No Breakfast (Mess Closed for Morning)',
+        nameHindi: 'नाश्ता',
+        nameEnglish: 'Breakfast (Mess Closed)',
         servingTime: 'Closed',
         cutoffTime: 'N/A',
         cutoffHour: 0,
@@ -293,8 +293,8 @@ class WeeklyMenuData {
         isAvailable: false,
       ),
       lunch: MealSlot(
-        nameHindi: 'मध्याह्न भोजन (Special Feast Lunch)',
-        nameEnglish: 'Special Feast Lunch (Non-Veg/Mushroom & Sweet)',
+        nameHindi: 'मध्याह्न भोजन',
+        nameEnglish: 'Special Feast Lunch',
         servingTime: '01:00 PM - 02:30 PM',
         cutoffTime: '11:00 AM',
         cutoffHour: 11,

@@ -692,13 +692,26 @@ class _BillScreenState extends ConsumerState<BillScreen> with SingleTickerProvid
 
   Widget _tariffRow(String title, String price) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3.5),
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(child: Text(title, style: TextStyle(fontSize: 12, color: Colors.grey.shade800), overflow: TextOverflow.ellipsis)),
+          Expanded(
+            flex: 5,
+            child: Text(
+              title,
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade800, fontWeight: FontWeight.w500),
+            ),
+          ),
           const SizedBox(width: 8),
-          Text(price, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20))),
+          Flexible(
+            flex: 4,
+            child: Text(
+              price,
+              textAlign: TextAlign.end,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20)),
+            ),
+          ),
         ],
       ),
     );

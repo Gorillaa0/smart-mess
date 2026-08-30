@@ -37,16 +37,17 @@ class DashboardScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0.5,
+        titleSpacing: 12,
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(6),
+              padding: const EdgeInsets.all(5),
               decoration: BoxDecoration(
                 color: const Color(0xFFE8F5E9),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: const Color(0xFFA5D6A7), width: 1),
               ),
-              child: const Icon(Icons.restaurant_menu, color: Color(0xFF1B5E20), size: 19),
+              child: const Icon(Icons.restaurant_menu, color: Color(0xFF1B5E20), size: 18),
             ),
             const SizedBox(width: 8),
             const Expanded(
@@ -60,8 +61,8 @@ class DashboardScreen extends ConsumerWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
-                    'Central Dining Mess Hall',
-                    style: TextStyle(color: Colors.black54, fontSize: 10.5, fontWeight: FontWeight.w600),
+                    'Hostel Number 4 • Dining',
+                    style: TextStyle(color: Colors.black54, fontSize: 10, fontWeight: FontWeight.w600),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
@@ -71,25 +72,14 @@ class DashboardScreen extends ConsumerWidget {
         ),
         actions: [
           IconButton(
-            tooltip: 'View Profile & Password',
-            icon: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE8F5E9),
-                shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFF81C784), width: 1),
-              ),
-              child: const Icon(Icons.person, color: Color(0xFF1B5E20), size: 18),
-            ),
-            onPressed: () => context.push('/profile'),
-          ),
-          IconButton(
             tooltip: 'Announcements & Notifications',
+            padding: const EdgeInsets.all(4),
+            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
             icon: Stack(
               clipBehavior: Clip.none,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(6),
+                  padding: const EdgeInsets.all(5),
                   decoration: BoxDecoration(
                     color: unreadNotifsCount > 0 ? const Color(0xFFFFF3E0) : Colors.green.shade50,
                     shape: BoxShape.circle,
@@ -101,7 +91,7 @@ class DashboardScreen extends ConsumerWidget {
                   child: Icon(
                     unreadNotifsCount > 0 ? Icons.notifications_active : Icons.notifications_none,
                     color: unreadNotifsCount > 0 ? const Color(0xFFE65100) : const Color(0xFF1B5E20),
-                    size: 18,
+                    size: 17,
                   ),
                 ),
                 if (unreadNotifsCount > 0)
@@ -109,7 +99,7 @@ class DashboardScreen extends ConsumerWidget {
                     right: -2,
                     top: -2,
                     child: Container(
-                      padding: const EdgeInsets.all(3),
+                      padding: const EdgeInsets.all(2),
                       decoration: const BoxDecoration(
                         color: Color(0xFFD32F2F),
                         shape: BoxShape.circle,
@@ -117,7 +107,7 @@ class DashboardScreen extends ConsumerWidget {
                       constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
                       child: Text(
                         '$unreadNotifsCount',
-                        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                        style: const TextStyle(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.bold),
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -130,30 +120,36 @@ class DashboardScreen extends ConsumerWidget {
             },
           ),
           IconButton(
+            tooltip: 'QR Attendance Scanner',
+            padding: const EdgeInsets.all(4),
+            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
             icon: Container(
-              padding: const EdgeInsets.all(6),
+              padding: const EdgeInsets.all(5),
               decoration: BoxDecoration(
                 color: Colors.amber.shade50,
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.amber.shade200, width: 0.8),
               ),
-              child: const Icon(Icons.qr_code_scanner, color: Color(0xFFE65100), size: 18),
+              child: const Icon(Icons.qr_code_scanner, color: Color(0xFFE65100), size: 17),
             ),
             onPressed: () => context.push('/scanner'),
           ),
           IconButton(
+            tooltip: 'Logout',
+            padding: const EdgeInsets.all(4),
+            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
             icon: Container(
-              padding: const EdgeInsets.all(6),
+              padding: const EdgeInsets.all(5),
               decoration: BoxDecoration(
                 color: Colors.red.shade50,
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.red.shade200, width: 0.8),
               ),
-              child: const Icon(Icons.logout, color: Colors.redAccent, size: 18),
+              child: const Icon(Icons.logout, color: Colors.redAccent, size: 17),
             ),
             onPressed: () => AuthService.performLogout(ref, context),
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 8),
         ],
       ),
       body: RefreshIndicator(
@@ -741,25 +737,29 @@ class DashboardScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 10),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.18),
+                color: Colors.black.withValues(alpha: 0.20),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Hostel Number 4 • $dateString',
-                    style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w500),
+                  Flexible(
+                    child: Text(
+                      'Hostel 4 • $dateString',
+                      style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w500),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
+                  const SizedBox(width: 8),
                   const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.edit_note, size: 13, color: Colors.greenAccent),
+                      Icon(Icons.lock_reset, size: 13, color: Colors.greenAccent),
                       SizedBox(width: 3),
                       Text(
-                        'Tap to Update Email & Password',
+                        'Change Password',
                         style: TextStyle(color: Colors.greenAccent, fontSize: 10.5, fontWeight: FontWeight.bold),
                       ),
                     ],

@@ -403,6 +403,7 @@ class _MessOffScreenState extends ConsumerState<MessOffScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Flexible(
+                flex: 5,
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -430,15 +431,16 @@ class _MessOffScreenState extends ConsumerState<MessOffScreen> {
               ),
               const SizedBox(width: 6),
               Flexible(
+                flex: 4,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                   decoration: BoxDecoration(
                     color: isPassed ? Colors.red.shade50 : Colors.green.shade50,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: isPassed ? Colors.red.shade200 : Colors.green.shade200, width: 0.8),
                   ),
                   child: Text(
-                    cutoffStatus,
+                    isPassed ? 'Cutoff Closed (${slot.cutoffTime})' : cutoffStatus,
                     style: TextStyle(
                       color: isPassed ? Colors.red.shade800 : Colors.green.shade800,
                       fontSize: 10,
@@ -458,35 +460,41 @@ class _MessOffScreenState extends ConsumerState<MessOffScreen> {
           Text(slot.itemsEnglish, style: const TextStyle(fontSize: 11.5, color: Colors.grey)),
           const SizedBox(height: 14),
 
-          // Status & Action
+          // Status & Action (Overflow protected)
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Icon(
-                    isOptedOut ? Icons.cancel_outlined : Icons.check_circle_outline,
-                    color: isOptedOut ? Colors.red : const Color(0xFF2E7D32),
-                    size: 18,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    isOptedOut ? 'Status: Mess-Off Applied (Waiver ₹${slot.price})' : 'Status: Eating in Mess',
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.bold,
-                      color: isOptedOut ? Colors.red.shade800 : const Color(0xFF1B5E20),
+              Expanded(
+                child: Row(
+                  children: [
+                    Icon(
+                      isOptedOut ? Icons.cancel_outlined : Icons.check_circle_outline,
+                      color: isOptedOut ? Colors.red : const Color(0xFF2E7D32),
+                      size: 16,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        isOptedOut ? 'Status: Mess-Off Applied (Waiver ₹${slot.price})' : 'Status: Eating in Mess',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: isOptedOut ? Colors.red.shade800 : const Color(0xFF1B5E20),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: isPassed
                       ? Colors.grey.shade400
                       : (isOptedOut ? Colors.grey.shade700 : Colors.red.shade700),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  minimumSize: const Size(75, 32),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
                 onPressed: isPassed
@@ -513,7 +521,7 @@ class _MessOffScreenState extends ConsumerState<MessOffScreen> {
                       },
                 child: Text(
                   isPassed ? 'LOCKED' : (isOptedOut ? 'CANCEL OFF' : 'OPT OUT (OFF)'),
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold),
                 ),
               ),
             ],

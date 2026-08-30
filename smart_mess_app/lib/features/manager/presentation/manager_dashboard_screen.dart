@@ -875,6 +875,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                     ? '$_selectedPredictionMeal FINALIZED & LOCKED (${_managerCustomPortions[_selectedPredictionMeal] ?? recommendedCooking} PORTIONS)'
                     : 'APPROVE $_selectedPredictionMeal PREPARATION (${_managerCustomPortions[_selectedPredictionMeal] ?? recommendedCooking} PORTIONS)',
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                overflow: TextOverflow.ellipsis,
               ),
               onPressed: mealApproved
                   ? null
