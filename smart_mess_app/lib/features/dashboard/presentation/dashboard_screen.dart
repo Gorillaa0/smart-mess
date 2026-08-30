@@ -1388,26 +1388,6 @@ class DashboardScreen extends ConsumerWidget {
         iconColor: const Color(0xFF1565C0),
         route: '/complaints',
       ),
-      _ActionItem(
-        title: 'Profile & Email',
-        subtitle: 'Update email & password',
-        icon: Icons.manage_accounts,
-        startColor: const Color(0xFFE8F5E9),
-        endColor: const Color(0xFFC8E6C9),
-        borderColor: const Color(0xFFA5D6A7),
-        iconColor: const Color(0xFF1B5E20),
-        route: '/profile',
-      ),
-      _ActionItem(
-        title: 'Dining Ledger',
-        subtitle: 'Meal scans & savings',
-        icon: Icons.fact_check,
-        startColor: const Color(0xFFFFF8E1),
-        endColor: const Color(0xFFFFECB3),
-        borderColor: const Color(0xFFFFD54F),
-        iconColor: const Color(0xFFE65100),
-        route: '/meal-history',
-      ),
     ];
 
     final screenWidth = MediaQuery.of(context).size.width;
