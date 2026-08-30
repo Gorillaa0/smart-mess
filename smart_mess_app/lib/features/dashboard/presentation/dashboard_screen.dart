@@ -788,11 +788,11 @@ class DashboardScreen extends ConsumerWidget {
       bkStatusIcon = Icons.block;
       bkStatusColor = Colors.grey.shade600;
     } else if (isBkScanned) {
-      bkStatus = 'Eaten ✅';
+      bkStatus = 'Taken ✅';
       bkStatusIcon = Icons.check_circle;
       bkStatusColor = const Color(0xFF1B5E20);
     } else if (currentMinutes > bkEnd) {
-      bkStatus = 'Not Taken';
+      bkStatus = 'Not Taken ❌';
       bkStatusIcon = Icons.cancel_outlined;
       bkStatusColor = Colors.red.shade700;
     } else if (currentMinutes >= bkStart && currentMinutes <= bkEnd) {
@@ -810,11 +810,11 @@ class DashboardScreen extends ConsumerWidget {
     IconData lunchStatusIcon;
     Color lunchStatusColor;
     if (isLunchScanned) {
-      lunchStatus = 'Eaten ✅';
+      lunchStatus = 'Taken ✅';
       lunchStatusIcon = Icons.check_circle;
       lunchStatusColor = const Color(0xFF1B5E20);
     } else if (currentMinutes > lunchEnd) {
-      lunchStatus = 'Not Taken';
+      lunchStatus = 'Not Taken ❌';
       lunchStatusIcon = Icons.cancel_outlined;
       lunchStatusColor = Colors.red.shade700;
     } else if (currentMinutes >= lunchStart && currentMinutes <= lunchEnd) {
@@ -832,11 +832,11 @@ class DashboardScreen extends ConsumerWidget {
     IconData dinnerStatusIcon;
     Color dinnerStatusColor;
     if (isDinnerScanned) {
-      dinnerStatus = 'Eaten ✅';
+      dinnerStatus = 'Taken ✅';
       dinnerStatusIcon = Icons.check_circle;
       dinnerStatusColor = const Color(0xFF1B5E20);
     } else if (currentMinutes > dinnerEnd) {
-      dinnerStatus = 'Not Taken';
+      dinnerStatus = 'Not Taken ❌';
       dinnerStatusIcon = Icons.cancel_outlined;
       dinnerStatusColor = Colors.red.shade700;
     } else if (currentMinutes >= dinnerStart && currentMinutes <= dinnerEnd) {
