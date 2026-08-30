@@ -4,7 +4,7 @@ import { useAuthStore } from '../../store/authStore';
 import { H4_STUDENTS_LIST } from '../../data/h4StudentsData';
 import { CheckCircle2, TrendingUp, Users, CalendarOff, AlertCircle, ChefHat, Sparkles, Utensils, MessageSquare, QrCode, Flame, Award, Star, ShoppingBag, Phone, Clock, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, setDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 
 export const DashboardPage: React.FC = () => {
@@ -191,10 +191,36 @@ export const DashboardPage: React.FC = () => {
       fetchLiveCounts();
     }
 
+    // Real-time listener for today's foodPreparation approvals
+    let unsubPrep = () => {};
+    try {
+      const todayStr = new Date().toISOString().split('T')[0];
+      unsubPrep = onSnapshot(collection(db, 'foodPreparation'), (snapshot) => {
+        snapshot.forEach((docSnap) => {
+          const d = docSnap.data();
+          if (d.date === todayStr) {
+            const mt = (d.mealType || '').toLowerCase();
+            const qty = d.approvedQuantity || 0;
+            if (mt.includes('breakfast')) {
+              setApprovedMealsMap(prev => ({ ...prev, Breakfast: true }));
+              if (qty > 0) setManagerCustomPortions(prev => ({ ...prev, Breakfast: qty }));
+            } else if (mt.includes('lunch')) {
+              setApprovedMealsMap(prev => ({ ...prev, Lunch: true }));
+              if (qty > 0) setManagerCustomPortions(prev => ({ ...prev, Lunch: qty }));
+            } else if (mt.includes('dinner')) {
+              setApprovedMealsMap(prev => ({ ...prev, Dinner: true }));
+              if (qty > 0) setManagerCustomPortions(prev => ({ ...prev, Dinner: qty }));
+            }
+          }
+        });
+      });
+    } catch (_) {}
+
     fetchLiveCounts();
 
     return () => {
       unsubOrders();
+      unsubPrep();
     };
   }, []);
 
@@ -289,9 +315,26 @@ export const DashboardPage: React.FC = () => {
   const managerDecidedQuantity = managerCustomPortions[selectedPredictionMeal] ?? mealRecommendedCooking;
   const isMealApproved = approvedMealsMap[selectedPredictionMeal] || false;
 
-  const handleApprove = () => {
+  const handleApprove = async () => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const docId = `${todayStr}_${selectedPredictionMeal.toLowerCase()}`;
+
     setApprovedMealsMap(prev => ({ ...prev, [selectedPredictionMeal]: true }));
-    toast.success(`Manager approved cooking quantity for ${managerDecidedQuantity} portions of ${selectedPredictionMeal}!`);
+    toast.success(`✓ Locked & Approved: ${managerDecidedQuantity} portions for ${selectedPredictionMeal}!`);
+
+    try {
+      await setDoc(doc(db, 'foodPreparation', docId), {
+        mealType: selectedPredictionMeal.toLowerCase(),
+        date: todayStr,
+        approvedQuantity: managerDecidedQuantity,
+        approvedAt: new Date().toISOString(),
+        approvedBy: user?.name || 'Mess Manager',
+        messId: 'hostel_4_mess',
+        status: 'approved'
+      }, { merge: true });
+    } catch (err) {
+      console.error('Error persisting food preparation:', err);
+    }
   };
 
   return (

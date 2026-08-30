@@ -21,6 +21,67 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
   final Map<String, int> _managerCustomPortions = {};
   String _currentManagerPassword = 'Pass@2942';
 
+  @override
+  void initState() {
+    super.initState();
+    _listenToTodayApprovals();
+  }
+
+  void _listenToTodayApprovals() {
+    final todayStr = DateTime.now().toIso8601String().split('T')[0];
+    FirebaseFirestore.instance
+        .collection('foodPreparation')
+        .where('date', isEqualTo: todayStr)
+        .snapshots()
+        .listen((snapshot) {
+      if (mounted) {
+        setState(() {
+          for (final doc in snapshot.docs) {
+            final data = doc.data();
+            final mealType = (data['mealType'] as String?)?.toLowerCase();
+            final approvedQty = (data['approvedQuantity'] as num?)?.toInt();
+            if (mealType != null) {
+              if (mealType.contains('breakfast')) {
+                _approvedMeals['Breakfast'] = true;
+                if (approvedQty != null) _managerCustomPortions['Breakfast'] = approvedQty;
+              } else if (mealType.contains('lunch')) {
+                _approvedMeals['Lunch'] = true;
+                if (approvedQty != null) _managerCustomPortions['Lunch'] = approvedQty;
+              } else if (mealType.contains('dinner')) {
+                _approvedMeals['Dinner'] = true;
+                if (approvedQty != null) _managerCustomPortions['Dinner'] = approvedQty;
+              }
+            }
+          }
+        });
+      }
+    });
+  }
+
+  Future<void> _approveMealPreparation(String mealType, int quantity) async {
+    final todayStr = DateTime.now().toIso8601String().split('T')[0];
+    final docId = '${todayStr}_${mealType.toLowerCase()}';
+    
+    setState(() {
+      _approvedMeals[mealType] = true;
+      _managerCustomPortions[mealType] = quantity;
+    });
+
+    try {
+      await FirebaseFirestore.instance.collection('foodPreparation').doc(docId).set({
+        'mealType': mealType.toLowerCase(),
+        'date': todayStr,
+        'approvedQuantity': quantity,
+        'approvedAt': DateTime.now().toIso8601String(),
+        'approvedBy': 'Dhaneshwar Yadav (Manager)',
+        'messId': 'hostel_4_mess',
+        'status': 'approved',
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('Error saving food preparation approval: $e');
+    }
+  }
+
   void _showChangePasswordDialog(BuildContext context) {
     final currentPassController = TextEditingController();
     final newPassController = TextEditingController();
@@ -798,34 +859,36 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
           ),
           const SizedBox(height: 12),
 
-          // Approve Button for Selected Meal
+          // Approve Button for Selected Meal (One-Time Final Approval & Persistent Lock)
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: mealApproved ? Colors.grey.shade700 : const Color(0xFF1B5E20),
+                backgroundColor: mealApproved ? const Color(0xFF37474F) : const Color(0xFF1B5E20),
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 13),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              icon: Icon(mealApproved ? Icons.check_circle : Icons.approval, size: 18),
+              icon: Icon(mealApproved ? Icons.lock : Icons.check_circle_outline, size: 18),
               label: Text(
                 mealApproved
-                    ? '$_selectedPredictionMeal APPROVED (${_managerCustomPortions[_selectedPredictionMeal] ?? recommendedCooking} PORTIONS)'
+                    ? '$_selectedPredictionMeal FINALIZED & LOCKED (${_managerCustomPortions[_selectedPredictionMeal] ?? recommendedCooking} PORTIONS)'
                     : 'APPROVE $_selectedPredictionMeal PREPARATION (${_managerCustomPortions[_selectedPredictionMeal] ?? recommendedCooking} PORTIONS)',
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
               ),
               onPressed: mealApproved
                   ? null
-                  : () {
+                  : () async {
                       final finalPortions = _managerCustomPortions[_selectedPredictionMeal] ?? recommendedCooking;
-                      setState(() => _approvedMeals[_selectedPredictionMeal] = true);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Approved kitchen preparation of $finalPortions portions for $_selectedPredictionMeal!'),
-                          backgroundColor: const Color(0xFF1B5E20),
-                        ),
-                      );
+                      await _approveMealPreparation(_selectedPredictionMeal, finalPortions);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('✓ Approved & Locked $finalPortions portions for $_selectedPredictionMeal!'),
+                            backgroundColor: const Color(0xFF1B5E20),
+                          ),
+                        );
+                      }
                     },
             ),
           ),
