@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Send, Bell, Megaphone, CheckCircle2, Clock, Users, ShieldAlert, Sparkles, Filter } from 'lucide-react';
+import { Send, Bell, Megaphone, CheckCircle2, Clock, Users, ShieldAlert, Sparkles, Filter, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { db } from '../../lib/firebase';
 import { collection, doc, setDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
@@ -175,6 +175,37 @@ export const NotificationsPage: React.FC = () => {
     toast.success('Template loaded into form');
   };
 
+  const handleDeleteBroadcast = async (id: string) => {
+    // 1. Instant local removal
+    setHistory((prev) => prev.filter((item) => item.id !== id));
+
+    try {
+      await fetch(
+        `https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/notifications/${id}?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E`,
+        { method: 'DELETE' }
+      );
+      toast.success('Broadcast notice deleted');
+    } catch (_) {
+      toast.success('Broadcast notice removed');
+    }
+  };
+
+  const handleClearAllBroadcasts = async () => {
+    if (!window.confirm('Are you sure you want to delete all broadcast notices?')) return;
+    const toDelete = [...history];
+    setHistory([]);
+
+    for (const item of toDelete) {
+      try {
+        await fetch(
+          `https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/notifications/${item.id}?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E`,
+          { method: 'DELETE' }
+        );
+      } catch (_) {}
+    }
+    toast.success('All broadcast notices cleared');
+  };
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Header Banner */}
@@ -318,30 +349,58 @@ export const NotificationsPage: React.FC = () => {
               <Clock className="w-4 h-4 text-gray-500" />
               Broadcast History
             </h2>
-            <span className="text-[11px] font-bold px-2 py-0.5 bg-gray-100 text-gray-600 rounded-lg">
-              {history.length} Sent
-            </span>
+            <div className="flex items-center gap-2">
+              {history.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearAllBroadcasts}
+                  className="text-[11px] font-bold text-red-600 hover:text-red-700 hover:underline"
+                >
+                  Clear All
+                </button>
+              )}
+              <span className="text-[11px] font-bold px-2 py-0.5 bg-gray-100 text-gray-600 rounded-lg">
+                {history.length} Sent
+              </span>
+            </div>
           </div>
 
           <div className="space-y-3 overflow-y-auto max-h-[500px] pr-1">
-            {history.map((h) => (
-              <div key={h.id} className="p-3.5 bg-gray-50 rounded-xl border border-gray-100 space-y-1.5">
-                <div className="flex items-start justify-between gap-2">
-                  <h4 className="text-xs font-bold text-gray-900 leading-tight">{h.title}</h4>
-                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
-                    h.category === 'messoff' ? 'bg-amber-100 text-amber-800' :
-                    h.category === 'menu' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
-                  }`}>
-                    {h.category.toUpperCase()}
-                  </span>
-                </div>
-                <p className="text-[11px] text-gray-600 leading-relaxed">{h.body}</p>
-                <div className="flex items-center justify-between text-[10px] text-gray-400 pt-1 border-t border-gray-100">
-                  <span>{h.sentAt}</span>
-                  <span className="text-emerald-700 font-medium">✓ {h.deliveredCount} Delivered</span>
-                </div>
+            {history.length === 0 ? (
+              <div className="text-center py-10 text-gray-400">
+                <Bell className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                <p className="text-xs">No broadcast history</p>
               </div>
-            ))}
+            ) : (
+              history.map((h) => (
+                <div key={h.id} className="p-3.5 bg-gray-50 rounded-xl border border-gray-100 space-y-1.5 hover:border-gray-200 transition-colors">
+                  <div className="flex items-start justify-between gap-2">
+                    <h4 className="text-xs font-bold text-gray-900 leading-tight">{h.title}</h4>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                        h.category === 'messoff' ? 'bg-amber-100 text-amber-800' :
+                        h.category === 'menu' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {h.category.toUpperCase()}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteBroadcast(h.id)}
+                        title="Delete Broadcast Notice"
+                        className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-gray-600 leading-relaxed">{h.body}</p>
+                  <div className="flex items-center justify-between text-[10px] text-gray-400 pt-1 border-t border-gray-100">
+                    <span>{h.sentAt}</span>
+                    <span className="text-emerald-700 font-medium">✓ {h.deliveredCount} Delivered</span>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

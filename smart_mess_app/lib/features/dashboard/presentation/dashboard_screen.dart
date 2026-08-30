@@ -162,7 +162,13 @@ class DashboardScreen extends ConsumerWidget {
           children: [
             // 1. TOP PROFILE & DAY BANNER (HOSTEL NUMBER 4 - REAL STUDENT DATA)
             _buildProfileBanner(context, todayMenu, dateString, ref.watch(currentStudentProvider)),
-            const SizedBox(height: 18),
+            const SizedBox(height: 14),
+
+            // 1.5 LIVE UNREAD BROADCAST NOTICE (Instant read & dismiss support)
+            if (unreadNotifsCount > 0 && notifsList.any((n) => !n.isRead)) ...[
+              _buildLiveBroadcastCard(context, notifsList.firstWhere((n) => !n.isRead), ref),
+              const SizedBox(height: 14),
+            ],
 
             // 2. TODAY'S MEALS TIMELINE & PRICING ROW
             Row(
@@ -472,8 +478,8 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  // 1.5 LIVE BROADCAST CARD (REAL-TIME SYNC FROM MESS MANAGER)
-  Widget _buildLiveBroadcastCard(BuildContext context, NotificationModel notif) {
+  // 1.5 LIVE BROADCAST CARD (REAL-TIME SYNC FROM MESS MANAGER - DISMISS / READ ON TAP)
+  Widget _buildLiveBroadcastCard(BuildContext context, NotificationModel notif, WidgetRef ref) {
     final timeStr = DateFormat('hh:mm a').format(notif.createdAt);
 
     return Container(
@@ -487,7 +493,7 @@ class DashboardScreen extends ConsumerWidget {
         border: Border.all(color: const Color(0xFFFFB74D), width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: Colors.orange.withOpacity(0.12),
+            color: Colors.orange.withValues(alpha: 0.12),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -497,7 +503,10 @@ class DashboardScreen extends ConsumerWidget {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () => context.push('/notifications'),
+          onTap: () {
+            ref.read(notificationsListProvider.notifier).markAsRead(notif.id);
+            context.push('/notifications');
+          },
           child: Padding(
             padding: const EdgeInsets.all(14.0),
             child: Column(
@@ -519,7 +528,7 @@ class DashboardScreen extends ConsumerWidget {
                               Icon(Icons.campaign, color: Colors.white, size: 13),
                               SizedBox(width: 4),
                               Text(
-                                'LIVE ANNOUNCEMENT',
+                                'NEW ANNOUNCEMENT',
                                 style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.5),
                               ),
                             ],
@@ -532,13 +541,29 @@ class DashboardScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    const Row(
+                    Row(
                       children: [
-                        Text(
-                          'View All',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFE65100)),
+                        InkWell(
+                          borderRadius: BorderRadius.circular(14),
+                          onTap: () {
+                            ref.read(notificationsListProvider.notifier).clearNotification(notif.id);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.8),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.orange.shade300, width: 0.8),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.close, size: 12, color: Color(0xFFE65100)),
+                                SizedBox(width: 2),
+                                Text('Dismiss', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFE65100))),
+                              ],
+                            ),
+                          ),
                         ),
-                        Icon(Icons.arrow_forward_ios, size: 10, color: Color(0xFFE65100)),
                       ],
                     ),
                   ],

@@ -37,6 +37,24 @@ class NotificationModel {
     );
   }
 
+  NotificationModel copyWith({
+    String? id,
+    String? title,
+    String? body,
+    bool? isRead,
+    DateTime? createdAt,
+    String? deepLink,
+  }) {
+    return NotificationModel(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      body: body ?? this.body,
+      isRead: isRead ?? this.isRead,
+      createdAt: createdAt ?? this.createdAt,
+      deepLink: deepLink ?? this.deepLink,
+    );
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'title': title,
