@@ -650,7 +650,7 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                // Profile & Password Action Pill
+                // Profile, Email & Password Action Pill
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
@@ -658,7 +658,7 @@ class DashboardScreen extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(14),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Colors.black.withValues(alpha: 0.1),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),
@@ -667,10 +667,10 @@ class DashboardScreen extends ConsumerWidget {
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.manage_accounts, size: 14, color: Color(0xFF1B5E20)),
+                      Icon(Icons.mark_email_read_outlined, size: 14, color: Color(0xFF1B5E20)),
                       SizedBox(width: 4),
                       Text(
-                        'Profile & Password ➔',
+                        'Profile & Email ➔',
                         style: TextStyle(color: Color(0xFF1B5E20), fontWeight: FontWeight.w800, fontSize: 11),
                       ),
                     ],
@@ -715,7 +715,7 @@ class DashboardScreen extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.15),
+                color: Colors.black.withValues(alpha: 0.18),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -725,9 +725,16 @@ class DashboardScreen extends ConsumerWidget {
                     'Hostel Number 4 • $dateString',
                     style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w500),
                   ),
-                  const Text(
-                    'Tap to Change Password',
-                    style: TextStyle(color: Colors.greenAccent, fontSize: 10.5, fontWeight: FontWeight.bold),
+                  const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.edit_note, size: 13, color: Colors.greenAccent),
+                      SizedBox(width: 3),
+                      Text(
+                        'Tap to Update Email & Password',
+                        style: TextStyle(color: Colors.greenAccent, fontSize: 10.5, fontWeight: FontWeight.bold),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -1438,6 +1445,26 @@ class DashboardScreen extends ConsumerWidget {
         borderColor: const Color(0xFF90CAF9),
         iconColor: const Color(0xFF1565C0),
         route: '/complaints',
+      ),
+      _ActionItem(
+        title: 'Profile & Email',
+        subtitle: 'Update email & password',
+        icon: Icons.manage_accounts,
+        startColor: const Color(0xFFE8F5E9),
+        endColor: const Color(0xFFC8E6C9),
+        borderColor: const Color(0xFFA5D6A7),
+        iconColor: const Color(0xFF1B5E20),
+        route: '/profile',
+      ),
+      _ActionItem(
+        title: 'Dining Ledger',
+        subtitle: 'Meal scans & savings',
+        icon: Icons.fact_check,
+        startColor: const Color(0xFFFFF8E1),
+        endColor: const Color(0xFFFFECB3),
+        borderColor: const Color(0xFFFFD54F),
+        iconColor: const Color(0xFFE65100),
+        route: '/meal-history',
       ),
     ];
 

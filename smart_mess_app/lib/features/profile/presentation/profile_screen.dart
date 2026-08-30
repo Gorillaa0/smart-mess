@@ -525,43 +525,63 @@ class ProfileScreen extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
 
-          // Details List
-          _infoTile(Icons.assignment_ind, 'Registration Number', student.registrationNo),
-          _infoTile(Icons.apartment, 'Hostel & Mess', student.hostel),
-          _infoTile(Icons.meeting_room, 'Allocated Room', 'Room ${student.roomNo}'),
-          _infoTile(Icons.school, 'Branch & Semester', '${student.branch} Engineering • ${student.semester} Semester'),
-          _infoTile(Icons.grade, 'Academic Standing', 'CGPA: ${student.cgpa} (Last Semester)'),
-          _infoTile(Icons.phone, 'Contact Phone', '+91 ${student.mobile}'),
-          
+          // 1. ACCOUNT & RECOVERY CREDENTIALS (EMAIL & PASSWORD)
+          Row(
+            children: [
+              Container(
+                width: 4,
+                height: 16,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1B5E20),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'ACCOUNT SECURITY & RECOVERY',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: Color(0xFF1B5E20), letterSpacing: 0.5),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
           // Registered Email Tile with Edit Action Button
           Container(
             margin: const EdgeInsets.only(bottom: 10),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFA5D6A7), width: 1.1),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFF81C784), width: 1.2),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF1B5E20).withValues(alpha: 0.05),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(9),
                   decoration: BoxDecoration(
                     color: const Color(0xFFE8F5E9),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFA5D6A7), width: 1),
                   ),
-                  child: const Icon(Icons.email, color: Color(0xFF1B5E20), size: 20),
+                  child: const Icon(Icons.mark_email_read_outlined, color: Color(0xFF1B5E20), size: 22),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Registered Email (Password Recovery)', style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold)),
+                      const Text('Registered Recovery Email', style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 2),
-                      Text(displayEmail, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20)), overflow: TextOverflow.ellipsis),
+                      Text(displayEmail, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20)), overflow: TextOverflow.ellipsis),
                     ],
                   ),
                 ),
@@ -569,7 +589,7 @@ class ProfileScreen extends ConsumerWidget {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1B5E20),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     minimumSize: Size.zero,
                   ),
@@ -583,22 +603,22 @@ class ProfileScreen extends ConsumerWidget {
 
           // Password Tile with Action Button
           Container(
-            margin: const EdgeInsets.only(bottom: 10),
+            margin: const EdgeInsets.only(bottom: 16),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(color: const Color(0xFFA5D6A7), width: 1.1),
             ),
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(9),
                   decoration: BoxDecoration(
                     color: const Color(0xFFE8F5E9),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.lock, color: Color(0xFF1B5E20), size: 20),
+                  child: const Icon(Icons.lock_outline, color: Color(0xFF1B5E20), size: 22),
                 ),
                 const SizedBox(width: 12),
                 const Expanded(
@@ -615,17 +635,45 @@ class ProfileScreen extends ConsumerWidget {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1B5E20),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     minimumSize: Size.zero,
                   ),
-                  icon: const Icon(Icons.edit, size: 14),
+                  icon: const Icon(Icons.key, size: 14),
                   label: const Text('CHANGE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                   onPressed: () => _showChangePasswordDialog(context, ref, student),
                 ),
               ],
             ),
           ),
+
+          // 2. HOSTEL & ACADEMIC PROFILE
+          Row(
+            children: [
+              Container(
+                width: 4,
+                height: 16,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade600,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'HOSTEL ALLOCATION & ACADEMICS',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: Colors.grey.shade800, letterSpacing: 0.5),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Details List
+          _infoTile(Icons.assignment_ind, 'Registration Number', student.registrationNo),
+          _infoTile(Icons.apartment, 'Hostel & Mess', student.hostel),
+          _infoTile(Icons.meeting_room, 'Allocated Room', 'Room ${student.roomNo}'),
+          _infoTile(Icons.school, 'Branch & Semester', '${student.branch} Engineering • ${student.semester} Semester'),
+          _infoTile(Icons.grade, 'Academic Standing', 'CGPA: ${student.cgpa} (Last Semester)'),
+          _infoTile(Icons.phone, 'Contact Phone', '+91 ${student.mobile}'),
 
           const SizedBox(height: 16),
 
