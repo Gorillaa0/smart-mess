@@ -54,6 +54,13 @@ class SharedOrderRecord {
       return int.tryParse(val.toString()) ?? fallback;
     }
 
+    String extractOrderedAt(dynamic val) {
+      if (val == null) return DateTime.now().toIso8601String();
+      if (val is Timestamp) return val.toDate().toIso8601String();
+      if (val is DateTime) return val.toIso8601String();
+      return val.toString();
+    }
+
     return SharedOrderRecord(
       id: d['id']?.toString() ?? docId,
       studentName: d['studentName']?.toString() ?? 'Student',
@@ -69,11 +76,11 @@ class SharedOrderRecord {
       quantity: extractInt(d['quantity'], 1),
       totalBill: extractInt(d['totalBill'], 0),
       isPaid: d['isPaid'] == true,
-      paymentMethod: d['paymentMethod']?.toString() ?? 'Pay on Delivery',
+      paymentMethod: d['paymentMethod']?.toString() ?? 'Pay on Delivery (Cash / Counter)',
       status: d['status']?.toString() ?? 'Pending Approval',
       cancellationReason: d['cancellationReason']?.toString() ?? '',
       estimatedDeliveryTime: d['estimatedDeliveryTime']?.toString() ?? '30 - 40 Mins',
-      orderedAt: d['orderedAt']?.toString() ?? DateTime.now().toIso8601String(),
+      orderedAt: extractOrderedAt(d['orderedAt'] ?? d['createdAt'] ?? d['updatedAt']),
     );
   }
 
@@ -117,11 +124,11 @@ class SharedOrderRecord {
       quantity: extractInt(fields['quantity'], 1),
       totalBill: extractInt(fields['totalBill'], 0),
       isPaid: extractBool(fields['isPaid'], false),
-      paymentMethod: extractString(fields['paymentMethod'], 'Pay on Delivery'),
+      paymentMethod: extractString(fields['paymentMethod'], 'Pay on Delivery (Cash / Counter)'),
       status: extractString(fields['status'], 'Pending Approval'),
       cancellationReason: extractString(fields['cancellationReason'], ''),
       estimatedDeliveryTime: extractString(fields['estimatedDeliveryTime'], '30 - 40 Mins'),
-      orderedAt: extractString(fields['orderedAt'], DateTime.now().toIso8601String()),
+      orderedAt: extractString(fields['orderedAt'] ?? fields['createdAt'] ?? fields['updatedAt'], DateTime.now().toIso8601String()),
     );
   }
 
@@ -166,6 +173,15 @@ class SharedOrdersStore {
   }
 
   static void replaceAll(List<SharedOrderRecord> orders) {
+    if (orders.isEmpty && _inMemoryOrders.isNotEmpty) {
+      // Don't wipe local cache with empty list unless explicitly cleared
+      return;
+    }
+    _inMemoryOrders.clear();
+    _inMemoryOrders.addAll(orders);
+  }
+
+  static void forceReplaceAll(List<SharedOrderRecord> orders) {
     _inMemoryOrders.clear();
     _inMemoryOrders.addAll(orders);
   }
@@ -192,10 +208,13 @@ final liveOrdersGlobalProvider = StateNotifierProvider<LiveOrdersGlobalNotifier,
 
 class LiveOrdersGlobalNotifier extends StateNotifier<List<SharedOrderRecord>> {
   StreamSubscription? _firestoreSub;
+  Timer? _periodicSyncTimer;
 
   LiveOrdersGlobalNotifier() : super(SharedOrdersStore.localOrders) {
     _initFirestoreListener();
     syncLiveOrders();
+    // 10s sync heartbeat to keep orders live without 429 quota exhaustion
+    _periodicSyncTimer = Timer.periodic(const Duration(seconds: 10), (_) => syncLiveOrders());
   }
 
   void _initFirestoreListener() {
@@ -205,14 +224,17 @@ class LiveOrdersGlobalNotifier extends StateNotifier<List<SharedOrderRecord>> {
           .collection('foodOrders')
           .snapshots()
           .listen((snapshot) {
-        final list = <SharedOrderRecord>[];
-        for (final doc in snapshot.docs) {
-          list.add(SharedOrderRecord.fromFirestoreMap(doc.data(), doc.id));
+        if (snapshot.docs.isNotEmpty) {
+          final list = <SharedOrderRecord>[];
+          for (final doc in snapshot.docs) {
+            list.add(SharedOrderRecord.fromFirestoreMap(doc.data(), doc.id));
+          }
+          list.sort((a, b) => b.orderedAt.compareTo(a.orderedAt));
+          SharedOrdersStore.forceReplaceAll(list);
+          state = list;
+        } else if (SharedOrdersStore.localOrders.isEmpty) {
+          syncLiveOrders();
         }
-
-        SharedOrdersStore.replaceAll(list);
-        list.sort((a, b) => b.orderedAt.compareTo(a.orderedAt));
-        state = list;
       }, onError: (_) {
         syncLiveOrders();
       });
@@ -223,6 +245,7 @@ class LiveOrdersGlobalNotifier extends StateNotifier<List<SharedOrderRecord>> {
 
   @override
   void dispose() {
+    _periodicSyncTimer?.cancel();
     _firestoreSub?.cancel();
     super.dispose();
   }
@@ -234,14 +257,16 @@ class LiveOrdersGlobalNotifier extends StateNotifier<List<SharedOrderRecord>> {
           .get()
           .timeout(const Duration(seconds: 4));
 
-      final list = <SharedOrderRecord>[];
-      for (final doc in snap.docs) {
-        list.add(SharedOrderRecord.fromFirestoreMap(doc.data(), doc.id));
+      if (snap.docs.isNotEmpty) {
+        final list = <SharedOrderRecord>[];
+        for (final doc in snap.docs) {
+          list.add(SharedOrderRecord.fromFirestoreMap(doc.data(), doc.id));
+        }
+        list.sort((a, b) => b.orderedAt.compareTo(a.orderedAt));
+        SharedOrdersStore.forceReplaceAll(list);
+        state = list;
+        return;
       }
-      SharedOrdersStore.replaceAll(list);
-      list.sort((a, b) => b.orderedAt.compareTo(a.orderedAt));
-      state = list;
-      return;
     } catch (_) {}
 
     // Fallback REST
@@ -255,7 +280,7 @@ class LiveOrdersGlobalNotifier extends StateNotifier<List<SharedOrderRecord>> {
           }
         },
         options: Options(headers: {'Content-Type': 'application/json'}),
-      ).timeout(const Duration(seconds: 3));
+      ).timeout(const Duration(seconds: 4));
 
       if (res.statusCode == 200 && res.data is List) {
         final List data = res.data;
@@ -271,21 +296,23 @@ class LiveOrdersGlobalNotifier extends StateNotifier<List<SharedOrderRecord>> {
           }
         }
 
-        SharedOrdersStore.replaceAll(list);
-        list.sort((a, b) => b.orderedAt.compareTo(a.orderedAt));
-        state = list;
+        if (list.isNotEmpty) {
+          list.sort((a, b) => b.orderedAt.compareTo(a.orderedAt));
+          SharedOrdersStore.forceReplaceAll(list);
+          state = list;
+        }
       }
     } catch (_) {}
   }
 
   void pushNewOrder(SharedOrderRecord order) {
     SharedOrdersStore.addOrder(order);
-    state = SharedOrdersStore.localOrders;
+    state = List.from(SharedOrdersStore.localOrders);
   }
 
   void updateStatus(String orderId, String newStatus, {String? cancellationReason, String? deliveryTime}) {
     SharedOrdersStore.updateOrderStatus(orderId, newStatus, cancellationReason: cancellationReason, deliveryTime: deliveryTime);
-    state = SharedOrdersStore.localOrders;
+    state = List.from(SharedOrdersStore.localOrders);
   }
 
   void clearOrders() {

@@ -5,10 +5,11 @@ import '../../../core/services/shared_orders_store.dart';
 final studentOrdersListProvider = Provider<List<SharedOrderRecord>>((ref) {
   final student = ref.watch(currentStudentProvider);
   final allOrders = ref.watch(liveOrdersGlobalProvider);
+  final effectiveOrders = allOrders.isNotEmpty ? allOrders : SharedOrdersStore.localOrders;
 
-  return allOrders.where((o) {
-    return o.registrationNo == student.registrationNo ||
-           o.rollNo == student.rollNo ||
-           o.studentName == student.name;
+  return effectiveOrders.where((o) {
+    return o.registrationNo.toLowerCase().trim() == student.registrationNo.toLowerCase().trim() ||
+           o.rollNo.toLowerCase().trim() == student.rollNo.toLowerCase().trim() ||
+           o.studentName.toLowerCase().trim() == student.name.toLowerCase().trim();
   }).toList();
 });

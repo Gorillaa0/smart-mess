@@ -488,8 +488,9 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
   @override
   Widget build(BuildContext context) {
     final liveGlobalOrders = ref.watch(liveOrdersGlobalProvider);
+    final effectiveOrders = liveGlobalOrders.isNotEmpty ? liveGlobalOrders : SharedOrdersStore.localOrders;
 
-    final allOrdersList = liveGlobalOrders.map<Map<String, dynamic>>((o) => <String, dynamic>{
+    final allOrdersList = effectiveOrders.map<Map<String, dynamic>>((o) => <String, dynamic>{
       'id': o.id,
       'studentName': o.studentName,
       'registrationNo': o.registrationNo,
