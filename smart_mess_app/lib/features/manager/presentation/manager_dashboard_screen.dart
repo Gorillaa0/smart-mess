@@ -469,8 +469,8 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
             ),
             const SizedBox(height: 18),
 
-            // 2. AI DEMAND PREDICTION CARD (REAL-TIME COMPUTATION)
-            _buildPredictionCard(context, totalStudents, recommendedPreparation),
+            // 2. AI DEMAND PREDICTION CARD (REAL-TIME ADAPTIVE ON 10-15 DAY ATTENDANCE)
+            _buildPredictionCard(context, totalStudents, allScans),
             const SizedBox(height: 18),
 
             // 3. LIVE MEAL ATTENDANCE CARD (REAL-TIME SCANS)
@@ -509,29 +509,59 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
   }
 
   // 2. AI DEMAND PREDICTION CARD (SEPARATE FOR BREAKFAST, LUNCH, AND DINNER)
-  Widget _buildPredictionCard(BuildContext context, int totalStudents, int _) {
-    // Distinct factors for each meal slot
+  Widget _buildPredictionCard(BuildContext context, int totalStudents, List<H4MealScanRecord> allScans) {
+    // 10-15 Day Historical Attendance Scans Calculation
+    final fifteenDaysAgo = DateTime.now().subtract(const Duration(days: 15));
+    final windowScans = allScans.where((s) => s.scannedAt.isAfter(fifteenDaysAgo)).toList();
+
+    final matchingScans = windowScans.where((s) {
+      final m = s.mealType.toLowerCase();
+      return m.contains(_selectedPredictionMeal.toLowerCase());
+    }).toList();
+
+    final Set<String> distinctDates = {};
+    for (final s in matchingScans) {
+      distinctDates.add('${s.scannedAt.year}-${s.scannedAt.month}-${s.scannedAt.day}');
+    }
+
+    final int daysObserved = distinctDates.length;
+    final bool isDataDriven = daysObserved >= 1;
     final int predictedCount;
     final String mealTiming;
     final String cutoffTime;
     final String menuSnippet;
 
     if (_selectedPredictionMeal == 'Breakfast') {
-      predictedCount = (totalStudents * 0.65).round(); // ~73 boarders
       mealTiming = '08:00 AM - 09:30 AM';
       cutoffTime = '07:00 AM (Passed)';
       menuSnippet = 'Aloo Paratha / Idli Sambhar, Curd & Hot Chai';
+      if (isDataDriven) {
+        final double avgTurnout = matchingScans.length / daysObserved;
+        predictedCount = avgTurnout.round().clamp(0, totalStudents);
+      } else {
+        predictedCount = (totalStudents * 0.65).round(); // ~73
+      }
     } else if (_selectedPredictionMeal == 'Dinner') {
-      predictedCount = (totalStudents * 0.85).round(); // ~95 boarders
       mealTiming = '08:00 PM - 09:30 PM';
       cutoffTime = '06:00 PM';
       menuSnippet = 'Roti, Dal Tadka, Seasonal Sabzi / Special Non-Veg';
+      if (isDataDriven) {
+        final double avgTurnout = matchingScans.length / daysObserved;
+        predictedCount = avgTurnout.round().clamp(0, totalStudents);
+      } else {
+        predictedCount = (totalStudents * 0.85).round(); // ~95
+      }
     } else {
       // Lunch
-      predictedCount = (totalStudents * 0.95).round(); // ~106 boarders
       mealTiming = '01:00 PM - 02:30 PM';
       cutoffTime = '11:00 AM';
       menuSnippet = 'Rice, Arhar Dal, Mixed Veg, Papad & Salad';
+      if (isDataDriven) {
+        final double avgTurnout = matchingScans.length / daysObserved;
+        predictedCount = avgTurnout.round().clamp(0, totalStudents);
+      } else {
+        predictedCount = (totalStudents * 0.95).round(); // ~106
+      }
     }
 
     final int recommendedCooking = (predictedCount * 1.03).round();
@@ -577,13 +607,13 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: Colors.green.shade50,
+                  color: isDataDriven ? Colors.green.shade50 : Colors.amber.shade50,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.green.shade200),
+                  border: Border.all(color: isDataDriven ? Colors.green.shade200 : Colors.amber.shade200),
                 ),
                 child: Text(
-                  '3-Meal Separate ML',
-                  style: TextStyle(color: Colors.green.shade900, fontSize: 11, fontWeight: FontWeight.w800),
+                  isDataDriven ? 'Trained ($daysObserved days scans)' : 'Cold-Start Baseline',
+                  style: TextStyle(color: isDataDriven ? Colors.green.shade900 : Colors.amber.shade900, fontSize: 11, fontWeight: FontWeight.w800),
                 ),
               ),
             ],

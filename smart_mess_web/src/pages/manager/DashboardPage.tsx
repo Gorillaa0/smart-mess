@@ -229,22 +229,59 @@ export const DashboardPage: React.FC = () => {
     }
   };
 
-  // Distinct predictions per meal
-  let mealPredictedCount = Math.round(totalActiveStudents * 0.95);
+  // 10-15 Day Historical Attendance Scans Calculation from Firestore
+  const fifteenDaysAgo = new Date(Date.now() - 15 * 24 * 60 * 60 * 1000);
+  const targetMealKeyword = selectedPredictionMeal.toLowerCase();
+
+  const matchingMealScans = liveScans.filter((s: any) => {
+    const meal = (s.mealType?.stringValue || s.mealType || '').toLowerCase();
+    const isMeal = meal.includes(targetMealKeyword);
+    const dateStr = s.scannedAt?.stringValue || s.scannedAt;
+    if (!dateStr) return isMeal;
+    const scanDate = new Date(dateStr);
+    return isMeal && scanDate >= fifteenDaysAgo;
+  });
+
+  const distinctScanDates = new Set(
+    matchingMealScans.map((s: any) => {
+      const d = s.scannedAt?.stringValue || s.scannedAt || '';
+      return d.split('T')[0];
+    })
+  );
+
+  const daysOfScansObserved = distinctScanDates.size;
+  const isTrainedOnRealScans = daysOfScansObserved >= 1;
+
+  let mealPredictedCount = 0;
   let mealTiming = '01:00 PM - 02:30 PM';
   let mealCutoff = '11:00 AM';
   let mealMenuSnippet = 'Rice, Arhar Dal, Seasonal Sabzi, Papad & Salad';
 
   if (selectedPredictionMeal === 'Breakfast') {
-    mealPredictedCount = Math.round(totalActiveStudents * 0.65); // ~73
     mealTiming = '08:00 AM - 09:30 AM';
     mealCutoff = '07:00 AM (Strict)';
     mealMenuSnippet = 'Aloo Paratha / Idli Sambhar, Curd & Hot Chai';
+    if (isTrainedOnRealScans) {
+      mealPredictedCount = Math.max(0, Math.round(matchingMealScans.length / daysOfScansObserved) - liveMessOffCount);
+    } else {
+      mealPredictedCount = Math.round(totalActiveStudents * 0.65); // Cold-start baseline ~73
+    }
   } else if (selectedPredictionMeal === 'Dinner') {
-    mealPredictedCount = Math.round(totalActiveStudents * 0.85); // ~95
     mealTiming = '08:00 PM - 09:30 PM';
     mealCutoff = '06:00 PM (Strict)';
     mealMenuSnippet = 'Roti, Dal Tadka, Seasonal Sabzi / Special Non-Veg';
+    if (isTrainedOnRealScans) {
+      mealPredictedCount = Math.max(0, Math.round(matchingMealScans.length / daysOfScansObserved) - liveMessOffCount);
+    } else {
+      mealPredictedCount = Math.round(totalActiveStudents * 0.85); // Cold-start baseline ~95
+    }
+  } else {
+    // Lunch
+    if (isTrainedOnRealScans) {
+      mealPredictedCount = Math.max(0, Math.round(matchingMealScans.length / daysOfScansObserved) - liveMessOffCount);
+    } else {
+      mealPredictedCount = Math.round(totalActiveStudents * 0.95); // Cold-start baseline ~106
+    }
   }
 
   const mealRecommendedCooking = Math.round(mealPredictedCount * 1.03);
@@ -286,8 +323,19 @@ export const DashboardPage: React.FC = () => {
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="font-display font-bold text-gray-900 text-lg">AI Food Demand Prediction & Recommendation</h2>
-              <p className="text-xs text-gray-500">Separate ML Attendance Predictions for Breakfast, Lunch & Dinner</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="font-display font-bold text-gray-900 text-lg">AI Food Demand Prediction & Recommendation</h2>
+                <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
+                  isTrainedOnRealScans ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-amber-100 text-amber-800 border border-amber-300'
+                }`}>
+                  {isTrainedOnRealScans ? `✓ Trained (${daysOfScansObserved} days live scan data)` : '⏳ Initial Cold-Start Baseline'}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {isTrainedOnRealScans
+                  ? `Computed from actual Firestore scan turnout across ${daysOfScansObserved} observed days in 15-day lookback`
+                  : `Awaiting 10-15 days of student attendance records (using safe roster baseline)`}
+              </p>
             </div>
           </div>
 
