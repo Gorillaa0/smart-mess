@@ -16,7 +16,14 @@ interface ScannedEntry {
 }
 
 export const QRAttendancePage: React.FC = () => {
-  const [selectedMeal, setSelectedMeal] = useState<'Breakfast' | 'Lunch' | 'Dinner'>('Lunch');
+  const getDefaultMeal = (): 'Breakfast' | 'Lunch' | 'Dinner' => {
+    const hours = new Date().getHours();
+    if (hours < 10) return 'Breakfast';
+    if (hours < 15) return 'Lunch';
+    return 'Dinner';
+  };
+
+  const [selectedMeal, setSelectedMeal] = useState<'Breakfast' | 'Lunch' | 'Dinner'>(getDefaultMeal);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const [scannedEntries, setScannedEntries] = useState<ScannedEntry[]>([]);
 
@@ -42,12 +49,21 @@ export const QRAttendancePage: React.FC = () => {
         const data = await res.json();
         if (Array.isArray(data)) {
           const list: ScannedEntry[] = [];
+          const today = new Date();
           let idx = 1;
           for (const item of data) {
             if (item.document?.fields) {
               const f = item.document.fields;
               const meal = f.mealType?.stringValue || '';
-              if (meal.toLowerCase() === selectedMeal.toLowerCase()) {
+              const scanTimeStr = f.scannedAt?.stringValue;
+              if (!scanTimeStr) continue;
+              const scanDate = new Date(scanTimeStr);
+              const isToday =
+                scanDate.getFullYear() === today.getFullYear() &&
+                scanDate.getMonth() === today.getMonth() &&
+                scanDate.getDate() === today.getDate();
+
+              if (isToday && meal.toLowerCase() === selectedMeal.toLowerCase()) {
                 list.push({
                   slNo: idx++,
                   name: f.studentName?.stringValue || 'Student',
@@ -55,7 +71,7 @@ export const QRAttendancePage: React.FC = () => {
                   registrationNo: f.registrationNo?.stringValue || '',
                   branch: f.branch?.stringValue || 'CSE',
                   roomNo: f.roomNo?.stringValue || '',
-                  scannedAt: f.scannedAt?.stringValue ? new Date(f.scannedAt.stringValue).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now',
+                  scannedAt: new Date(scanTimeStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                   token: f.id?.stringValue || `H4-${selectedMeal[0]}`
                 });
               }

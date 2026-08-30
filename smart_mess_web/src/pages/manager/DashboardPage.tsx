@@ -56,7 +56,18 @@ export const DashboardPage: React.FC = () => {
         const dataAtt = await resAtt.json();
         if (Array.isArray(dataAtt)) {
           const valid = dataAtt.filter((d) => d.document?.fields);
-          setLiveScansCount(valid.length);
+          const today = new Date();
+          const todayScans = valid.filter((d) => {
+            const scanTimeStr = d.document?.fields?.scannedAt?.stringValue;
+            if (!scanTimeStr) return false;
+            const scanDate = new Date(scanTimeStr);
+            return (
+              scanDate.getFullYear() === today.getFullYear() &&
+              scanDate.getMonth() === today.getMonth() &&
+              scanDate.getDate() === today.getDate()
+            );
+          });
+          setLiveScansCount(todayScans.length);
           setLiveScans(valid.map(d => d.document.fields));
         }
       }
