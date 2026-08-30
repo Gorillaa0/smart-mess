@@ -58,8 +58,17 @@ export const getMealRating = (
   };
   const targetWeekday = Object.entries(dayMap).find(([k]) => d.includes(k))?.[1] ?? 1;
 
-  // 3. Filter matching records
-  const matching = (attendanceRecords || []).filter((s: any) => {
+  // 3. Filter matching records in 5-10 Day Rolling Observation Window
+  const now = new Date();
+  const tenDaysAgo = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000);
+
+  const windowRecords = (attendanceRecords || []).filter((s: any) => {
+    if (!s.scannedAt) return true;
+    const date = new Date(s.scannedAt);
+    return date >= tenDaysAgo;
+  });
+
+  const matching = windowRecords.filter((s: any) => {
     const sm = (s.mealType || '').toLowerCase().trim();
     const isMeal = sm === m || sm.includes(m) || m.includes(sm);
     if (!s.scannedAt) return isMeal;
@@ -79,7 +88,7 @@ export const getMealRating = (
   if (uniqueDates.size > 0) {
     avgTurnout = matching.length / uniqueDates.size;
   } else {
-    // Dynamic ML baseline based on active student participation
+    // 5-10 day baseline based on active student participation
     if (m.includes('dinner') || m.includes('lunch')) {
       avgTurnout = totalActiveStudents * 0.72;
     } else {
