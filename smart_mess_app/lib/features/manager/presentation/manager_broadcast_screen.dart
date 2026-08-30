@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dio/dio.dart';
+import 'package:intl/intl.dart';
 import '../../notifications/providers/notifications_provider.dart';
 
 class ManagerBroadcastScreen extends ConsumerStatefulWidget {
@@ -314,18 +315,11 @@ class _ManagerBroadcastScreenState extends ConsumerState<ManagerBroadcastScreen>
           ),
           const SizedBox(height: 10),
 
-          // Real-time Firestore Stream of Notices
-          StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance.collection('notifications').snapshots(),
-            builder: (context, snapshot) {
-              final docs = snapshot.data?.docs ?? [];
-              final list = <Map<String, dynamic>>[];
-
-              for (final doc in docs) {
-                final d = doc.data() as Map<String, dynamic>;
-                d['docId'] = doc.id;
-                list.add(d);
-              }
+          // Real-time Provider of Notices from Cloud Firestore
+          Builder(
+            builder: (context) {
+              final notifsAsync = ref.watch(notificationsListProvider);
+              final list = notifsAsync.valueOrNull ?? [];
 
               if (list.isEmpty) {
                 return Center(
@@ -344,11 +338,10 @@ class _ManagerBroadcastScreenState extends ConsumerState<ManagerBroadcastScreen>
 
               return Column(
                 children: list.map((n) {
-                  final docId = n['docId'] ?? n['id'] ?? '';
-                  final title = n['title'] ?? 'Notice';
-                  final body = n['body'] ?? '';
-                  final time = n['sentAt'] ?? '';
-                  final count = n['deliveredCount'] ?? 112;
+                  final docId = n.id;
+                  final title = n.title;
+                  final body = n.body;
+                  final time = DateFormat('hh:mm a • dd MMM').format(n.createdAt);
 
                   return Container(
                     margin: const EdgeInsets.only(bottom: 12),
@@ -356,6 +349,13 @@ class _ManagerBroadcastScreenState extends ConsumerState<ManagerBroadcastScreen>
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(color: Colors.grey.shade200),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.02),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
                     padding: const EdgeInsets.all(14),
                     child: Column(
@@ -365,27 +365,44 @@ class _ManagerBroadcastScreenState extends ConsumerState<ManagerBroadcastScreen>
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Expanded(
-                              child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: Colors.black87)),
+                              child: Text(
+                                title,
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: Colors.black87),
+                              ),
                             ),
                             const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                               decoration: BoxDecoration(color: const Color(0xFFE8F5E9), borderRadius: BorderRadius.circular(6)),
-                              child: Text('$count Sent', style: const TextStyle(color: Color(0xFF1B5E20), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                              child: const Text('112 Sent', style: TextStyle(color: Color(0xFF1B5E20), fontSize: 10.5, fontWeight: FontWeight.bold)),
                             ),
-                            const SizedBox(width: 6),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
-                              tooltip: 'Delete notice',
-                              visualDensity: VisualDensity.compact,
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              onPressed: () => _confirmDeleteNotice(context, docId, title),
+                            const SizedBox(width: 8),
+                            InkWell(
+                              onTap: () => _confirmDeleteNotice(context, docId, title),
+                              borderRadius: BorderRadius.circular(8),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.shade50,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.red.shade200, width: 0.8),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.delete_outline, size: 14, color: Colors.red.shade700),
+                                    const SizedBox(width: 3),
+                                    Text('Delete', style: TextStyle(color: Colors.red.shade700, fontSize: 11, fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                              ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 6),
-                        Text(body, style: TextStyle(fontSize: 12.5, color: Colors.grey.shade800, height: 1.3)),
+                        if (body.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(body, style: TextStyle(fontSize: 12.5, color: Colors.grey.shade800, height: 1.3)),
+                        ],
                         const SizedBox(height: 6),
                         Text('Sent: $time', style: TextStyle(fontSize: 10.5, color: Colors.grey.shade500)),
                       ],

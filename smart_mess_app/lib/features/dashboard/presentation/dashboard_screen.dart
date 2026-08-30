@@ -124,7 +124,10 @@ class DashboardScreen extends ConsumerWidget {
                   ),
               ],
             ),
-            onPressed: () => context.push('/notifications'),
+            onPressed: () {
+              ref.read(notificationsListProvider.notifier).markAllAsRead();
+              context.push('/notifications');
+            },
           ),
           IconButton(
             icon: Container(

@@ -3,10 +3,23 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../providers/notifications_provider.dart';
 
-class NotificationsScreen extends ConsumerWidget {
+class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
 
-  void _showClearAllDialog(BuildContext context, WidgetRef ref) {
+  @override
+  ConsumerState<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(notificationsListProvider.notifier).markAllAsRead();
+    });
+  }
+
+  void _showClearAllDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -19,7 +32,7 @@ class NotificationsScreen extends ConsumerWidget {
           ],
         ),
         content: const Text(
-          'This will remove all current announcements from your notification list.',
+          'This will remove all current announcements from your notification history.',
           style: TextStyle(fontSize: 13, color: Colors.black87),
         ),
         actions: [
@@ -48,7 +61,7 @@ class NotificationsScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final notificationsState = ref.watch(notificationsListProvider);
     final notifsList = notificationsState.valueOrNull ?? [];
     final unreadCount = notifsList.where((n) => !n.isRead).length;
@@ -85,7 +98,7 @@ class NotificationsScreen extends ConsumerWidget {
             IconButton(
               tooltip: 'Clear All Notifications',
               icon: const Icon(Icons.delete_sweep_outlined, color: Colors.redAccent, size: 21),
-              onPressed: () => _showClearAllDialog(context, ref),
+              onPressed: () => _showClearAllDialog(context),
             ),
           ],
           const SizedBox(width: 4),
