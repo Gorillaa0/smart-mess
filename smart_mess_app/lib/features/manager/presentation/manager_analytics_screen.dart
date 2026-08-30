@@ -47,12 +47,20 @@ class ManagerAnalyticsScreen extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Daily Attendance: Predicted vs Actual', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFF1B5E20))),
+                    const Expanded(
+                      child: Text(
+                        'Daily Attendance: Predicted vs Actual',
+                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5, color: Color(0xFF1B5E20)),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        _legendDot('Predicted', Colors.grey),
-                        const SizedBox(width: 10),
-                        _legendDot('Actual Scans', const Color(0xFF1B5E20)),
+                        _legendDot('Pred', Colors.grey),
+                        const SizedBox(width: 8),
+                        _legendDot('Actual', const Color(0xFF1B5E20)),
                       ],
                     ),
                   ],

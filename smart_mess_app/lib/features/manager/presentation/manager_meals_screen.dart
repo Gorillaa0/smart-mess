@@ -366,21 +366,27 @@ class _ManagerMealsScreenState extends State<ManagerMealsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: bgColor,
-                      borderRadius: BorderRadius.circular(10),
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: bgColor,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(icon, color: primaryColor, size: 20),
                     ),
-                    child: Icon(icon, color: primaryColor, size: 20),
-                  ),
-                  const SizedBox(width: 10),
-                  Text('$mealType / $hindiType', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: primaryColor)),
-                ],
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text('$mealType / $hindiType', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5, color: primaryColor), overflow: TextOverflow.ellipsis),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -412,19 +418,30 @@ class _ManagerMealsScreenState extends State<ManagerMealsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  const Icon(Icons.schedule, size: 14, color: Colors.grey),
-                  const SizedBox(width: 4),
-                  Text('Serving: ${slot.servingTime}', style: TextStyle(fontSize: 11.5, color: Colors.grey.shade700, fontWeight: FontWeight.w500)),
-                ],
+              Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.schedule, size: 14, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text('Serving: ${slot.servingTime}', style: TextStyle(fontSize: 11, color: Colors.grey.shade700, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis),
+                    ),
+                  ],
+                ),
               ),
-              Row(
-                children: [
-                  const Icon(Icons.timer_off_outlined, size: 14, color: Color(0xFFC62828)),
-                  const SizedBox(width: 4),
-                  Text('Cutoff: ${slot.cutoffTime}', style: const TextStyle(fontSize: 11.5, color: Color(0xFFC62828), fontWeight: FontWeight.bold)),
-                ],
+              const SizedBox(width: 6),
+              Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.timer_off_outlined, size: 14, color: Color(0xFFC62828)),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text('Cutoff: ${slot.cutoffTime}', style: const TextStyle(fontSize: 11, color: Color(0xFFC62828), fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

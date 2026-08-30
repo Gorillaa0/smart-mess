@@ -20,7 +20,7 @@ class _ManagerComplaintsScreenState extends ConsumerState<ManagerComplaintsScree
   void initState() {
     super.initState();
     _fetchComplaints();
-    _timer = Timer.periodic(const Duration(seconds: 4), (_) => _fetchComplaints(silent: true));
+    _timer = Timer.periodic(const Duration(seconds: 30), (_) => _fetchComplaints(silent: true));
   }
 
   @override
@@ -355,9 +355,12 @@ class _ManagerComplaintsScreenState extends ConsumerState<ManagerComplaintsScree
                                     children: [
                                       Icon(Icons.person_pin, size: 14, color: Colors.grey.shade600),
                                       const SizedBox(width: 4),
-                                      Text(
-                                        'Filed by $student (Room $room, H4)',
-                                        style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                                      Expanded(
+                                        child: Text(
+                                          'Filed by $student (Room $room, H4)',
+                                          style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                       ),
                                     ],
                                   ),

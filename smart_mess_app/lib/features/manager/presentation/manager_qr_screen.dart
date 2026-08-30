@@ -64,7 +64,7 @@ class ManagerQRScreen extends StatelessWidget {
                     QrImageView(
                       data: staticPayload,
                       version: QrVersions.auto,
-                      size: 240.0,
+                      size: (MediaQuery.of(context).size.width * 0.58).clamp(180.0, 240.0),
                     ),
                     const SizedBox(height: 12),
                     const Text(

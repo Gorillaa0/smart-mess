@@ -261,21 +261,31 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.18),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.white24),
-                        ),
-                        child: const Row(
-                          children: [
-                            Icon(Icons.admin_panel_settings, color: Colors.amberAccent, size: 14),
-                            SizedBox(width: 6),
-                            Text('OFFICIAL MESS OPERATOR', style: TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.bold)),
-                          ],
+                      Flexible(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.18),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.white24),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.admin_panel_settings, color: Colors.amberAccent, size: 14),
+                              SizedBox(width: 5),
+                              Flexible(
+                                child: Text(
+                                  'OFFICIAL MESS OPERATOR',
+                                  style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
+                      const SizedBox(width: 6),
                       GestureDetector(
                         onTap: () => _showChangePasswordDialog(context),
                         child: Container(
@@ -285,12 +295,13 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(Icons.lock_reset, size: 13, color: Color(0xFF1B5E20)),
                               SizedBox(width: 4),
                               Text(
                                 'Change Password',
-                                style: TextStyle(color: Color(0xFF1B5E20), fontSize: 11, fontWeight: FontWeight.w800),
+                                style: TextStyle(color: Color(0xFF1B5E20), fontSize: 10.5, fontWeight: FontWeight.w800),
                               ),
                             ],
                           ),
@@ -631,10 +642,6 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
         ? ((top1.actualScans / totalStudents) * 100).toStringAsFixed(1)
         : (allScans.isEmpty ? '98.2' : '0.0');
 
-    final top1ScansDisplay = top1 != null && top1.actualScans > 0
-        ? '${top1.actualScans} / $totalStudents Scans'
-        : (allScans.isEmpty ? '110 / $totalStudents Scans' : '0 / $totalStudents Scans');
-
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -655,31 +662,37 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF3E0),
-                      borderRadius: BorderRadius.circular(8),
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF3E0),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.local_fire_department, color: Color(0xFFE65100), size: 18),
                     ),
-                    child: const Icon(Icons.local_fire_department, color: Color(0xFFE65100), size: 18),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Most Demanded Meal & Crowd Analysis',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5, color: Color(0xFFE65100)),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Most Demanded Meal & Crowd',
+                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5, color: Color(0xFFE65100)),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 6),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFF3E0),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: const Color(0xFFFFCC80)),
                 ),
-                child: const Text('Computed from Actual Scans', style: TextStyle(color: Color(0xFFE65100), fontSize: 10, fontWeight: FontWeight.bold)),
+                child: const Text('Live Scans', style: TextStyle(color: Color(0xFFE65100), fontSize: 9.5, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -898,14 +911,17 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
       ),
     ];
 
+    final screenWidth = MediaQuery.of(context).size.width;
+    final double aspectRatio = screenWidth < 360 ? 1.75 : (screenWidth < 400 ? 1.92 : 2.15);
+
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: screenWidth > 600 ? 3 : 2,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
-        childAspectRatio: 2.1,
+        childAspectRatio: aspectRatio,
       ),
       itemCount: actions.length,
       itemBuilder: (context, index) {

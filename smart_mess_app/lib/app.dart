@@ -19,7 +19,14 @@ class SmartMessApp extends ConsumerWidget {
         colorSchemeSeed: const Color(0xFF2E7D32),
         fontFamily: GoogleFonts.inter().fontFamily,
       ),
-      builder: (context, child) => InAppNotificationWrapper(child: child ?? const SizedBox()),
+      builder: (context, child) {
+        final mediaQuery = MediaQuery.of(context);
+        final clampedScaler = mediaQuery.textScaler.clamp(minScaleFactor: 0.85, maxScaleFactor: 1.15);
+        return MediaQuery(
+          data: mediaQuery.copyWith(textScaler: clampedScaler),
+          child: InAppNotificationWrapper(child: child ?? const SizedBox()),
+        );
+      },
       routerConfig: router,
     );
   }

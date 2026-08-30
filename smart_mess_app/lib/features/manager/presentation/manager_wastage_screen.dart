@@ -25,7 +25,7 @@ class _ManagerWastageScreenState extends State<ManagerWastageScreen> {
   void initState() {
     super.initState();
     _fetchWastage();
-    _timer = Timer.periodic(const Duration(seconds: 4), (_) => _fetchWastage(silent: true));
+    _timer = Timer.periodic(const Duration(seconds: 30), (_) => _fetchWastage(silent: true));
   }
 
   @override
@@ -316,12 +316,15 @@ class _ManagerWastageScreenState extends State<ManagerWastageScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text('$meal Meal Audit', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                              Expanded(
+                                child: Text('$meal Meal Audit', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5), overflow: TextOverflow.ellipsis),
+                              ),
+                              const SizedBox(width: 6),
                               Text(date, style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
                             ],
                           ),
                           const SizedBox(height: 3),
-                          Text('Prepared: $prep | Attended: $actual | Wasted: $wasted kg', style: TextStyle(fontSize: 11.5, color: Colors.grey.shade700)),
+                          Text('Prepared: $prep | Attended: $actual | Wasted: $wasted kg', style: TextStyle(fontSize: 11.5, color: Colors.grey.shade700), overflow: TextOverflow.ellipsis, maxLines: 2),
                         ],
                       ),
                     ),

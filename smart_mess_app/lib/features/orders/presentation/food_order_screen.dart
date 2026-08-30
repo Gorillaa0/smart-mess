@@ -385,10 +385,14 @@ class _FoodOrderScreenState extends ConsumerState<FoodOrderScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          '${order.foodItemName} (x${order.quantity})',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                        Expanded(
+                          child: Text(
+                            '${order.foodItemName} (x${order.quantity})',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
+                        const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
@@ -414,15 +418,20 @@ class _FoodOrderScreenState extends ConsumerState<FoodOrderScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'Bill: ₹${order.totalBill} • Pay on Delivery',
-                          style: TextStyle(fontSize: 11.5, color: Colors.grey.shade700, fontWeight: FontWeight.w600),
+                        Flexible(
+                          child: Text(
+                            'Bill: ₹${order.totalBill} • Pay on Delivery',
+                            style: TextStyle(fontSize: 11.5, color: Colors.grey.shade700, fontWeight: FontWeight.w600),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        if (!isCancelled && !isDelivered)
+                        if (!isCancelled && !isDelivered) ...[
+                          const SizedBox(width: 6),
                           Text(
                             'Est. Delivery: $estTime',
                             style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20)),
                           ),
+                        ],
                       ],
                     ),
                     if (isCancelled && reason.isNotEmpty) ...[
@@ -601,7 +610,14 @@ class _FoodOrderScreenState extends ConsumerState<FoodOrderScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                                Expanded(
+                                  child: Text(
+                                    item.name,
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
                                 Text('₹${item.price}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Color(0xFF1B5E20))),
                               ],
                             ),
@@ -705,7 +721,13 @@ class _FoodOrderScreenState extends ConsumerState<FoodOrderScreen> {
               icon: _isSubmitting
                   ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                   : const Icon(Icons.shopping_bag, size: 20),
-              label: Text(_isSubmitting ? 'PLACING ORDER...' : 'CONFIRM ORDER (₹$totalBill - PAY ON DELIVERY)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              label: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  _isSubmitting ? 'PLACING ORDER...' : 'CONFIRM ORDER (₹$totalBill - PAY ON DELIVERY)',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+              ),
               onPressed: _isSubmitting ? null : _placeOrder,
             ),
           ),

@@ -40,27 +40,32 @@ class DashboardScreen extends ConsumerWidget {
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(7),
+              padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
                 color: const Color(0xFFE8F5E9),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: const Color(0xFFA5D6A7), width: 1),
               ),
-              child: const Icon(Icons.restaurant_menu, color: Color(0xFF1B5E20), size: 20),
+              child: const Icon(Icons.restaurant_menu, color: Color(0xFF1B5E20), size: 19),
             ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Smart Mess',
-                  style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF1B5E20), fontSize: 17),
-                ),
-                Text(
-                  'Central Dining Mess Hall',
-                  style: TextStyle(color: Colors.grey.shade700, fontSize: 11, fontWeight: FontWeight.w600),
-                ),
-              ],
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Smart Mess',
+                    style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF1B5E20), fontSize: 16),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    'Central Dining Mess Hall',
+                    style: TextStyle(color: Colors.black54, fontSize: 10.5, fontWeight: FontWeight.w600),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -592,24 +597,31 @@ class DashboardScreen extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 // Day Indicator Pill
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.18),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white30, width: 0.8),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.wb_sunny_outlined, size: 13, color: Colors.amberAccent),
-                      const SizedBox(width: 5),
-                      Text(
-                        '${todayMenu.dayHindi.toUpperCase()} • ${todayMenu.dayEnglish.toUpperCase()}',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 0.5),
-                      ),
-                    ],
+                Flexible(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.18),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white30, width: 0.8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.wb_sunny_outlined, size: 13, color: Colors.amberAccent),
+                        const SizedBox(width: 5),
+                        Flexible(
+                          child: Text(
+                            '${todayMenu.dayHindi.toUpperCase()} • ${todayMenu.dayEnglish.toUpperCase()}',
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 0.5),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
+                const SizedBox(width: 8),
                 // Profile & Password Action Pill
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -625,6 +637,7 @@ class DashboardScreen extends ConsumerWidget {
                     ],
                   ),
                   child: const Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.manage_accounts, size: 14, color: Color(0xFF1B5E20)),
                       SizedBox(width: 4),
@@ -778,7 +791,7 @@ class DashboardScreen extends ConsumerWidget {
   }) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(14),
@@ -797,9 +810,9 @@ class DashboardScreen extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(icon, size: 16, color: themeColor),
+                Icon(icon, size: 15, color: themeColor),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
                   decoration: BoxDecoration(
                     color: highlight ? Colors.amber.shade400 : themeColor.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(6),
@@ -807,7 +820,7 @@ class DashboardScreen extends ConsumerWidget {
                   child: Text(
                     priceText,
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 9.5,
                       fontWeight: FontWeight.w800,
                       color: highlight ? Colors.black87 : themeColor,
                     ),
@@ -815,72 +828,80 @@ class DashboardScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 5),
             Text(
               mealName,
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: themeColor),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5, color: themeColor),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 2),
             Text(
               itemsText,
-              style: const TextStyle(fontSize: 10, color: Colors.black87, fontWeight: FontWeight.w500),
+              style: const TextStyle(fontSize: 9.5, color: Colors.black87, fontWeight: FontWeight.w500),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
             if (rating != null && rating > 0) ...[
-              const SizedBox(height: 5),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
-                    decoration: BoxDecoration(
-                      color: rating >= 4.5 ? Colors.green.shade800 : (rating >= 4.0 ? Colors.green.shade700 : Colors.amber.shade800),
-                      borderRadius: BorderRadius.circular(4),
+              const SizedBox(height: 4),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: rating >= 4.5 ? Colors.green.shade800 : (rating >= 4.0 ? Colors.green.shade700 : Colors.amber.shade800),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.star, size: 9, color: Colors.white),
+                          const SizedBox(width: 2),
+                          Text(
+                            '$rating / 5',
+                            style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.star, size: 9.5, color: Colors.white),
-                        const SizedBox(width: 2),
-                        Text(
-                          '$rating / 5',
-                          style: const TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
+                    const SizedBox(width: 3),
+                    Text(
                       badge ?? '',
-                      style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.w800, color: themeColor),
+                      style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: themeColor),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 4),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    isPassed ? Icons.check_circle : Icons.schedule,
+                    size: 11,
+                    color: isPassed ? Colors.green : Colors.grey.shade600,
+                  ),
+                  const SizedBox(width: 3),
+                  Text(
+                    status,
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      color: isPassed ? Colors.green.shade800 : Colors.grey.shade700,
                     ),
                   ),
                 ],
               ),
-            ],
-            const SizedBox(height: 5),
-            Row(
-              children: [
-                Icon(
-                  isPassed ? Icons.check_circle : Icons.schedule,
-                  size: 11,
-                  color: isPassed ? Colors.green : Colors.grey.shade600,
-                ),
-                const SizedBox(width: 3),
-                Text(
-                  status,
-                  style: TextStyle(
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.bold,
-                    color: isPassed ? Colors.green.shade800 : Colors.grey.shade700,
-                  ),
-                ),
-              ],
             ),
           ],
         ),
@@ -1294,14 +1315,17 @@ class DashboardScreen extends ConsumerWidget {
       ),
     ];
 
+    final screenWidth = MediaQuery.of(context).size.width;
+    final double aspectRatio = screenWidth < 360 ? 1.75 : (screenWidth < 400 ? 1.92 : 2.15);
+
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: screenWidth > 600 ? 3 : 2,
         mainAxisSpacing: 10,
         crossAxisSpacing: 10,
-        childAspectRatio: 2.1,
+        childAspectRatio: aspectRatio,
       ),
       itemCount: actions.length,
       itemBuilder: (context, index) {
@@ -1310,7 +1334,7 @@ class DashboardScreen extends ConsumerWidget {
           onTap: item.onTap ?? () => context.push(item.route!),
           borderRadius: BorderRadius.circular(14),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [item.startColor, item.endColor],

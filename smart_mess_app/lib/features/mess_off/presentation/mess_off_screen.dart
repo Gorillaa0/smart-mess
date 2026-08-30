@@ -402,39 +402,49 @@ class _MessOffScreenState extends ConsumerState<MessOffScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(6),
+              Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '${slot.nameHindi} (${slot.nameEnglish})',
+                          style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ),
-                    child: Text(
-                      '${slot.nameHindi} (${slot.nameEnglish})',
-                      style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12),
+                    const SizedBox(width: 6),
+                    Text(
+                      '₹${slot.price}',
+                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: Colors.black87),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '₹${slot.price}',
-                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: Colors.black87),
-                  ),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: isPassed ? Colors.red.shade50 : Colors.green.shade50,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: isPassed ? Colors.red.shade200 : Colors.green.shade200, width: 0.8),
+                  ],
                 ),
-                child: Text(
-                  cutoffStatus,
-                  style: TextStyle(
-                    color: isPassed ? Colors.red.shade800 : Colors.green.shade800,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: isPassed ? Colors.red.shade50 : Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: isPassed ? Colors.red.shade200 : Colors.green.shade200, width: 0.8),
+                  ),
+                  child: Text(
+                    cutoffStatus,
+                    style: TextStyle(
+                      color: isPassed ? Colors.red.shade800 : Colors.green.shade800,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ),

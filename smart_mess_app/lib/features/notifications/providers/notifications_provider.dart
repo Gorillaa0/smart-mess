@@ -2,8 +2,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
 import '../../../core/models/notification_model.dart';
 
 class NotificationsNotifier extends StateNotifier<AsyncValue<List<NotificationModel>>> {
@@ -11,7 +9,7 @@ class NotificationsNotifier extends StateNotifier<AsyncValue<List<NotificationMo
 
   NotificationsNotifier() : super(const AsyncLoading()) {
     _fetchLive();
-    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) => _fetchLive());
+    _pollTimer = Timer.periodic(const Duration(seconds: 30), (_) => _fetchLive());
   }
 
   Future<void> _fetchLive() async {

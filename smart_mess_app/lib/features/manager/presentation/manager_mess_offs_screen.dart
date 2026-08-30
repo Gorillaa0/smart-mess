@@ -21,7 +21,7 @@ class _ManagerMessOffsScreenState extends ConsumerState<ManagerMessOffsScreen> {
   void initState() {
     super.initState();
     _fetchMessOffs();
-    _timer = Timer.periodic(const Duration(seconds: 4), (_) => _fetchMessOffs(silent: true));
+    _timer = Timer.periodic(const Duration(seconds: 30), (_) => _fetchMessOffs(silent: true));
   }
 
   @override
@@ -188,7 +188,6 @@ class _ManagerMessOffsScreenState extends ConsumerState<ManagerMessOffsScreen> {
                             final room = item['roomNo'] ?? '101';
                             final meal = item['mealType'] ?? 'Lunch';
                             final reason = item['reason'] ?? 'Exemption';
-                            final status = item['status'] ?? 'Active';
 
                             return Container(
                               margin: const EdgeInsets.only(bottom: 10),
@@ -219,7 +218,10 @@ class _ManagerMessOffsScreenState extends ConsumerState<ManagerMessOffsScreen> {
                                         Row(
                                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                           children: [
-                                            Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                                            Expanded(
+                                              child: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5), overflow: TextOverflow.ellipsis),
+                                            ),
+                                            const SizedBox(width: 6),
                                             Container(
                                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                               decoration: BoxDecoration(

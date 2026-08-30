@@ -105,7 +105,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF7FAF7),
       appBar: AppBar(
-        title: const Text('Institute Events & Mess Advisories', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        title: const Text('Events & Mess Advisories', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         backgroundColor: const Color(0xFF1B5E20),
         foregroundColor: Colors.white,
         elevation: 0,
@@ -288,7 +288,10 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           ),
                           icon: const Icon(Icons.event_busy, size: 16),
-                          label: const Text('APPLY MESS-OFF FOR THIS VACATION', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          label: const FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text('APPLY MESS-OFF FOR THIS VACATION', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          ),
                           onPressed: () => _applyMessOffForEvent(context, item),
                         ),
                       ),

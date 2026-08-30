@@ -41,22 +41,23 @@ class _ManagerAttendanceScreenState extends ConsumerState<ManagerAttendanceScree
         backgroundColor: Colors.white,
         foregroundColor: const Color(0xFF1B5E20),
         elevation: 0.5,
-        title: const Text('Live Attendance Ledger', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.5)),
+        title: const Text('Attendance Ledger', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15.5)),
         actions: [
           Container(
             margin: const EdgeInsets.only(right: 12),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
               color: const Color(0xFFE8F5E9),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: const Color(0xFFA5D6A7)),
             ),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.fiber_manual_record, color: Colors.green, size: 10),
+                const Icon(Icons.fiber_manual_record, color: Colors.green, size: 9),
                 const SizedBox(width: 4),
-                Text('${presentMap.length}/${H4StudentDirectory.students.length} Scanned',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF1B5E20))),
+                Text('${presentMap.length}/${H4StudentDirectory.students.length}',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5, color: Color(0xFF1B5E20))),
               ],
             ),
           ),

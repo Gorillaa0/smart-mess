@@ -155,9 +155,12 @@ class _ManagerBroadcastScreenState extends State<ManagerBroadcastScreen> {
                     icon: _isSending
                         ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                         : const Icon(Icons.send, size: 18),
-                    label: Text(
-                      _isSending ? 'BROADCASTING...' : 'SEND BROADCAST TO 112 STUDENTS',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+                    label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        _isSending ? 'BROADCASTING...' : 'SEND BROADCAST TO 112 STUDENTS',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+                      ),
                     ),
                     onPressed: _isSending ? null : _sendBroadcast,
                   ),

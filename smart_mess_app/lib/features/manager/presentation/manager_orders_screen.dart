@@ -674,7 +674,14 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
-                                          Text('Student: $student (Room $room, H4)', style: const TextStyle(fontSize: 12, color: Colors.black87, fontWeight: FontWeight.w700)),
+                                          Expanded(
+                                            child: Text(
+                                              'Student: $student (Room $room, H4)',
+                                              style: const TextStyle(fontSize: 12, color: Colors.black87, fontWeight: FontWeight.w700),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
                                           Text('₹$total', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Color(0xFFE65100))),
                                         ],
                                       ),
@@ -683,8 +690,14 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
                                         children: [
                                           Icon(Icons.phone, size: 13, color: Colors.grey.shade600),
                                           const SizedBox(width: 4),
-                                          Text('Phone: $phone', style: TextStyle(fontSize: 11.5, color: Colors.grey.shade700)),
-                                          const SizedBox(width: 12),
+                                          Flexible(
+                                            child: Text(
+                                              'Phone: $phone',
+                                              style: TextStyle(fontSize: 11.5, color: Colors.grey.shade700),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
                                           Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
                                             decoration: BoxDecoration(
@@ -693,7 +706,7 @@ class _ManagerOrdersScreenState extends ConsumerState<ManagerOrdersScreen> with 
                                               border: Border.all(color: Colors.amber.shade300),
                                             ),
                                             child: const Text('PAY ON DELIVERY',
-                                                style: TextStyle(color: Color(0xFFBF360C), fontSize: 9.5, fontWeight: FontWeight.bold)),
+                                                style: TextStyle(color: Color(0xFFBF360C), fontSize: 9, fontWeight: FontWeight.bold)),
                                           ),
                                         ],
                                       ),

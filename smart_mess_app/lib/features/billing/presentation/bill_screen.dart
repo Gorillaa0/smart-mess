@@ -652,7 +652,8 @@ class _BillScreenState extends ConsumerState<BillScreen> with SingleTickerProvid
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12.5, color: Colors.black87)),
+          Expanded(child: Text(label, style: const TextStyle(fontSize: 12.5, color: Colors.black87), overflow: TextOverflow.ellipsis)),
+          const SizedBox(width: 8),
           Text(amount, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: color)),
         ],
       ),
@@ -665,11 +666,13 @@ class _BillScreenState extends ConsumerState<BillScreen> with SingleTickerProvid
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(title, style: const TextStyle(fontSize: 12.5, color: Colors.black87)),
+          Expanded(child: Text(title, style: const TextStyle(fontSize: 12.5, color: Colors.black87), overflow: TextOverflow.ellipsis)),
+          const SizedBox(width: 8),
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(qty, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black87)),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               Text('($rate)', style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
             ],
           ),
@@ -684,7 +687,8 @@ class _BillScreenState extends ConsumerState<BillScreen> with SingleTickerProvid
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(title, style: TextStyle(fontSize: 12, color: Colors.grey.shade800)),
+          Expanded(child: Text(title, style: TextStyle(fontSize: 12, color: Colors.grey.shade800), overflow: TextOverflow.ellipsis)),
+          const SizedBox(width: 8),
           Text(price, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20))),
         ],
       ),
