@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../attendance/providers/attendance_provider.dart';
 import '../../../core/router/app_router.dart';
+import '../../../core/constants/h4_students_data.dart';
 
 class DailyBillRecord {
   final DateTime date;
@@ -56,10 +57,14 @@ class _BillScreenState extends ConsumerState<BillScreen> with SingleTickerProvid
     super.dispose();
   }
 
-  List<DailyBillRecord> _computeRealScanRecords(List<H4MealScanRecord> scans, String studentRegNo) {
-    final cleanReg = studentRegNo.trim();
-    final studentScans = scans.where((s) =>
-        s.registrationNo.trim() == cleanReg || s.rollNo.trim() == cleanReg).toList();
+  List<DailyBillRecord> _computeRealScanRecords(List<H4MealScanRecord> scans, String studentRegNo, String studentRollNo) {
+    final cleanReg = studentRegNo.trim().toLowerCase();
+    final cleanRoll = studentRollNo.trim().toLowerCase();
+    final studentScans = scans.where((s) {
+      final sr = s.registrationNo.trim().toLowerCase();
+      final sl = s.rollNo.trim().toLowerCase();
+      return sr == cleanReg || sr == cleanRoll || sl == cleanReg || sl == cleanRoll;
+    }).toList();
 
     // Group actual student scans strictly by unique calendar dates
     final Map<String, List<H4MealScanRecord>> scansByDate = {};
@@ -111,7 +116,7 @@ class _BillScreenState extends ConsumerState<BillScreen> with SingleTickerProvid
   Widget build(BuildContext context) {
     final student = ref.watch(currentStudentProvider);
     final allScans = ref.watch(liveAttendanceProvider);
-    final records = _computeRealScanRecords(allScans, student.registrationNo);
+    final records = _computeRealScanRecords(allScans, student.registrationNo, student.rollNo);
 
     final totalEatenMeals = records.fold<int>(0, (sum, r) =>
         sum + (r.breakfastEaten ? 1 : 0) + (r.lunchEaten ? 1 : 0) + (r.dinnerEaten ? 1 : 0));
@@ -149,6 +154,7 @@ class _BillScreenState extends ConsumerState<BillScreen> with SingleTickerProvid
         children: [
           // TAB 1: 100% REAL-TIME CONSUMPTION & ADVANCE DEPOSIT STATEMENT
           _buildMonthlyStatementTab(
+            student,
             currentMonthName,
             totalEatenMeals,
             totalDaysTracked,
@@ -170,8 +176,9 @@ class _BillScreenState extends ConsumerState<BillScreen> with SingleTickerProvid
     );
   }
 
-  // TAB 1: 100% DYNAMIC MONTHLY STATEMENT WITH REAL ₹10,000 ADVANCE DEPOSIT
+  // TAB 1: 100% DYNAMIC MONTHLY STATEMENT WITH REAL ADVANCE DEPOSIT
   Widget _buildMonthlyStatementTab(
+    H4Student student,
     String currentMonthName,
     int totalEatenMeals,
     int totalDaysTracked,
@@ -180,7 +187,7 @@ class _BillScreenState extends ConsumerState<BillScreen> with SingleTickerProvid
     int lunchScans,
     int dinnerScans,
   ) {
-    const int advanceDeposit = 10000; // Actual advance deposit paid
+    final int advanceDeposit = student.depositedAmount; // Actual advance deposit credited by student (₹10,000)
     final int remainingBalance = advanceDeposit - totalMonthAmount;
 
     return ListView(

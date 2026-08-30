@@ -11,6 +11,7 @@ export interface H4Student {
   hostel: string;
   roomNo: string;
   password: string;
+  depositedAmount?: number;
 }
 
 export const H4_STUDENTS_LIST: H4Student[] = [

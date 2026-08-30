@@ -11,6 +11,7 @@ class H4Student {
   final String hostel;
   final String roomNo;
   String password;
+  final int depositedAmount;
 
   H4Student({
     required this.slNo,
@@ -25,9 +26,10 @@ class H4Student {
     this.hostel = 'Hostel Number 4',
     required this.roomNo,
     required this.password,
+    this.depositedAmount = 10000,
   });
 
-  H4Student copyWith({String? password, String? email}) {
+  H4Student copyWith({String? password, String? email, int? depositedAmount}) {
     return H4Student(
       slNo: slNo,
       name: name,
@@ -41,6 +43,7 @@ class H4Student {
       hostel: hostel,
       roomNo: roomNo,
       password: password ?? this.password,
+      depositedAmount: depositedAmount ?? this.depositedAmount,
     );
   }
 
@@ -57,6 +60,7 @@ class H4Student {
     'hostel': hostel,
     'roomNo': roomNo,
     'password': password,
+    'depositedAmount': depositedAmount,
   };
 
   factory H4Student.fromMap(Map<String, dynamic> data, {String? defaultPassword}) {

@@ -248,27 +248,53 @@ class DashboardScreen extends ConsumerWidget {
                   child: () {
                     final student = ref.watch(currentStudentProvider);
                     final allScans = ref.watch(liveAttendanceProvider);
-                    final studentScans = allScans.where((s) =>
-                        s.registrationNo.trim() == student.registrationNo.trim() ||
-                        s.rollNo.trim() == student.rollNo.trim()).toList();
-                    int liveBillAmount = 0;
-                    for (final s in studentScans) {
-                      final isSun = s.scannedAt.weekday == DateTime.sunday;
-                      final isWed = s.scannedAt.weekday == DateTime.wednesday;
-                      final type = s.mealType.toLowerCase();
-                      if (type.contains('breakfast')) {
-                        liveBillAmount += isSun ? 0 : 25;
-                      } else if (type.contains('lunch')) {
-                        liveBillAmount += isSun ? 100 : 50;
-                      } else if (type.contains('dinner')) {
-                        liveBillAmount += isWed ? 100 : 50;
-                      }
+                    final cleanReg = student.registrationNo.trim().toLowerCase();
+                    final cleanRoll = student.rollNo.trim().toLowerCase();
+                    final studentScans = allScans.where((s) {
+                      final sr = s.registrationNo.trim().toLowerCase();
+                      final sl = s.rollNo.trim().toLowerCase();
+                      return sr == cleanReg || sr == cleanRoll || sl == cleanReg || sl == cleanRoll;
+                    }).toList();
+
+                    // Group by date to avoid double counting and match bill_screen.dart exactly
+                    final Map<String, List<H4MealScanRecord>> scansByDate = {};
+                    for (final scan in studentScans) {
+                      final dateKey = DateFormat('yyyy-MM-dd').format(scan.scannedAt.toLocal());
+                      scansByDate.putIfAbsent(dateKey, () => []).add(scan);
                     }
+
+                    int liveBillAmount = 0;
+                    int mealsCount = 0;
+                    scansByDate.forEach((dateKey, dayScans) {
+                      final date = DateTime.tryParse(dateKey) ?? DateTime.now();
+                      final isSun = date.weekday == DateTime.sunday;
+                      final isWed = date.weekday == DateTime.wednesday;
+
+                      final bEaten = dayScans.any((s) => s.mealType.toLowerCase().contains('breakfast'));
+                      final lEaten = dayScans.any((s) => s.mealType.toLowerCase().contains('lunch'));
+                      final dEaten = dayScans.any((s) => s.mealType.toLowerCase().contains('dinner'));
+
+                      if (bEaten) {
+                        liveBillAmount += isSun ? 0 : 25;
+                        mealsCount++;
+                      }
+                      if (lEaten) {
+                        liveBillAmount += isSun ? 100 : 50;
+                        mealsCount++;
+                      }
+                      if (dEaten) {
+                        liveBillAmount += isWed ? 100 : 50;
+                        mealsCount++;
+                      }
+                    });
+
+                    final remaining = student.depositedAmount - liveBillAmount;
+
                     return _colorfulSummaryCard(
                       context,
                       title: 'Current Mess Bill',
                       value: '₹$liveBillAmount',
-                      subtitle: '${studentScans.length} meal(s) verified',
+                      subtitle: '₹$remaining left of ₹${student.depositedAmount}',
                       icon: Icons.receipt_long,
                       startColor: const Color(0xFFFFF8E1),
                       endColor: const Color(0xFFFFECB3),

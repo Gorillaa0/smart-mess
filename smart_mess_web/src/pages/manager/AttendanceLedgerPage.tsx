@@ -230,7 +230,7 @@ export const AttendanceLedgerPage: React.FC = () => {
     const lunchCount = dailyItems.filter((d) => d.lunch.eaten).length;
     const dinnerCount = dailyItems.filter((d) => d.dinner.eaten).length;
     const messOffRebate = studentMessOffs.length * 50;
-    const advanceDeposit = 3000;
+    const advanceDeposit = student.depositedAmount || 10000; // Real advance mess fee credited by student (₹10,000)
     const netBalance = advanceDeposit - totalMonthAmount;
 
     return {

@@ -114,7 +114,7 @@ class _ManagerAttendanceScreenState extends ConsumerState<ManagerAttendanceScree
     // Standard mess-off rebate calculation based on non-attended calendar days
     final int missedMeals = (dailyRecords.length * 3) - totalMealsEaten;
     final int messOffDeductions = (missedMeals * 40).clamp(0, 1200);
-    const int advanceMessFee = 3000;
+    final int advanceMessFee = student.depositedAmount; // Real advance mess deposit credited by student (₹10,000)
     final int balance = advanceMessFee - totalMonthAmount;
 
     showModalBottomSheet(
