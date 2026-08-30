@@ -52,6 +52,27 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> with SingleTi
     super.dispose();
   }
 
+  String _resolveMealType(String? qrCode) {
+    final clean = (qrCode ?? '').toLowerCase();
+    if (clean.contains('breakfast') || clean.contains('नाश्ता')) return 'Breakfast';
+    if (clean.contains('lunch') || clean.contains('दोपहर')) return 'Lunch';
+    if (clean.contains('dinner') || clean.contains('रात') || clean.contains('रात्रि')) return 'Dinner';
+
+    // Time-based fallback
+    final now = DateTime.now();
+    final currentMinutes = now.hour * 60 + now.minute;
+    const bkEnd = 10 * 60; // 10:00 AM
+    const lunchEnd = 15 * 60 + 30; // 03:30 PM
+
+    if (currentMinutes < bkEnd) {
+      return 'Breakfast';
+    } else if (currentMinutes < lunchEnd) {
+      return 'Lunch';
+    } else {
+      return 'Dinner';
+    }
+  }
+
   // AUTOMATIC VERIFICATION TRIGGERED ONLY WHEN QR CODE IS DETECTED
   void _onDetect(BarcodeCapture capture) {
     if (_isProcessing) return;
@@ -60,9 +81,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> with SingleTi
     for (final barcode in barcodes) {
       final code = barcode.rawValue;
       if (code != null && code.trim().isNotEmpty) {
-        final now = DateTime.now();
-        final activeMeal = WeeklyMenuData.getActiveMealState(now);
-        final mealType = activeMeal.meal?.nameEnglish ?? 'Lunch';
+        final mealType = _resolveMealType(code.trim());
 
         // Automatically verify and claim meal plate
         _verifyAndClaimMeal(mealType, qrToken: code.trim());

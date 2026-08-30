@@ -161,13 +161,21 @@ class AttendanceNotifier extends StateNotifier<List<H4MealScanRecord>> {
   }
 
   bool hasScanned(String registrationNo, String mealType) {
-    final today = DateTime.now();
-    return state.any((record) =>
-        record.registrationNo == registrationNo &&
-        record.mealType.toLowerCase() == mealType.toLowerCase() &&
-        record.scannedAt.day == today.day &&
-        record.scannedAt.month == today.month &&
-        record.scannedAt.year == today.year);
+    final today = DateTime.now().toLocal();
+    final cleanMeal = mealType.toLowerCase().trim();
+    return state.any((record) {
+      final recDate = record.scannedAt.toLocal();
+      final isSameDay = recDate.day == today.day &&
+          recDate.month == today.month &&
+          recDate.year == today.year;
+      final isSameStudent = record.registrationNo.trim() == registrationNo.trim() ||
+          record.rollNo.trim() == registrationNo.trim();
+      final recMeal = record.mealType.toLowerCase().trim();
+      final isSameMeal = recMeal == cleanMeal ||
+          recMeal.contains(cleanMeal) ||
+          cleanMeal.contains(recMeal);
+      return isSameStudent && isSameMeal && isSameDay;
+    });
   }
 
   Future<bool> recordScan(H4Student student, String mealType) async {
@@ -207,14 +215,19 @@ class AttendanceNotifier extends StateNotifier<List<H4MealScanRecord>> {
   }
 
   int getTodayMealCount(String mealType) {
-    final today = DateTime.now();
-    return state
-        .where((r) =>
-            r.mealType.toLowerCase() == mealType.toLowerCase() &&
-            r.scannedAt.day == today.day &&
-            r.scannedAt.month == today.month &&
-            r.scannedAt.year == today.year)
-        .length;
+    final today = DateTime.now().toLocal();
+    final cleanMeal = mealType.toLowerCase().trim();
+    return state.where((r) {
+      final recDate = r.scannedAt.toLocal();
+      final isSameDay = recDate.day == today.day &&
+          recDate.month == today.month &&
+          recDate.year == today.year;
+      final recMeal = r.mealType.toLowerCase().trim();
+      final isSameMeal = recMeal == cleanMeal ||
+          recMeal.contains(cleanMeal) ||
+          cleanMeal.contains(recMeal);
+      return isSameMeal && isSameDay;
+    }).length;
   }
 }
 

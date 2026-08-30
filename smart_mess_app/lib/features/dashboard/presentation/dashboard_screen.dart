@@ -215,8 +215,8 @@ class DashboardScreen extends ConsumerWidget {
             _buildDailyScheduleRow(ref, todayMenu, now),
             const SizedBox(height: 18),
 
-            // 3. ACTIVE / NEXT MEAL HERO CARD
-            _buildActiveMealCard(context, activeState, todayMenu),
+            // 3. ACTIVE / NEXT MEAL HERO CARD (Dynamically advances upon scanning)
+            _buildActiveMealCard(context, ref, todayMenu, WeeklyMenuData.getTomorrowMenu(now), now),
             const SizedBox(height: 22),
 
             // 4. COLORFUL QUICK ACTIONS SECTION
@@ -749,23 +749,22 @@ class DashboardScreen extends ConsumerWidget {
   Widget _buildDailyScheduleRow(WidgetRef ref, MenuItemData todayMenu, DateTime now) {
     final student = ref.watch(currentStudentProvider);
     final allScans = ref.watch(liveAttendanceProvider);
-    final todayKey = DateFormat('yyyy-MM-dd').format(now);
+
+    bool isScanMatch(H4MealScanRecord s, String type) {
+      final isStudent = s.registrationNo.trim() == student.registrationNo.trim() ||
+          s.rollNo.trim() == student.rollNo.trim() ||
+          (s.studentName.trim().isNotEmpty && s.studentName.trim().toLowerCase() == student.name.trim().toLowerCase());
+      final dt = s.scannedAt.toLocal();
+      final isToday = dt.year == now.year && dt.month == now.month && dt.day == now.day;
+      final mealClean = s.mealType.toLowerCase().trim();
+      final isType = mealClean.contains(type.toLowerCase().trim());
+      return isStudent && isToday && isType;
+    }
 
     // Verify if student actually scanned for today's meals
-    final isBkScanned = allScans.any((s) =>
-        s.registrationNo == student.registrationNo &&
-        DateFormat('yyyy-MM-dd').format(s.scannedAt) == todayKey &&
-        s.mealType.toLowerCase().contains('breakfast'));
-
-    final isLunchScanned = allScans.any((s) =>
-        s.registrationNo == student.registrationNo &&
-        DateFormat('yyyy-MM-dd').format(s.scannedAt) == todayKey &&
-        s.mealType.toLowerCase().contains('lunch'));
-
-    final isDinnerScanned = allScans.any((s) =>
-        s.registrationNo == student.registrationNo &&
-        DateFormat('yyyy-MM-dd').format(s.scannedAt) == todayKey &&
-        s.mealType.toLowerCase().contains('dinner'));
+    final isBkScanned = allScans.any((s) => isScanMatch(s, 'breakfast'));
+    final isLunchScanned = allScans.any((s) => isScanMatch(s, 'lunch'));
+    final isDinnerScanned = allScans.any((s) => isScanMatch(s, 'dinner'));
 
     final currentMinutes = now.hour * 60 + now.minute;
     const bkStart = 7 * 60 + 30;
@@ -1042,205 +1041,92 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  // 3. ACTIVE / NEXT MEAL HERO CARD
-  Widget _buildActiveMealCard(BuildContext context, ActiveMealStatus activeState, MenuItemData todayMenu) {
-    if (activeState.isClosedForToday) {
-      final tomorrowBreakfast = activeState.nextMealTomorrow;
-      return Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              const Color(0xFF1B5E20).withOpacity(0.37),
-              const Color(0xFF2E7D32).withOpacity(0.37),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: const Color(0xFF2E7D32).withOpacity(0.55),
-            width: 1.2,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF1B5E20).withOpacity(0.12),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top Header: Closed Pill + Status Badge
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFF2E7D32).withOpacity(0.5), width: 1.0),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.nightlight_round, color: Color(0xFFE65100), size: 14),
-                      SizedBox(width: 5),
-                      Text(
-                        'MESS CLOSED FOR TODAY',
-                        style: TextStyle(color: Color(0xFF1B5E20), fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 0.4),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1B5E20),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Text(
-                    'All Meals Served',
-                    style: TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Tonight\'s dinner is complete. Kitchen service will resume tomorrow morning at Hostel H4.',
-              style: TextStyle(color: Color(0xFF0D3312), fontSize: 12, fontWeight: FontWeight.w600, height: 1.3),
-            ),
-            const SizedBox(height: 12),
+  // 3. ACTIVE / NEXT MEAL HERO CARD (DYNAMICAL TRANSITIONS UPON SCANNING)
+  Widget _buildActiveMealCard(
+    BuildContext context,
+    WidgetRef ref,
+    MenuItemData todayMenu,
+    MenuItemData tomorrowMenu,
+    DateTime now,
+  ) {
+    final student = ref.watch(currentStudentProvider);
+    final allScans = ref.watch(liveAttendanceProvider);
 
-            // Tomorrow's Breakfast Details
-            if (tomorrowBreakfast != null) ...[
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFF81C784)),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.restaurant, color: Color(0xFF1B5E20), size: 14),
-                        SizedBox(width: 6),
-                        Text(
-                          'TOMORROW BREAKFAST',
-                          style: TextStyle(
-                            color: Color(0xFF1B5E20),
-                            fontWeight: FontWeight.w800,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1B5E20),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '₹${tomorrowBreakfast.price} / plate',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Text(
-                tomorrowBreakfast.itemsHindi,
-                style: const TextStyle(color: Color(0xFF0F3818), fontSize: 16, fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                tomorrowBreakfast.itemsEnglish,
-                style: const TextStyle(color: Color(0xFF2E5B35), fontSize: 12, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 12),
-
-              // SECONDARY WHITE BOX: Mess-Off Deadline Box
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFA5D6A7), width: 1.0),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
-                      blurRadius: 4,
-                      offset: const Offset(0, 1),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.timer_outlined, color: Color(0xFFE65100), size: 16),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Mess-Off Deadline: ${tomorrowBreakfast.cutoffTime} tomorrow (Strict Enforcement)',
-                        style: const TextStyle(color: Colors.black87, fontSize: 12, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 14),
-
-              // ACTION BUTTONS ROW
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1B5E20),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        elevation: 0,
-                      ),
-                      icon: const Icon(Icons.event_busy, size: 18),
-                      label: const Text('MARK MESS-OFF', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                      onPressed: () => context.push('/mess-off'),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE65100),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      elevation: 0,
-                    ),
-                    icon: const Icon(Icons.qr_code_scanner, size: 18),
-                    label: const Text('SCAN', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                    onPressed: () => context.push('/scanner'),
-                  ),
-                ],
-              ),
-            ],
-          ],
-        ),
-      );
+    bool isScanMatch(H4MealScanRecord s, String type) {
+      final isStudent = s.registrationNo.trim() == student.registrationNo.trim() ||
+          s.rollNo.trim() == student.rollNo.trim() ||
+          (s.studentName.trim().isNotEmpty && s.studentName.trim().toLowerCase() == student.name.trim().toLowerCase());
+      final dt = s.scannedAt.toLocal();
+      final isToday = dt.year == now.year && dt.month == now.month && dt.day == now.day;
+      final mealClean = s.mealType.toLowerCase().trim();
+      return isStudent && isToday && mealClean.contains(type.toLowerCase().trim());
     }
 
-    final meal = activeState.meal!;
-    final isSpecial = meal.price == 100;
+    final isBkScanned = allScans.any((s) => isScanMatch(s, 'breakfast'));
+    final isLunchScanned = allScans.any((s) => isScanMatch(s, 'lunch'));
+    final isDinnerScanned = allScans.any((s) => isScanMatch(s, 'dinner'));
+
+    final currentMinutes = now.hour * 60 + now.minute;
+    const bkEnd = 9 * 60 + 30;    // 09:30 AM
+    const lunchEnd = 14 * 60 + 30; // 02:30 PM
+    const dinnerEnd = 21 * 60 + 30; // 09:30 PM
+
+    // Resolve which meal to display as active or upcoming
+    MealSlot displayMeal;
+    String statusTitle;
+    String dayLabel;
+    String? previousMealCompletedMsg;
+    bool isTomorrowMeal = false;
+    bool isCurrentMealTaken = false;
+
+    if (currentMinutes < bkEnd) {
+      // Morning
+      if (isBkScanned || !todayMenu.breakfast.isAvailable) {
+        displayMeal = todayMenu.lunch;
+        statusTitle = 'UPCOMING MEAL (TODAY)';
+        dayLabel = todayMenu.dayHindi;
+        previousMealCompletedMsg = isBkScanned ? 'Breakfast Scanned & Eaten ✅' : 'No Breakfast on Sunday';
+      } else {
+        displayMeal = todayMenu.breakfast;
+        statusTitle = 'BREAKFAST (TODAY)';
+        dayLabel = todayMenu.dayHindi;
+      }
+    } else if (currentMinutes < lunchEnd) {
+      // Afternoon
+      if (isLunchScanned) {
+        displayMeal = todayMenu.dinner;
+        statusTitle = 'UPCOMING MEAL (TODAY)';
+        dayLabel = todayMenu.dayHindi;
+        previousMealCompletedMsg = 'Lunch Scanned & Eaten ✅';
+      } else {
+        displayMeal = todayMenu.lunch;
+        statusTitle = 'LUNCH (TODAY)';
+        dayLabel = todayMenu.dayHindi;
+      }
+    } else if (currentMinutes < dinnerEnd) {
+      // Evening / Dinner
+      if (isDinnerScanned) {
+        isCurrentMealTaken = true;
+        isTomorrowMeal = true;
+        displayMeal = tomorrowMenu.breakfast.isAvailable ? tomorrowMenu.breakfast : tomorrowMenu.lunch;
+        statusTitle = 'TOMORROW UPCOMING';
+        dayLabel = tomorrowMenu.dayHindi;
+        previousMealCompletedMsg = '🎉 Tonight\'s Dinner Scanned & Verified ✅';
+      } else {
+        displayMeal = todayMenu.dinner;
+        statusTitle = 'DINNER (TODAY)';
+        dayLabel = todayMenu.dayHindi;
+      }
+    } else {
+      // Night after 9:30 PM
+      isTomorrowMeal = true;
+      displayMeal = tomorrowMenu.breakfast.isAvailable ? tomorrowMenu.breakfast : tomorrowMenu.lunch;
+      statusTitle = 'TOMORROW UPCOMING';
+      dayLabel = tomorrowMenu.dayHindi;
+      previousMealCompletedMsg = isDinnerScanned ? 'Tonight\'s Dinner Eaten ✅' : 'All Meals Completed for Today';
+    }
+
+    final isSpecial = displayMeal.price == 100;
 
     return Container(
       decoration: BoxDecoration(
@@ -1248,20 +1134,20 @@ class DashboardScreen extends ConsumerWidget {
           colors: isSpecial
               ? [const Color(0xFFFFE0B2), const Color(0xFFFFCC80), const Color(0xFFFFB74D)]
               : [
-                  const Color(0xFF1B5E20).withOpacity(0.37),
-                  const Color(0xFF2E7D32).withOpacity(0.37),
+                  const Color(0xFF1B5E20).withValues(alpha: 0.37),
+                  const Color(0xFF2E7D32).withValues(alpha: 0.37),
                 ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: isSpecial ? const Color(0xFFFFA726) : const Color(0xFF2E7D32).withOpacity(0.55),
+          color: isSpecial ? const Color(0xFFFFA726) : const Color(0xFF2E7D32).withValues(alpha: 0.55),
           width: 1.3,
         ),
         boxShadow: [
           BoxShadow(
-            color: (isSpecial ? Colors.orange : const Color(0xFF1B5E20)).withOpacity(0.12),
+            color: (isSpecial ? Colors.orange : const Color(0xFF1B5E20)).withValues(alpha: 0.12),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -1271,6 +1157,47 @@ class DashboardScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // If previous meal was taken, show prominent banner
+          if (previousMealCompletedMsg != null) ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1B5E20),
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.greenAccent, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      previousMealCompletedMsg,
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 11.5),
+                    ),
+                  ),
+                  if (isCurrentMealTaken)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text('ENJOY MEAL', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                    ),
+                ],
+              ),
+            ),
+          ],
+
+          // Meal Header Pill & Price
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -1283,10 +1210,16 @@ class DashboardScreen extends ConsumerWidget {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.restaurant, color: isSpecial ? const Color(0xFFE65100) : const Color(0xFF1B5E20), size: 14),
+                    Icon(
+                      isTomorrowMeal ? Icons.wb_twilight : Icons.restaurant,
+                      color: isSpecial ? const Color(0xFFE65100) : const Color(0xFF1B5E20),
+                      size: 14,
+                    ),
                     const SizedBox(width: 6),
                     Text(
-                      '${activeState.dayName.toUpperCase()} ${meal.nameEnglish.toUpperCase()}',
+                      isTomorrowMeal
+                          ? 'TOMORROW • ${displayMeal.nameEnglish.toUpperCase()}'
+                          : '${dayLabel.toUpperCase()} ${displayMeal.nameEnglish.toUpperCase()}',
                       style: TextStyle(
                         color: isSpecial ? const Color(0xFFE65100) : const Color(0xFF1B5E20),
                         fontWeight: FontWeight.w800,
@@ -1303,7 +1236,7 @@ class DashboardScreen extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  '₹${meal.price} / plate',
+                  '₹${displayMeal.price} / plate',
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
@@ -1315,12 +1248,12 @@ class DashboardScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            meal.itemsHindi,
+            displayMeal.itemsHindi,
             style: const TextStyle(color: Color(0xFF0F3818), fontSize: 16, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 3),
           Text(
-            meal.itemsEnglish,
+            displayMeal.itemsEnglish,
             style: const TextStyle(color: Color(0xFF2E5B35), fontSize: 12, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 12),
@@ -1339,7 +1272,9 @@ class DashboardScreen extends ConsumerWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Mess-Off Deadline: ${meal.cutoffTime} (Strict Enforcement)',
+                    isTomorrowMeal
+                        ? 'Mess-Off Cutoff: ${displayMeal.cutoffTime} tomorrow morning (Strict)'
+                        : 'Mess-Off Deadline: ${displayMeal.cutoffTime} (Strict Enforcement)',
                     style: const TextStyle(color: Colors.black87, fontSize: 12, fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -1347,6 +1282,8 @@ class DashboardScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 14),
+
+          // ACTION BUTTONS ROW
           Row(
             children: [
               Expanded(
@@ -1359,7 +1296,10 @@ class DashboardScreen extends ConsumerWidget {
                     elevation: 0,
                   ),
                   icon: const Icon(Icons.event_busy, size: 18),
-                  label: const Text('MARK MESS-OFF', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  label: Text(
+                    isTomorrowMeal ? 'ADVANCE MESS-OFF' : 'MARK MESS-OFF',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
                   onPressed: () => context.push('/mess-off'),
                 ),
               ),
@@ -1368,7 +1308,7 @@ class DashboardScreen extends ConsumerWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFE65100),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   elevation: 0,
                 ),
