@@ -738,16 +738,110 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  // 2. TODAY'S MEALS ROW WITH DISHES, PRICES AND ML CROWD RATINGS
+  // 2. TODAY'S MEALS ROW WITH DISHES, PRICES AND REAL SCAN ATTENDANCE STATUS
   Widget _buildDailyScheduleRow(WidgetRef ref, MenuItemData todayMenu, DateTime now) {
-    final currentMinutes = now.hour * 60 + now.minute;
-    final isBreakfastPassed = currentMinutes >= 9 * 60 + 30;
-    final isLunchPassed = currentMinutes >= 14 * 60 + 30;
-    final ratingService = ref.watch(mealRatingServiceProvider);
+    final student = ref.watch(currentStudentProvider);
+    final allScans = ref.watch(liveAttendanceProvider);
+    final todayKey = DateFormat('yyyy-MM-dd').format(now);
 
+    // Verify if student actually scanned for today's meals
+    final isBkScanned = allScans.any((s) =>
+        s.registrationNo == student.registrationNo &&
+        DateFormat('yyyy-MM-dd').format(s.scannedAt) == todayKey &&
+        s.mealType.toLowerCase().contains('breakfast'));
+
+    final isLunchScanned = allScans.any((s) =>
+        s.registrationNo == student.registrationNo &&
+        DateFormat('yyyy-MM-dd').format(s.scannedAt) == todayKey &&
+        s.mealType.toLowerCase().contains('lunch'));
+
+    final isDinnerScanned = allScans.any((s) =>
+        s.registrationNo == student.registrationNo &&
+        DateFormat('yyyy-MM-dd').format(s.scannedAt) == todayKey &&
+        s.mealType.toLowerCase().contains('dinner'));
+
+    final currentMinutes = now.hour * 60 + now.minute;
+    const bkStart = 7 * 60 + 30;
+    const bkEnd = 9 * 60 + 30;
+    const lunchStart = 12 * 60 + 30;
+    const lunchEnd = 14 * 60 + 30;
+    const dinnerStart = 19 * 60 + 30;
+    const dinnerEnd = 21 * 60 + 30;
+
+    final ratingService = ref.watch(mealRatingServiceProvider);
     final bkRating = ratingService.getRating(todayMenu.dayEnglish, 'breakfast');
     final lunchRating = ratingService.getRating(todayMenu.dayEnglish, 'lunch');
     final dinnerRating = ratingService.getRating(todayMenu.dayEnglish, 'dinner');
+
+    // 1. Breakfast status calculation
+    String bkStatus;
+    IconData bkStatusIcon;
+    Color bkStatusColor;
+    if (!todayMenu.breakfast.isAvailable) {
+      bkStatus = 'Closed';
+      bkStatusIcon = Icons.block;
+      bkStatusColor = Colors.grey.shade600;
+    } else if (isBkScanned) {
+      bkStatus = 'Eaten ✅';
+      bkStatusIcon = Icons.check_circle;
+      bkStatusColor = const Color(0xFF1B5E20);
+    } else if (currentMinutes > bkEnd) {
+      bkStatus = 'Not Taken';
+      bkStatusIcon = Icons.cancel_outlined;
+      bkStatusColor = Colors.red.shade700;
+    } else if (currentMinutes >= bkStart && currentMinutes <= bkEnd) {
+      bkStatus = 'Serving Now';
+      bkStatusIcon = Icons.restaurant;
+      bkStatusColor = const Color(0xFF1565C0);
+    } else {
+      bkStatus = 'Upcoming';
+      bkStatusIcon = Icons.schedule;
+      bkStatusColor = Colors.grey.shade700;
+    }
+
+    // 2. Lunch status calculation
+    String lunchStatus;
+    IconData lunchStatusIcon;
+    Color lunchStatusColor;
+    if (isLunchScanned) {
+      lunchStatus = 'Eaten ✅';
+      lunchStatusIcon = Icons.check_circle;
+      lunchStatusColor = const Color(0xFF1B5E20);
+    } else if (currentMinutes > lunchEnd) {
+      lunchStatus = 'Not Taken';
+      lunchStatusIcon = Icons.cancel_outlined;
+      lunchStatusColor = Colors.red.shade700;
+    } else if (currentMinutes >= lunchStart && currentMinutes <= lunchEnd) {
+      lunchStatus = 'Serving Now';
+      lunchStatusIcon = Icons.restaurant;
+      lunchStatusColor = const Color(0xFF1565C0);
+    } else {
+      lunchStatus = 'Upcoming';
+      lunchStatusIcon = Icons.schedule;
+      lunchStatusColor = Colors.grey.shade700;
+    }
+
+    // 3. Dinner status calculation
+    String dinnerStatus;
+    IconData dinnerStatusIcon;
+    Color dinnerStatusColor;
+    if (isDinnerScanned) {
+      dinnerStatus = 'Eaten ✅';
+      dinnerStatusIcon = Icons.check_circle;
+      dinnerStatusColor = const Color(0xFF1B5E20);
+    } else if (currentMinutes > dinnerEnd) {
+      dinnerStatus = 'Not Taken';
+      dinnerStatusIcon = Icons.cancel_outlined;
+      dinnerStatusColor = Colors.red.shade700;
+    } else if (currentMinutes >= dinnerStart && currentMinutes <= dinnerEnd) {
+      dinnerStatus = 'Serving Now';
+      dinnerStatusIcon = Icons.restaurant;
+      dinnerStatusColor = const Color(0xFF1565C0);
+    } else {
+      dinnerStatus = 'Upcoming';
+      dinnerStatusIcon = Icons.schedule;
+      dinnerStatusColor = Colors.grey.shade700;
+    }
 
     return Row(
       children: [
@@ -756,8 +850,9 @@ class DashboardScreen extends ConsumerWidget {
           mealName: 'नाश्ता (Breakfast)',
           priceText: todayMenu.breakfast.isAvailable ? '₹${todayMenu.breakfast.price}' : 'CLOSED',
           itemsText: todayMenu.breakfast.isAvailable ? todayMenu.breakfast.itemsHindi : 'No Breakfast',
-          status: isBreakfastPassed ? 'Taken' : (todayMenu.breakfast.isAvailable ? 'Upcoming' : 'Closed'),
-          isPassed: isBreakfastPassed,
+          status: bkStatus,
+          statusIcon: bkStatusIcon,
+          statusColor: bkStatusColor,
           rating: todayMenu.breakfast.isAvailable ? bkRating.rating : null,
           badge: todayMenu.breakfast.isAvailable ? bkRating.sentimentBadge : null,
           themeColor: const Color(0xFFE65100),
@@ -772,8 +867,9 @@ class DashboardScreen extends ConsumerWidget {
           mealName: 'दोपहर (Lunch)',
           priceText: '₹${todayMenu.lunch.price}',
           itemsText: todayMenu.lunch.itemsHindi,
-          status: isLunchPassed ? 'Taken' : (isBreakfastPassed ? 'Serving Now' : 'Upcoming'),
-          isPassed: isLunchPassed,
+          status: lunchStatus,
+          statusIcon: lunchStatusIcon,
+          statusColor: lunchStatusColor,
           rating: lunchRating.rating,
           badge: lunchRating.sentimentBadge,
           themeColor: const Color(0xFF1565C0),
@@ -789,8 +885,9 @@ class DashboardScreen extends ConsumerWidget {
           mealName: 'रात (Dinner)',
           priceText: '₹${todayMenu.dinner.price}',
           itemsText: todayMenu.dinner.itemsHindi,
-          status: 'Upcoming',
-          isPassed: false,
+          status: dinnerStatus,
+          statusIcon: dinnerStatusIcon,
+          statusColor: dinnerStatusColor,
           rating: dinnerRating.rating,
           badge: dinnerRating.sentimentBadge,
           themeColor: const Color(0xFF6A1B9A),
@@ -808,7 +905,8 @@ class DashboardScreen extends ConsumerWidget {
     required String priceText,
     required String itemsText,
     required String status,
-    required bool isPassed,
+    required IconData statusIcon,
+    required Color statusColor,
     required Color themeColor,
     required Color bgColor,
     required Color borderColor,
@@ -826,7 +924,7 @@ class DashboardScreen extends ConsumerWidget {
           border: Border.all(color: borderColor, width: 1.2),
           boxShadow: [
             BoxShadow(
-              color: themeColor.withOpacity(0.05),
+              color: themeColor.withValues(alpha: 0.05),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -842,7 +940,7 @@ class DashboardScreen extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
                   decoration: BoxDecoration(
-                    color: highlight ? Colors.amber.shade400 : themeColor.withOpacity(0.15),
+                    color: highlight ? Colors.amber.shade400 : themeColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -915,9 +1013,9 @@ class DashboardScreen extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
-                    isPassed ? Icons.check_circle : Icons.schedule,
+                    statusIcon,
                     size: 11,
-                    color: isPassed ? Colors.green : Colors.grey.shade600,
+                    color: statusColor,
                   ),
                   const SizedBox(width: 3),
                   Text(
@@ -925,7 +1023,7 @@ class DashboardScreen extends ConsumerWidget {
                     style: TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.bold,
-                      color: isPassed ? Colors.green.shade800 : Colors.grey.shade700,
+                      color: statusColor,
                     ),
                   ),
                 ],
