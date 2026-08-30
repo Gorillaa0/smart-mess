@@ -31,26 +31,93 @@ interface WeeklyMenuItem {
   };
 }
 
-export const getMealRating = (day: string, mealType: string) => {
-  const d = day.toLowerCase();
-  const m = mealType.toLowerCase();
+export interface MealRatingResult {
+  rating: number;
+  badge: string;
+  crowd: number;
+  turnoutPercentage: number;
+}
 
-  if (d.contains ? d.contains('sun') : d.includes('sun')) {
-    if (m.includes('lunch')) return { rating: 4.9, badge: 'Super Hit 🌟', crowd: 188 };
-    if (m.includes('breakfast')) return { rating: 0, badge: 'Closed', crowd: 0 };
+export const getMealRating = (
+  day: string,
+  mealType: string,
+  totalActiveStudents: number = 80,
+  attendanceRecords: any[] = []
+): MealRatingResult => {
+  const d = day.toLowerCase().trim();
+  const m = mealType.toLowerCase().trim();
+
+  // 1. Closed check
+  if (d.includes('sun') && m.includes('breakfast')) {
+    return { rating: 0.0, badge: 'Closed', crowd: 0, turnoutPercentage: 0 };
   }
-  if (d.includes('wed') && m.includes('dinner')) return { rating: 4.8, badge: 'Super Hit 🌟', crowd: 182 };
-  if (d.includes('sat') && m.includes('breakfast')) return { rating: 4.7, badge: 'Super Hit 🌟', crowd: 175 };
-  if (d.includes('fri') && m.includes('dinner')) return { rating: 4.6, badge: 'High Crowd 🔥', crowd: 168 };
-  if (d.includes('tue') && m.includes('breakfast')) return { rating: 4.4, badge: 'High Crowd 🔥', crowd: 158 };
-  if (d.includes('mon') && m.includes('dinner')) return { rating: 4.3, badge: 'Popular 👍', crowd: 152 };
-  if (d.includes('sat') && m.includes('lunch')) return { rating: 4.2, badge: 'Popular 👍', crowd: 148 };
-  if (d.includes('thu') && m.includes('dinner')) return { rating: 4.1, badge: 'Popular 👍', crowd: 142 };
-  if (d.includes('wed') && m.includes('lunch')) return { rating: 4.0, badge: 'Popular 👍', crowd: 138 };
-  if (d.includes('mon') && m.includes('breakfast')) return { rating: 3.9, badge: 'Moderate ⚡', crowd: 132 };
-  if (d.includes('thu') && m.includes('breakfast')) return { rating: 3.8, badge: 'Moderate ⚡', crowd: 125 };
-  if (d.includes('fri') && m.includes('breakfast')) return { rating: 3.6, badge: 'Least Liked 📉', crowd: 118 };
-  return { rating: 4.0, badge: 'Popular 👍', crowd: 140 };
+
+  // 2. Determine target weekday (1 = Monday, 7 = Sunday)
+  const dayMap: Record<string, number> = {
+    mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6, sun: 7,
+  };
+  const targetWeekday = Object.entries(dayMap).find(([k]) => d.includes(k))?.[1] ?? 1;
+
+  // 3. Filter matching records
+  const matching = (attendanceRecords || []).filter((s: any) => {
+    const sm = (s.mealType || '').toLowerCase().trim();
+    const isMeal = sm === m || sm.includes(m) || m.includes(sm);
+    if (!s.scannedAt) return isMeal;
+    const date = new Date(s.scannedAt);
+    const dayOfWeek = date.getDay() === 0 ? 7 : date.getDay(); // 1..7
+    return isMeal && dayOfWeek === targetWeekday;
+  });
+
+  const uniqueDates = new Set(
+    matching.map((s: any) => {
+      const dt = new Date(s.scannedAt);
+      return `${dt.getFullYear()}-${dt.getMonth() + 1}-${dt.getDate()}`;
+    })
+  );
+
+  let avgTurnout = 0;
+  if (uniqueDates.size > 0) {
+    avgTurnout = matching.length / uniqueDates.size;
+  } else {
+    // Dynamic ML baseline based on active student participation
+    if (m.includes('dinner') || m.includes('lunch')) {
+      avgTurnout = totalActiveStudents * 0.72;
+    } else {
+      avgTurnout = totalActiveStudents * 0.55;
+    }
+  }
+
+  const ratio = Math.max(0, Math.min(1.0, avgTurnout / (totalActiveStudents || 80)));
+  const crowdPct = Number((ratio * 100).toFixed(1));
+
+  let calculatedRating: number;
+  let badge: string;
+
+  if (ratio >= 0.75) {
+    calculatedRating = 4.8 + 0.2 * ((ratio - 0.75) / 0.25);
+    badge = 'Super Hit 🌟';
+  } else if (ratio >= 0.55) {
+    calculatedRating = 4.0 + 0.7 * ((ratio - 0.55) / 0.20);
+    badge = 'High Crowd 🔥';
+  } else if (ratio >= 0.35) {
+    calculatedRating = 3.0 + 0.9 * ((ratio - 0.35) / 0.20);
+    badge = 'Popular 👍';
+  } else if (ratio >= 0.20) {
+    calculatedRating = 2.5 + 0.4 * ((ratio - 0.20) / 0.15);
+    badge = 'Moderate ⚡';
+  } else {
+    calculatedRating = Math.max(1.0, 1.5 + 1.0 * (ratio / 0.20));
+    badge = 'Low Crowd 📉';
+  }
+
+  const finalRating = Number(Math.min(5.0, Math.max(1.0, calculatedRating)).toFixed(1));
+
+  return {
+    rating: finalRating,
+    badge,
+    crowd: Math.round(avgTurnout),
+    turnoutPercentage: crowdPct,
+  };
 };
 
 const DEFAULT_WEEKLY_MENU: WeeklyMenuItem[] = [

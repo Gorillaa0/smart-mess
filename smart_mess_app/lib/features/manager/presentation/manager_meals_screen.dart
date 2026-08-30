@@ -1,16 +1,18 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/constants/weekly_menu.dart';
+import '../../../core/services/meal_rating_service.dart';
 
-class ManagerMealsScreen extends StatefulWidget {
+class ManagerMealsScreen extends ConsumerStatefulWidget {
   const ManagerMealsScreen({super.key});
 
   @override
-  State<ManagerMealsScreen> createState() => _ManagerMealsScreenState();
+  ConsumerState<ManagerMealsScreen> createState() => _ManagerMealsScreenState();
 }
 
-class _ManagerMealsScreenState extends State<ManagerMealsScreen> {
+class _ManagerMealsScreenState extends ConsumerState<ManagerMealsScreen> {
   int _selectedDayIndex = DateTime.now().weekday - 1; // 0 = Monday, 6 = Sunday
 
   // Local state initialized with schedule, and synced with Firestore
@@ -350,13 +352,17 @@ class _ManagerMealsScreenState extends State<ManagerMealsScreen> {
   }
 
   Widget _buildMealCard(String mealType, String hindiType, MealSlot slot, IconData icon, Color primaryColor, Color bgColor, int dayIndex) {
+    final ratingService = ref.watch(mealRatingServiceProvider);
+    final dayName = _menuList[dayIndex].dayEnglish;
+    final ratingInfo = ratingService.getRating(dayName, mealType);
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: primaryColor.withOpacity(0.3), width: 1.2),
+        border: Border.all(color: primaryColor.withValues(alpha: 0.3), width: 1.2),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2)),
         ],
       ),
       padding: const EdgeInsets.all(16),
@@ -391,7 +397,7 @@ class _ManagerMealsScreenState extends State<ManagerMealsScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: primaryColor.withOpacity(0.1),
+                      color: primaryColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text('₹${slot.price}', style: TextStyle(fontWeight: FontWeight.w800, color: primaryColor, fontSize: 12.5)),
@@ -408,7 +414,51 @@ class _ManagerMealsScreenState extends State<ManagerMealsScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
+
+          // ML Crowd Rating Badge
+          if (ratingInfo.rating > 0) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F8E9),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFC8E6C9)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                    decoration: BoxDecoration(
+                      color: ratingInfo.rating >= 4.5
+                          ? const Color(0xFF1B5E20)
+                          : (ratingInfo.rating >= 4.0 ? const Color(0xFF2E7D32) : const Color(0xFFE65100)),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.star, size: 10, color: Colors.white),
+                        const SizedBox(width: 2),
+                        Text(
+                          '${ratingInfo.rating} ★',
+                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${ratingInfo.sentimentBadge} • Est. Crowd: ${ratingInfo.totalScans} (${ratingInfo.crowdTurnoutPercentage}%)',
+                    style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: Colors.grey.shade800),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+
           Text(slot.itemsEnglish, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: Colors.black87)),
           const SizedBox(height: 3),
           Text(slot.itemsHindi, style: TextStyle(fontSize: 12.5, color: Colors.grey.shade700)),

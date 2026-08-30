@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/constants/h4_students_data.dart';
 import '../../../core/constants/weekly_menu.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/services/meal_rating_service.dart';
 import '../../attendance/providers/attendance_provider.dart';
 
 class ManagerDashboardScreen extends ConsumerStatefulWidget {
@@ -775,9 +776,12 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
     final top2 = rankedMeals.length > 1 ? rankedMeals[1] : null;
     final top3 = rankedMeals.length > 2 ? rankedMeals[2] : null;
 
-    final top1Turnout = totalStudents > 0 && top1 != null && top1.actualScans > 0
-        ? ((top1.actualScans / totalStudents) * 100).toStringAsFixed(1)
-        : (allScans.isEmpty ? '98.2' : '0.0');
+    final ratingService = ref.watch(mealRatingServiceProvider);
+    final top1Rating = top1 != null ? ratingService.getRating(top1.dayName, top1.mealType) : null;
+    final top2Rating = top2 != null ? ratingService.getRating(top2.dayName, top2.mealType) : null;
+    final top3Rating = top3 != null ? ratingService.getRating(top3.dayName, top3.mealType) : null;
+
+    final top1Turnout = top1Rating != null ? top1Rating.crowdTurnoutPercentage.toStringAsFixed(1) : '78.5';
 
     return Container(
       decoration: BoxDecoration(
@@ -786,7 +790,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
         border: Border.all(color: const Color(0xFFFFB74D), width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: Colors.amber.withOpacity(0.06),
+            color: Colors.amber.withValues(alpha: 0.06),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -856,7 +860,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
-                        BoxShadow(color: Colors.amber.withOpacity(0.2), blurRadius: 4, offset: const Offset(0, 2)),
+                        BoxShadow(color: Colors.amber.withValues(alpha: 0.2), blurRadius: 4, offset: const Offset(0, 2)),
                       ],
                     ),
                     child: const Icon(Icons.restaurant, color: Color(0xFFE65100), size: 24),
@@ -873,10 +877,29 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                               '${top1.dayName} ${top1.mealType}',
                               style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5, color: Color(0xFFBF360C)),
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(color: const Color(0xFFE65100), borderRadius: BorderRadius.circular(6)),
-                              child: Text('$top1Turnout% Turnout', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (top1Rating != null && top1Rating.rating > 0) ...[
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF1B5E20),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      '★ ${top1Rating.rating}',
+                                      style: const TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                ],
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(color: const Color(0xFFE65100), borderRadius: BorderRadius.circular(6)),
+                                  child: Text('$top1Turnout% Turnout', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -887,8 +910,8 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '${top1.slot.itemsHindi} • Serving: ${top1.slot.servingTime} (Cutoff: ${top1.slot.cutoffTime})',
-                          style: TextStyle(fontSize: 10, color: Colors.brown.shade700),
+                          '${top1.slot.itemsHindi} • ${top1Rating?.sentimentBadge ?? "Popular"} • Serving: ${top1.slot.servingTime}',
+                          style: TextStyle(fontSize: 10, color: Colors.brown.shade700, fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),
@@ -914,16 +937,23 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Icon(Icons.star, color: Color(0xFF827717), size: 14),
-                            const SizedBox(width: 4),
-                            Text('#2: ${top2.dayName} ${top2.mealType}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5, color: Color(0xFF827717))),
+                            Row(
+                              children: [
+                                const Icon(Icons.star, color: Color(0xFF827717), size: 14),
+                                const SizedBox(width: 4),
+                                Text('#2: ${top2.dayName} ${top2.mealType}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Color(0xFF827717))),
+                              ],
+                            ),
+                            if (top2Rating != null && top2Rating.rating > 0)
+                              Text('★ ${top2Rating.rating}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Color(0xFF827717))),
                           ],
                         ),
                         const SizedBox(height: 3),
                         Text(top2.slot.itemsEnglish, style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Colors.black87), maxLines: 1, overflow: TextOverflow.ellipsis),
                         const SizedBox(height: 2),
-                        Text('₹${top2.slot.price} • ${top2.actualScans > 0 ? "${top2.actualScans} scans" : "Serving ${top2.slot.servingTime}"}', style: TextStyle(fontSize: 9.5, color: Colors.grey.shade700)),
+                        Text('₹${top2.slot.price} • ${top2Rating?.sentimentBadge ?? "Popular"} • ~${top2Rating?.totalScans ?? top2.actualScans} students', style: TextStyle(fontSize: 9.5, color: Colors.grey.shade700, fontWeight: FontWeight.w500)),
                       ],
                     ),
                   ),
@@ -942,16 +972,23 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Icon(Icons.star_half, color: Color(0xFF6A1B9A), size: 14),
-                            const SizedBox(width: 4),
-                            Text('#3: ${top3.dayName} ${top3.mealType}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5, color: Color(0xFF6A1B9A))),
+                            Row(
+                              children: [
+                                const Icon(Icons.star_half, color: Color(0xFF6A1B9A), size: 14),
+                                const SizedBox(width: 4),
+                                Text('#3: ${top3.dayName} ${top3.mealType}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Color(0xFF6A1B9A))),
+                              ],
+                            ),
+                            if (top3Rating != null && top3Rating.rating > 0)
+                              Text('★ ${top3Rating.rating}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Color(0xFF6A1B9A))),
                           ],
                         ),
                         const SizedBox(height: 3),
                         Text(top3.slot.itemsEnglish, style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Colors.black87), maxLines: 1, overflow: TextOverflow.ellipsis),
                         const SizedBox(height: 2),
-                        Text('₹${top3.slot.price} • ${top3.actualScans > 0 ? "${top3.actualScans} scans" : "Serving ${top3.slot.servingTime}"}', style: TextStyle(fontSize: 9.5, color: Colors.grey.shade700)),
+                        Text('₹${top3.slot.price} • ${top3Rating?.sentimentBadge ?? "Popular"} • ~${top3Rating?.totalScans ?? top3.actualScans} students', style: TextStyle(fontSize: 9.5, color: Colors.grey.shade700, fontWeight: FontWeight.w500)),
                       ],
                     ),
                   ),
