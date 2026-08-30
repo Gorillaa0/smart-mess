@@ -1705,8 +1705,8 @@ class DashboardScreen extends ConsumerWidget {
               if (ratingInfo != null && ratingInfo.rating > 0) ...[
                 const SizedBox(height: 1),
                 Text(
-                  '${ratingInfo.sentimentBadge} • Est. crowd ~${ratingInfo.totalScans} students',
-                  style: TextStyle(fontSize: 9.5, color: Colors.grey.shade600, fontWeight: FontWeight.w600),
+                  '${ratingInfo.sentimentBadge} • Crowd ~${ratingInfo.totalScans} (${ratingInfo.crowdTurnoutPercentage}%)',
+                  style: TextStyle(fontSize: 9.5, color: Colors.grey.shade700, fontWeight: FontWeight.w600),
                 ),
               ],
             ],
