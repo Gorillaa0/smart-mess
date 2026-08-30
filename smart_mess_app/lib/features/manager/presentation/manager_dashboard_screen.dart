@@ -745,54 +745,52 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                 const SizedBox(width: 8),
                 if (!mealApproved)
                   Container(
+                    width: 90,
+                    height: 42,
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFF81C784)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.remove, size: 16, color: Color(0xFF1B5E20)),
-                          padding: const EdgeInsets.all(4),
-                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                          onPressed: () {
-                            final cur = _managerCustomPortions[_selectedPredictionMeal] ?? recommendedCooking;
-                            if (cur > 1) {
-                              setState(() => _managerCustomPortions[_selectedPredictionMeal] = cur - 1);
-                            }
-                          },
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          child: Text(
-                            '${_managerCustomPortions[_selectedPredictionMeal] ?? recommendedCooking}',
-                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Color(0xFF1B5E20)),
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.add, size: 16, color: Color(0xFF1B5E20)),
-                          padding: const EdgeInsets.all(4),
-                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                          onPressed: () {
-                            final cur = _managerCustomPortions[_selectedPredictionMeal] ?? recommendedCooking;
-                            setState(() => _managerCustomPortions[_selectedPredictionMeal] = cur + 1);
-                          },
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFF1B5E20), width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 3,
+                          offset: const Offset(0, 1),
                         ),
                       ],
+                    ),
+                    alignment: Alignment.center,
+                    child: TextFormField(
+                      key: ValueKey('input-$_selectedPredictionMeal-${_managerCustomPortions[_selectedPredictionMeal] ?? recommendedCooking}'),
+                      initialValue: '${_managerCustomPortions[_selectedPredictionMeal] ?? recommendedCooking}',
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Color(0xFF1B5E20)),
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                        border: InputBorder.none,
+                        hintText: 'Qty',
+                      ),
+                      onChanged: (val) {
+                        final parsed = int.tryParse(val.trim());
+                        if (parsed != null && parsed > 0) {
+                          _managerCustomPortions[_selectedPredictionMeal] = parsed;
+                        }
+                      },
                     ),
                   )
                 else
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: const Color(0xFFE8F5E9),
                       borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFA5D6A7)),
                     ),
                     child: Text(
                       '${_managerCustomPortions[_selectedPredictionMeal] ?? recommendedCooking} Portions',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1B5E20)),
+                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: Color(0xFF1B5E20)),
                     ),
                   ),
               ],
