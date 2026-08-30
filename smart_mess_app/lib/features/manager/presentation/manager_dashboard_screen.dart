@@ -18,6 +18,7 @@ class ManagerDashboardScreen extends ConsumerStatefulWidget {
 class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen> {
   String _selectedPredictionMeal = 'Lunch';
   final Map<String, bool> _approvedMeals = {'Breakfast': false, 'Lunch': false, 'Dinner': false};
+  final Map<String, int> _managerCustomPortions = {};
   String _currentManagerPassword = 'Pass@2942';
 
   void _showChangePasswordDialog(BuildContext context) {
@@ -708,6 +709,97 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
           Text('Menu: $menuSnippet', style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontStyle: FontStyle.italic)),
           const SizedBox(height: 12),
 
+          // Manager Decided Quantity Column (Editable by Manager)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F8E9),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFC8E6C9)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.edit_note, size: 16, color: Color(0xFF1B5E20)),
+                          SizedBox(width: 4),
+                          Text(
+                            'Manager Decided Quantity',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF1B5E20)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Actual decision of manager on food to prepare',
+                        style: TextStyle(fontSize: 10, color: Colors.grey.shade700),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                if (!mealApproved)
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFF81C784)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.remove, size: 16, color: Color(0xFF1B5E20)),
+                          padding: const EdgeInsets.all(4),
+                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                          onPressed: () {
+                            final cur = _managerCustomPortions[_selectedPredictionMeal] ?? recommendedCooking;
+                            if (cur > 1) {
+                              setState(() => _managerCustomPortions[_selectedPredictionMeal] = cur - 1);
+                            }
+                          },
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          child: Text(
+                            '${_managerCustomPortions[_selectedPredictionMeal] ?? recommendedCooking}',
+                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Color(0xFF1B5E20)),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.add, size: 16, color: Color(0xFF1B5E20)),
+                          padding: const EdgeInsets.all(4),
+                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                          onPressed: () {
+                            final cur = _managerCustomPortions[_selectedPredictionMeal] ?? recommendedCooking;
+                            setState(() => _managerCustomPortions[_selectedPredictionMeal] = cur + 1);
+                          },
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F5E9),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${_managerCustomPortions[_selectedPredictionMeal] ?? recommendedCooking} Portions',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1B5E20)),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
           // Approve Button for Selected Meal
           SizedBox(
             width: double.infinity,
@@ -721,17 +813,18 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
               icon: Icon(mealApproved ? Icons.check_circle : Icons.approval, size: 18),
               label: Text(
                 mealApproved
-                    ? '$_selectedPredictionMeal APPROVED ($recommendedCooking PORTIONS)'
-                    : 'APPROVE $_selectedPredictionMeal PREPARATION ($recommendedCooking PORTIONS)',
+                    ? '$_selectedPredictionMeal APPROVED (${_managerCustomPortions[_selectedPredictionMeal] ?? recommendedCooking} PORTIONS)'
+                    : 'APPROVE $_selectedPredictionMeal PREPARATION (${_managerCustomPortions[_selectedPredictionMeal] ?? recommendedCooking} PORTIONS)',
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
               ),
               onPressed: mealApproved
                   ? null
                   : () {
+                      final finalPortions = _managerCustomPortions[_selectedPredictionMeal] ?? recommendedCooking;
                       setState(() => _approvedMeals[_selectedPredictionMeal] = true);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Approved kitchen preparation of $recommendedCooking portions for $_selectedPredictionMeal!'),
+                          content: Text('Approved kitchen preparation of $finalPortions portions for $_selectedPredictionMeal!'),
                           backgroundColor: const Color(0xFF1B5E20),
                         ),
                       );

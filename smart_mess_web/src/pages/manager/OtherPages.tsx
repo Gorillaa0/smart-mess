@@ -24,6 +24,7 @@ export const NotificationsPage: React.FC = () => (
 
 export const FoodPrepPage: React.FC = () => {
   const [selectedMeal, setSelectedMeal] = React.useState<'Breakfast' | 'Lunch' | 'Dinner'>('Lunch');
+  const [managerPortions, setManagerPortions] = React.useState<Record<string, number>>({});
   const [approvedMap, setApprovedMap] = React.useState<Record<string, boolean>>({
     Breakfast: false,
     Lunch: false,
@@ -61,6 +62,7 @@ export const FoodPrepPage: React.FC = () => {
   };
 
   const current = mealsData[selectedMeal];
+  const decidedQty = managerPortions[selectedMeal] ?? current.recommended;
   const isApproved = approvedMap[selectedMeal] || false;
 
   return (
@@ -69,7 +71,7 @@ export const FoodPrepPage: React.FC = () => {
       <div className="bg-gradient-to-r from-primary-900 via-primary-800 to-primary-900 rounded-2xl p-6 text-white shadow-md">
         <h1 className="text-2xl font-bold font-display">Kitchen Food Preparation & Cooking Planner</h1>
         <p className="text-primary-200 text-sm mt-1">
-          Separate AI attendance predictions and cooking portion recommendations for Breakfast, Lunch, and Dinner.
+          Separate AI attendance predictions and cooking portion recommendations for Breakfast, Lunch, and Dinner with Manager Decided Quantity Control.
         </p>
       </div>
 
@@ -158,22 +160,44 @@ export const FoodPrepPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="text-xs text-gray-700">
-            <span className="font-bold">Meal Rate:</span> {current.rate} • <span className="font-bold">Total Estimated Serving Cost:</span> ₹{current.recommended * (selectedMeal === 'Breakfast' ? 25 : 50)}
+            <span className="font-bold">Meal Rate:</span> {current.rate} • <span className="font-bold">Total Estimated Serving Cost:</span> ₹{decidedQty * (selectedMeal === 'Breakfast' ? 25 : 50)}
           </div>
 
-          <button
-            onClick={() => setApprovedMap(prev => ({ ...prev, [selectedMeal]: true }))}
-            disabled={isApproved}
-            className={`px-6 py-2.5 rounded-xl text-xs font-bold text-white transition shadow-sm ${
-              isApproved
-                ? 'bg-emerald-800 cursor-default'
-                : 'bg-primary-800 hover:bg-primary-900'
-            }`}
-          >
-            {isApproved ? `✓ ${selectedMeal} Quantity Approved (${current.recommended} Portions)` : `Approve ${selectedMeal} Kitchen Batch`}
-          </button>
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            {!isApproved ? (
+              <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-gray-300 shadow-inner">
+                <span className="text-xs font-bold text-gray-600">Decision Qty:</span>
+                <input
+                  type="number"
+                  value={decidedQty}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value) || 0;
+                    setManagerPortions(prev => ({ ...prev, [selectedMeal]: val }));
+                  }}
+                  className="w-20 text-center font-black text-gray-900 border-b-2 border-emerald-600 focus:outline-none text-base"
+                />
+                <span className="text-xs text-gray-400">portions</span>
+              </div>
+            ) : (
+              <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-3 py-2 rounded-xl">
+                ✓ {decidedQty} Portions Finalized
+              </span>
+            )}
+
+            <button
+              onClick={() => setApprovedMap(prev => ({ ...prev, [selectedMeal]: true }))}
+              disabled={isApproved}
+              className={`px-6 py-2.5 rounded-xl text-xs font-bold text-white transition shadow-sm ${
+                isApproved
+                  ? 'bg-emerald-800 cursor-default'
+                  : 'bg-primary-800 hover:bg-primary-900'
+              }`}
+            >
+              {isApproved ? `✓ ${selectedMeal} Approved (${decidedQty} Portions)` : `Approve ${selectedMeal} Kitchen Batch`}
+            </button>
+          </div>
         </div>
       </div>
     </div>

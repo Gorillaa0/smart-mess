@@ -16,6 +16,7 @@ export const DashboardPage: React.FC = () => {
   const [liveMessOffCount, setLiveMessOffCount] = useState(0);
   const [liveComplaintsCount, setLiveComplaintsCount] = useState(0);
   const [selectedPredictionMeal, setSelectedPredictionMeal] = useState<'Breakfast' | 'Lunch' | 'Dinner'>('Lunch');
+  const [managerCustomPortions, setManagerCustomPortions] = useState<Record<string, number>>({});
   const [approvedMealsMap, setApprovedMealsMap] = useState<Record<string, boolean>>({
     Breakfast: false,
     Lunch: false,
@@ -285,11 +286,12 @@ export const DashboardPage: React.FC = () => {
   }
 
   const mealRecommendedCooking = Math.round(mealPredictedCount * 1.03);
+  const managerDecidedQuantity = managerCustomPortions[selectedPredictionMeal] ?? mealRecommendedCooking;
   const isMealApproved = approvedMealsMap[selectedPredictionMeal] || false;
 
   const handleApprove = () => {
     setApprovedMealsMap(prev => ({ ...prev, [selectedPredictionMeal]: true }));
-    toast.success(`Preparation quantity approved for ${mealRecommendedCooking} portions of ${selectedPredictionMeal}!`);
+    toast.success(`Manager approved cooking quantity for ${managerDecidedQuantity} portions of ${selectedPredictionMeal}!`);
   };
 
   return (
@@ -406,20 +408,39 @@ export const DashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Approval Action Bar for Selected Meal */}
-        <div className="bg-emerald-50/50 border border-emerald-200 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+        {/* Approval Action Bar for Selected Meal (Manager Decision Control) */}
+        <div className="bg-emerald-50/50 border border-emerald-200 rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <ChefHat className="w-6 h-6 text-emerald-700 shrink-0" />
             <div>
               <p className="text-sm font-semibold text-gray-900">
-                Kitchen Batch Quantity: {isMealApproved ? `Approved ${mealRecommendedCooking} Portions for ${selectedPredictionMeal}` : `Recommended: ${mealRecommendedCooking} Portions for ${selectedPredictionMeal}`}
+                Kitchen Batch Quantity: {isMealApproved ? `Approved ${managerDecidedQuantity} Portions for ${selectedPredictionMeal}` : `Recommended: ${mealRecommendedCooking} Portions • Actual Manager Decision`}
               </p>
               <p className="text-xs text-gray-500">
-                Approve cooking quantity for mess cooks before serving begins.
+                Adjust cooking portions below if needed, and approve for mess kitchen cooks.
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            {!isMealApproved ? (
+              <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-gray-300 shadow-inner">
+                <span className="text-xs font-bold text-gray-600">Decision Qty:</span>
+                <input
+                  type="number"
+                  value={managerDecidedQuantity}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value) || 0;
+                    setManagerCustomPortions(prev => ({ ...prev, [selectedPredictionMeal]: val }));
+                  }}
+                  className="w-20 text-center font-black text-gray-900 border-b-2 border-emerald-600 focus:outline-none text-base"
+                />
+                <span className="text-xs text-gray-400">plates</span>
+              </div>
+            ) : (
+              <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-3 py-2 rounded-xl">
+                ✓ {managerDecidedQuantity} Portions Finalized
+              </span>
+            )}
             <button
               onClick={handleApprove}
               disabled={isMealApproved}
@@ -427,7 +448,7 @@ export const DashboardPage: React.FC = () => {
                 isMealApproved ? 'bg-emerald-800 cursor-default' : 'bg-primary-800 hover:bg-primary-900'
               }`}
             >
-              {isMealApproved ? `✓ ${selectedPredictionMeal} Batch Approved` : `Approve ${selectedPredictionMeal} Preparation`}
+              {isMealApproved ? `✓ ${selectedPredictionMeal} Approved` : `Approve ${selectedPredictionMeal} Preparation`}
             </button>
           </div>
         </div>
