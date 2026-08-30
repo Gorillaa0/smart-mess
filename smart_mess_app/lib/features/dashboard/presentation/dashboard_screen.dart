@@ -248,7 +248,9 @@ class DashboardScreen extends ConsumerWidget {
                   child: () {
                     final student = ref.watch(currentStudentProvider);
                     final allScans = ref.watch(liveAttendanceProvider);
-                    final studentScans = allScans.where((s) => s.registrationNo == student.registrationNo).toList();
+                    final studentScans = allScans.where((s) =>
+                        s.registrationNo.trim() == student.registrationNo.trim() ||
+                        s.rollNo.trim() == student.rollNo.trim()).toList();
                     int liveBillAmount = 0;
                     for (final s in studentScans) {
                       final isSun = s.scannedAt.weekday == DateTime.sunday;

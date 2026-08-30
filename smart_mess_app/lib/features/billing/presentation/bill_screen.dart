@@ -57,12 +57,14 @@ class _BillScreenState extends ConsumerState<BillScreen> with SingleTickerProvid
   }
 
   List<DailyBillRecord> _computeRealScanRecords(List<H4MealScanRecord> scans, String studentRegNo) {
-    final studentScans = scans.where((s) => s.registrationNo == studentRegNo).toList();
+    final cleanReg = studentRegNo.trim();
+    final studentScans = scans.where((s) =>
+        s.registrationNo.trim() == cleanReg || s.rollNo.trim() == cleanReg).toList();
 
     // Group actual student scans strictly by unique calendar dates
     final Map<String, List<H4MealScanRecord>> scansByDate = {};
     for (final scan in studentScans) {
-      final dateKey = DateFormat('yyyy-MM-dd').format(scan.scannedAt);
+      final dateKey = DateFormat('yyyy-MM-dd').format(scan.scannedAt.toLocal());
       scansByDate.putIfAbsent(dateKey, () => []).add(scan);
     }
 
