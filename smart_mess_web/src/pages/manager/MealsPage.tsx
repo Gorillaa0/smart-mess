@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { Calendar, Clock, Edit2, Plus, Info, ShieldCheck, Sparkles, Utensils } from 'lucide-react';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 import toast from 'react-hot-toast';
 
 interface WeeklyMenuItem {
@@ -320,8 +322,29 @@ export const MealsPage: React.FC = () => {
   const [weeklyMenu, setWeeklyMenu] = useState<WeeklyMenuItem[]>(DEFAULT_WEEKLY_MENU);
   const [editingDay, setEditingDay] = useState<WeeklyMenuItem | null>(null);
   const [activeTab, setActiveTab] = useState<'weekly' | 'rules'>('weekly');
+  const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
+  const [totalStudentsCount, setTotalStudentsCount] = useState<number>(80);
 
-  React.useEffect(() => {
+  useEffect(() => {
+    const unsubAttendance = onSnapshot(
+      collection(db, 'mealAttendance'),
+      (snapshot) => {
+        const records = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setAttendanceRecords(records);
+      },
+      () => {}
+    );
+
+    const unsubStudents = onSnapshot(
+      collection(db, 'students'),
+      (snapshot) => {
+        if (!snapshot.empty) {
+          setTotalStudentsCount(snapshot.size);
+        }
+      },
+      () => {}
+    );
+
     const fetchCloudMenu = async () => {
       try {
         const res = await fetch(
@@ -338,7 +361,13 @@ export const MealsPage: React.FC = () => {
         }
       } catch (_) {}
     };
+
     fetchCloudMenu();
+
+    return () => {
+      unsubAttendance();
+      unsubStudents();
+    };
   }, []);
 
   const handleSaveEdit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -507,9 +536,9 @@ export const MealsPage: React.FC = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
                 {weeklyMenu.map((day) => {
-                  const bkRating = getMealRating(day.dayEnglish, 'breakfast');
-                  const lunchRating = getMealRating(day.dayEnglish, 'lunch');
-                  const dinnerRating = getMealRating(day.dayEnglish, 'dinner');
+                  const bkRating = getMealRating(day.dayEnglish, 'breakfast', totalStudentsCount, attendanceRecords);
+                  const lunchRating = getMealRating(day.dayEnglish, 'lunch', totalStudentsCount, attendanceRecords);
+                  const dinnerRating = getMealRating(day.dayEnglish, 'dinner', totalStudentsCount, attendanceRecords);
 
                   return (
                     <tr key={day.id} className="hover:bg-gray-50/80 transition-colors">
@@ -534,7 +563,7 @@ export const MealsPage: React.FC = () => {
                         <div className="text-xs text-gray-500 mt-0.5">{day.breakfast.itemsEnglish}</div>
                         {day.breakfast.isAvailable !== false && bkRating.rating > 0 && (
                           <div className="text-[10px] text-amber-800 font-semibold mt-1">
-                            {bkRating.badge} • Est. {bkRating.crowd} students
+                            {bkRating.badge} • Crowd ~{bkRating.crowd} ({bkRating.turnoutPercentage}%)
                           </div>
                         )}
                       </td>
@@ -556,7 +585,7 @@ export const MealsPage: React.FC = () => {
                         <div className="font-medium text-gray-900 text-sm mt-1">{day.lunch.itemsHindi}</div>
                         <div className="text-xs text-gray-500 mt-0.5">{day.lunch.itemsEnglish}</div>
                         <div className="text-[10px] text-blue-800 font-semibold mt-1">
-                          {lunchRating.badge} • Est. {lunchRating.crowd} students
+                          {lunchRating.badge} • Crowd ~{lunchRating.crowd} ({lunchRating.turnoutPercentage}%)
                         </div>
                       </td>
                       <td className="px-5 py-4 align-top">
@@ -577,7 +606,7 @@ export const MealsPage: React.FC = () => {
                         <div className="font-medium text-gray-900 text-sm mt-1">{day.dinner.itemsHindi}</div>
                         <div className="text-xs text-gray-500 mt-0.5">{day.dinner.itemsEnglish}</div>
                         <div className="text-[10px] text-purple-800 font-semibold mt-1">
-                          {dinnerRating.badge} • Est. {dinnerRating.crowd} students
+                          {dinnerRating.badge} • Crowd ~{dinnerRating.crowd} ({dinnerRating.turnoutPercentage}%)
                         </div>
                       </td>
                       <td className="px-4 py-4 align-top text-center">
