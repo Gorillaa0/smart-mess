@@ -366,49 +366,28 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
               ),
               child: const Icon(Icons.shield_outlined, color: Color(0xFF1B5E20), size: 20),
             ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Mess Manager Portal',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Color(0xFF1B5E20)),
-                ),
-                Text(
-                  'Hostel Number 4 Dining Hall',
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 11, fontWeight: FontWeight.w500),
-                ),
-              ],
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Mess Manager Portal',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Color(0xFF1B5E20)),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    'Hostel Number 4 Dining Hall',
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 11, fontWeight: FontWeight.w500),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
         actions: [
-          IconButton(
-            icon: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE8F5E9),
-                shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFF81C784), width: 0.8),
-              ),
-              child: const Icon(Icons.email_outlined, color: Color(0xFF1B5E20), size: 18),
-            ),
-            tooltip: 'Update Manager Email',
-            onPressed: () => _showUpdateEmailDialog(context),
-          ),
-          IconButton(
-            icon: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE8F5E9),
-                shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFF81C784), width: 0.8),
-              ),
-              child: const Icon(Icons.key, color: Color(0xFF1B5E20), size: 18),
-            ),
-            tooltip: 'Change Manager Password',
-            onPressed: () => _showChangePasswordDialog(context),
-          ),
           IconButton(
             icon: Container(
               padding: const EdgeInsets.all(6),
@@ -422,19 +401,56 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
             tooltip: 'Permanent Static Counter QR',
             onPressed: () => context.push('/manager/qr-generate'),
           ),
-          IconButton(
+          PopupMenuButton<String>(
             icon: Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: Colors.red.shade50,
+                color: const Color(0xFFE8F5E9),
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.red.shade200, width: 0.8),
+                border: Border.all(color: const Color(0xFF81C784), width: 0.8),
               ),
-              child: const Icon(Icons.logout, color: Colors.redAccent, size: 18),
+              child: const Icon(Icons.more_vert, color: Color(0xFF1B5E20), size: 18),
             ),
-            onPressed: () => AuthService.performLogout(ref, context),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            onSelected: (val) {
+              if (val == 'email') _showUpdateEmailDialog(context);
+              if (val == 'password') _showChangePasswordDialog(context);
+              if (val == 'logout') AuthService.performLogout(ref, context);
+            },
+            itemBuilder: (ctx) => [
+              const PopupMenuItem(
+                value: 'email',
+                child: Row(
+                  children: [
+                    Icon(Icons.email_outlined, size: 18, color: Color(0xFF1B5E20)),
+                    SizedBox(width: 8),
+                    Text('Update Email', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'password',
+                child: Row(
+                  children: [
+                    Icon(Icons.lock_reset, size: 18, color: Color(0xFF1B5E20)),
+                    SizedBox(width: 8),
+                    Text('Change Password', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'logout',
+                child: Row(
+                  children: [
+                    Icon(Icons.logout, size: 18, color: Colors.redAccent),
+                    SizedBox(width: 8),
+                    Text('Logout', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.redAccent)),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 4),
         ],
       ),
       body: RefreshIndicator(
@@ -474,10 +490,10 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(Icons.admin_panel_settings, color: Colors.amberAccent, size: 14),
-                              SizedBox(width: 5),
+                              SizedBox(width: 4),
                               Flexible(
                                 child: Text(
-                                  'OFFICIAL MESS OPERATOR',
+                                  'MESS OPERATOR',
                                   style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -759,7 +775,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
           const SizedBox(height: 8),
           Row(
             children: [
-              _metricBox('Expected Range', '${predictedCount - 4}-${predictedCount + 4}', const Color(0xFF283593), const Color(0xFFE8EAF6), const Color(0xFF9FA8DA)),
+              _metricBox('Expected Range', '${(predictedCount - 4).clamp(0, totalStudents)} - ${predictedCount + 4}', const Color(0xFF283593), const Color(0xFFE8EAF6), const Color(0xFF9FA8DA)),
               const SizedBox(width: 8),
               _metricBox('Rec. Cook (+3%)', '$recommendedCooking', const Color(0xFF1B5E20), const Color(0xFFE8F5E9), const Color(0xFFA5D6A7), isHighlight: true),
             ],
@@ -1210,7 +1226,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
               if (top2 != null)
                 Expanded(
                   child: Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.all(9),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF9FBE7),
                       borderRadius: BorderRadius.circular(12),
@@ -1220,23 +1236,38 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Row(
-                              children: [
-                                const Icon(Icons.star, color: Color(0xFF827717), size: 14),
-                                const SizedBox(width: 4),
-                                Text('#2: ${top2.dayName} ${top2.mealType}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Color(0xFF827717))),
-                              ],
+                            Expanded(
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.star, color: Color(0xFF827717), size: 12),
+                                  const SizedBox(width: 3),
+                                  Flexible(
+                                    child: Text(
+                                      '#2: ${top2.dayName.substring(0, 3)} ${top2.mealType}',
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5, color: Color(0xFF827717)),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                             if (top2Rating != null && top2Rating.rating > 0)
-                              Text('★ ${top2Rating.rating}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Color(0xFF827717))),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF827717).withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text('★ ${top2Rating.rating}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 9, color: Color(0xFF827717))),
+                              ),
                           ],
                         ),
                         const SizedBox(height: 3),
                         Text(top2.slot.itemsEnglish, style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Colors.black87), maxLines: 1, overflow: TextOverflow.ellipsis),
                         const SizedBox(height: 2),
-                        Text('₹${top2.slot.price} • ${top2Rating?.sentimentBadge ?? "Popular"} • ~${top2Rating?.totalScans ?? top2.actualScans} students', style: TextStyle(fontSize: 9.5, color: Colors.grey.shade700, fontWeight: FontWeight.w500)),
+                        Text('₹${top2.slot.price} • ${top2Rating?.sentimentBadge ?? "Popular"} • ~${top2Rating?.totalScans ?? top2.actualScans} students', style: TextStyle(fontSize: 9.5, color: Colors.grey.shade700, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
                       ],
                     ),
                   ),
@@ -1245,7 +1276,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
               if (top3 != null)
                 Expanded(
                   child: Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.all(9),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF3E5F5),
                       borderRadius: BorderRadius.circular(12),
@@ -1255,23 +1286,38 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Row(
-                              children: [
-                                const Icon(Icons.star_half, color: Color(0xFF6A1B9A), size: 14),
-                                const SizedBox(width: 4),
-                                Text('#3: ${top3.dayName} ${top3.mealType}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Color(0xFF6A1B9A))),
-                              ],
+                            Expanded(
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.star_half, color: Color(0xFF6A1B9A), size: 12),
+                                  const SizedBox(width: 3),
+                                  Flexible(
+                                    child: Text(
+                                      '#3: ${top3.dayName.substring(0, 3)} ${top3.mealType}',
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5, color: Color(0xFF6A1B9A)),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                             if (top3Rating != null && top3Rating.rating > 0)
-                              Text('★ ${top3Rating.rating}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Color(0xFF6A1B9A))),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF6A1B9A).withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text('★ ${top3Rating.rating}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 9, color: Color(0xFF6A1B9A))),
+                              ),
                           ],
                         ),
                         const SizedBox(height: 3),
                         Text(top3.slot.itemsEnglish, style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Colors.black87), maxLines: 1, overflow: TextOverflow.ellipsis),
                         const SizedBox(height: 2),
-                        Text('₹${top3.slot.price} • ${top3Rating?.sentimentBadge ?? "Popular"} • ~${top3Rating?.totalScans ?? top3.actualScans} students', style: TextStyle(fontSize: 9.5, color: Colors.grey.shade700, fontWeight: FontWeight.w500)),
+                        Text('₹${top3.slot.price} • ${top3Rating?.sentimentBadge ?? "Popular"} • ~${top3Rating?.totalScans ?? top3.actualScans} students', style: TextStyle(fontSize: 9.5, color: Colors.grey.shade700, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
                       ],
                     ),
                   ),
