@@ -36,6 +36,8 @@ export const FoodPrepPage: React.FC = () => {
 
   useEffect(() => {
     const todayStr = new Date().toISOString().split('T')[0];
+    
+    // 1. Native onSnapshot
     const unsub = onSnapshot(collection(db, 'foodPreparation'), (snapshot) => {
       snapshot.forEach((docSnap) => {
         const d = docSnap.data();
@@ -55,6 +57,50 @@ export const FoodPrepPage: React.FC = () => {
         }
       });
     });
+
+    // 2. Direct REST fetch
+    const fetchRest = async () => {
+      try {
+        const res = await fetch(
+          'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents:runQuery?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              structuredQuery: {
+                from: [{ collectionId: 'foodPreparation' }]
+              }
+            })
+          }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            data.forEach((item) => {
+              if (item.document?.fields) {
+                const f = item.document.fields;
+                if (f.date?.stringValue === todayStr && f.status?.stringValue === 'approved') {
+                  const mt = (f.mealType?.stringValue || '').toLowerCase();
+                  const qty = parseInt(f.approvedQuantity?.integerValue || '0');
+                  if (mt.includes('breakfast')) {
+                    setApprovedMap(prev => ({ ...prev, Breakfast: true }));
+                    if (qty > 0) setManagerPortions(prev => ({ ...prev, Breakfast: qty }));
+                  } else if (mt.includes('lunch')) {
+                    setApprovedMap(prev => ({ ...prev, Lunch: true }));
+                    if (qty > 0) setManagerPortions(prev => ({ ...prev, Lunch: qty }));
+                  } else if (mt.includes('dinner')) {
+                    setApprovedMap(prev => ({ ...prev, Dinner: true }));
+                    if (qty > 0) setManagerPortions(prev => ({ ...prev, Dinner: qty }));
+                  }
+                }
+              }
+            });
+          }
+        }
+      } catch (_) {}
+    };
+    fetchRest();
+
     return () => unsub();
   }, []);
 
@@ -220,8 +266,10 @@ export const FoodPrepPage: React.FC = () => {
                 setApprovedMap(prev => ({ ...prev, [selectedMeal]: true }));
                 toast.success(`✓ Locked & Approved: ${decidedQty} portions for ${selectedMeal}!`);
 
+                // 1. Native SDK write
                 try {
                   await setDoc(doc(db, 'foodPreparation', docId), {
+                    id: docId,
                     mealType: selectedMeal.toLowerCase(),
                     date: todayStr,
                     approvedQuantity: decidedQty,
@@ -231,8 +279,31 @@ export const FoodPrepPage: React.FC = () => {
                     status: 'approved'
                   }, { merge: true });
                 } catch (e) {
-                  console.error('Error saving approval in FoodPrepPage:', e);
+                  console.error('Error saving approval in FoodPrepPage via SDK:', e);
                 }
+
+                // 2. Direct REST write
+                try {
+                  await fetch(
+                    `https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/foodPreparation/${docId}?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E`,
+                    {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        fields: {
+                          id: { stringValue: docId },
+                          mealType: { stringValue: selectedMeal.toLowerCase() },
+                          date: { stringValue: todayStr },
+                          approvedQuantity: { integerValue: decidedQty.toString() },
+                          approvedAt: { stringValue: new Date().toISOString() },
+                          approvedBy: { stringValue: 'Mess Manager' },
+                          messId: { stringValue: 'hostel_4_mess' },
+                          status: { stringValue: 'approved' }
+                        }
+                      })
+                    }
+                  );
+                } catch (_) {}
               }}
               disabled={isApproved}
               className={`px-6 py-2.5 rounded-xl text-xs font-bold text-white transition shadow-sm ${

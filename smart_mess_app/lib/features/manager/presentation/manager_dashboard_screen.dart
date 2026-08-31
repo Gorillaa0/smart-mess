@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dio/dio.dart';
 import '../../../core/constants/h4_students_data.dart';
 import '../../../core/constants/weekly_menu.dart';
 import '../../../core/services/auth_service.dart';
@@ -20,6 +21,8 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
   final Map<String, bool> _approvedMeals = {'Breakfast': false, 'Lunch': false, 'Dinner': false};
   final Map<String, int> _managerCustomPortions = {};
   String _currentManagerPassword = 'Pass@2942';
+  final _dio = Dio();
+  static const _firestoreKey = 'AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E';
 
   @override
   void initState() {
@@ -29,33 +32,79 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
 
   void _listenToTodayApprovals() {
     final todayStr = DateTime.now().toIso8601String().split('T')[0];
-    FirebaseFirestore.instance
-        .collection('foodPreparation')
-        .where('date', isEqualTo: todayStr)
-        .snapshots()
-        .listen((snapshot) {
-      if (mounted) {
+    
+    // 1. Native Firestore listener
+    try {
+      FirebaseFirestore.instance
+          .collection('foodPreparation')
+          .where('date', isEqualTo: todayStr)
+          .snapshots()
+          .listen((snapshot) {
+        if (mounted) {
+          setState(() {
+            for (final doc in snapshot.docs) {
+              final data = doc.data();
+              final mealType = (data['mealType'] as String?)?.toLowerCase();
+              final approvedQty = (data['approvedQuantity'] as num?)?.toInt();
+              if (mealType != null) {
+                if (mealType.contains('breakfast')) {
+                  _approvedMeals['Breakfast'] = true;
+                  if (approvedQty != null) _managerCustomPortions['Breakfast'] = approvedQty;
+                } else if (mealType.contains('lunch')) {
+                  _approvedMeals['Lunch'] = true;
+                  if (approvedQty != null) _managerCustomPortions['Lunch'] = approvedQty;
+                } else if (mealType.contains('dinner')) {
+                  _approvedMeals['Dinner'] = true;
+                  if (approvedQty != null) _managerCustomPortions['Dinner'] = approvedQty;
+                }
+              }
+            }
+          });
+        }
+      });
+    } catch (_) {}
+
+    // 2. Direct REST query
+    _fetchApprovalsRest(todayStr);
+  }
+
+  Future<void> _fetchApprovalsRest(String todayStr) async {
+    try {
+      final res = await _dio.post(
+        'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents:runQuery?key=$_firestoreKey',
+        data: {
+          'structuredQuery': {
+            'from': [{'collectionId': 'foodPreparation'}]
+          }
+        },
+      );
+      if (res.statusCode == 200 && res.data is List && mounted) {
         setState(() {
-          for (final doc in snapshot.docs) {
-            final data = doc.data();
-            final mealType = (data['mealType'] as String?)?.toLowerCase();
-            final approvedQty = (data['approvedQuantity'] as num?)?.toInt();
-            if (mealType != null) {
-              if (mealType.contains('breakfast')) {
-                _approvedMeals['Breakfast'] = true;
-                if (approvedQty != null) _managerCustomPortions['Breakfast'] = approvedQty;
-              } else if (mealType.contains('lunch')) {
-                _approvedMeals['Lunch'] = true;
-                if (approvedQty != null) _managerCustomPortions['Lunch'] = approvedQty;
-              } else if (mealType.contains('dinner')) {
-                _approvedMeals['Dinner'] = true;
-                if (approvedQty != null) _managerCustomPortions['Dinner'] = approvedQty;
+          for (final item in res.data) {
+            if (item['document'] != null && item['document']['fields'] != null) {
+              final f = item['document']['fields'];
+              final d = f['date']?['stringValue'];
+              if (d == todayStr) {
+                final mealType = (f['mealType']?['stringValue'] as String?)?.toLowerCase();
+                final approvedQty = int.tryParse(f['approvedQuantity']?['integerValue']?.toString() ?? '');
+                if (mealType != null) {
+                  if (mealType.contains('breakfast')) {
+                    _approvedMeals['Breakfast'] = true;
+                    if (approvedQty != null && approvedQty > 0) _managerCustomPortions['Breakfast'] = approvedQty;
+                  } else if (mealType.contains('lunch')) {
+                    _approvedMeals['Lunch'] = true;
+                    if (approvedQty != null && approvedQty > 0) _managerCustomPortions['Lunch'] = approvedQty;
+                  } else if (mealType.contains('dinner')) {
+                    _approvedMeals['Dinner'] = true;
+                    if (approvedQty != null && approvedQty > 0) _managerCustomPortions['Dinner'] = approvedQty;
+                  }
+                }
               }
             }
           }
         });
       }
-    });
+    } catch (_) {}
   }
 
   Future<void> _approveMealPreparation(String mealType, int quantity) async {
@@ -67,8 +116,10 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
       _managerCustomPortions[mealType] = quantity;
     });
 
+    // 1. Native Firestore write
     try {
       await FirebaseFirestore.instance.collection('foodPreparation').doc(docId).set({
+        'id': docId,
         'mealType': mealType.toLowerCase(),
         'date': todayStr,
         'approvedQuantity': quantity,
@@ -78,7 +129,28 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
         'status': 'approved',
       }, SetOptions(merge: true));
     } catch (e) {
-      debugPrint('Error saving food preparation approval: $e');
+      debugPrint('Error saving food preparation approval via SDK: $e');
+    }
+
+    // 2. Direct REST write to guarantee instant cloud propagation
+    try {
+      await _dio.patch(
+        'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/foodPreparation/$docId?key=$_firestoreKey',
+        data: {
+          'fields': {
+            'id': {'stringValue': docId},
+            'mealType': {'stringValue': mealType.toLowerCase()},
+            'date': {'stringValue': todayStr},
+            'approvedQuantity': {'integerValue': quantity.toString()},
+            'approvedAt': {'stringValue': DateTime.now().toIso8601String()},
+            'approvedBy': {'stringValue': 'Dhaneshwar Yadav (Manager)'},
+            'messId': {'stringValue': 'hostel_4_mess'},
+            'status': {'stringValue': 'approved'},
+          }
+        },
+      );
+    } catch (e) {
+      debugPrint('Error saving food preparation approval via REST: $e');
     }
   }
 

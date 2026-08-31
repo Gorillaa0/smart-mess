@@ -114,6 +114,49 @@ export const DashboardPage: React.FC = () => {
         }
       }
 
+      // Food preparation approvals
+      const resPrep = await fetch(
+        'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents:runQuery?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            structuredQuery: {
+              from: [{ collectionId: 'foodPreparation' }]
+            }
+          })
+        }
+      );
+      if (resPrep.ok) {
+        const dataPrep = await resPrep.json();
+        if (Array.isArray(dataPrep)) {
+          const todayStr = new Date().toISOString().split('T')[0];
+          const map: Record<string, boolean> = { Breakfast: false, Lunch: false, Dinner: false };
+          const customMap: Record<string, number> = {};
+          dataPrep.forEach((item) => {
+            if (item.document?.fields) {
+              const f = item.document.fields;
+              if (f.date?.stringValue === todayStr && f.status?.stringValue === 'approved') {
+                const mt = (f.mealType?.stringValue || '').toLowerCase();
+                const qty = parseInt(f.approvedQuantity?.integerValue || '0');
+                if (mt.includes('breakfast')) {
+                  map.Breakfast = true;
+                  if (qty > 0) customMap.Breakfast = qty;
+                } else if (mt.includes('lunch')) {
+                  map.Lunch = true;
+                  if (qty > 0) customMap.Lunch = qty;
+                } else if (mt.includes('dinner')) {
+                  map.Dinner = true;
+                  if (qty > 0) customMap.Dinner = qty;
+                }
+              }
+            }
+          });
+          setApprovedMealsMap(prev => ({ ...prev, ...map }));
+          setManagerCustomPortions(prev => ({ ...prev, ...customMap }));
+        }
+      }
+
       // Live Food Orders
       const resOrd = await fetch(
         'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents:runQuery?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
@@ -335,6 +378,7 @@ export const DashboardPage: React.FC = () => {
 
     try {
       await setDoc(doc(db, 'foodPreparation', docId), {
+        id: docId,
         mealType: selectedPredictionMeal.toLowerCase(),
         date: todayStr,
         approvedQuantity: managerDecidedQuantity,
@@ -344,8 +388,31 @@ export const DashboardPage: React.FC = () => {
         status: 'approved'
       }, { merge: true });
     } catch (err) {
-      console.error('Error persisting food preparation:', err);
+      console.error('Error persisting food preparation via SDK:', err);
     }
+
+    // Direct REST write to guarantee instant cloud propagation
+    try {
+      await fetch(
+        `https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents/foodPreparation/${docId}?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fields: {
+              id: { stringValue: docId },
+              mealType: { stringValue: selectedPredictionMeal.toLowerCase() },
+              date: { stringValue: todayStr },
+              approvedQuantity: { integerValue: managerDecidedQuantity.toString() },
+              approvedAt: { stringValue: new Date().toISOString() },
+              approvedBy: { stringValue: user?.name || 'Mess Manager' },
+              messId: { stringValue: 'hostel_4_mess' },
+              status: { stringValue: 'approved' }
+            }
+          })
+        }
+      );
+    } catch (_) {}
   };
 
   return (
