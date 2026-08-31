@@ -796,11 +796,11 @@ class DashboardScreen extends ConsumerWidget {
 
     final currentMinutes = now.hour * 60 + now.minute;
     const bkStart = 7 * 60 + 30;
-    const bkEnd = 9 * 60 + 30;
-    const lunchStart = 12 * 60 + 30;
-    const lunchEnd = 14 * 60 + 30;
+    const bkEnd = 10 * 60 + 30;
+    const lunchStart = 10 * 60 + 30;
+    const lunchEnd = 15 * 60 + 30;
     const dinnerStart = 19 * 60 + 30;
-    const dinnerEnd = 21 * 60 + 30;
+    const dinnerEnd = 22 * 60;
 
     final ratingService = ref.watch(mealRatingServiceProvider);
     final bkRating = ratingService.getRating(todayMenu.dayEnglish, 'breakfast');
@@ -1095,9 +1095,9 @@ class DashboardScreen extends ConsumerWidget {
     final isDinnerScanned = allScans.any((s) => isScanMatch(s, 'dinner'));
 
     final currentMinutes = now.hour * 60 + now.minute;
-    const bkEnd = 9 * 60 + 30;    // 09:30 AM
-    const lunchEnd = 14 * 60 + 30; // 02:30 PM
-    const dinnerEnd = 21 * 60 + 30; // 09:30 PM
+    const bkEnd = 10 * 60 + 30;    // 10:30 AM
+    const lunchEnd = 15 * 60 + 30; // 03:30 PM
+    const dinnerEnd = 22 * 60;     // 10:00 PM
 
     // Resolve which meal to display as active or upcoming
     MealSlot displayMeal;

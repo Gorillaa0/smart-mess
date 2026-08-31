@@ -330,19 +330,19 @@ class WeeklyMenuData {
   }
 
   /// Calculates the active/upcoming meal based on current time:
-  /// - Before 09:30 AM -> Breakfast (if Sunday and no breakfast, skips to Sunday Lunch)
-  /// - 09:30 AM to 02:30 PM -> Lunch
-  /// - 02:30 PM to 09:30 PM -> Dinner
-  /// - After 09:30 PM -> Closed for today (Shows Tomorrow's Breakfast)
+  /// - Before 10:30 AM -> Breakfast (if Sunday and no breakfast, skips to Sunday Lunch)
+  /// - 10:30 AM to 03:30 PM -> Lunch
+  /// - 03:30 PM to 10:00 PM -> Dinner
+  /// - After 10:00 PM -> Closed for today (Shows Tomorrow's Breakfast)
   static ActiveMealStatus getActiveMealState([DateTime? customTime]) {
     final now = customTime ?? DateTime.now();
     final today = getTodayMenu(now);
     final tomorrow = getTomorrowMenu(now);
 
     final currentMinutes = now.hour * 60 + now.minute;
-    const breakfastEnd = 9 * 60 + 30; // 09:30 AM = 570 mins
-    const lunchEnd = 14 * 60 + 30;    // 02:30 PM = 870 mins
-    const dinnerEnd = 21 * 60 + 30;   // 09:30 PM = 1290 mins
+    const breakfastEnd = 10 * 60 + 30; // 10:30 AM = 630 mins
+    const lunchEnd = 15 * 60 + 30;    // 03:30 PM = 930 mins
+    const dinnerEnd = 22 * 60 + 0;    // 10:00 PM = 1320 mins
 
     if (currentMinutes < breakfastEnd) {
       if (!today.breakfast.isAvailable) {

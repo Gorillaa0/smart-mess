@@ -61,7 +61,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> with SingleTi
     // Time-based fallback
     final now = DateTime.now();
     final currentMinutes = now.hour * 60 + now.minute;
-    const bkEnd = 10 * 60; // 10:00 AM
+    const bkEnd = 10 * 60 + 30; // 10:30 AM
     const lunchEnd = 15 * 60 + 30; // 03:30 PM
 
     if (currentMinutes < bkEnd) {

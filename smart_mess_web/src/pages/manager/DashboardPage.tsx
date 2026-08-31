@@ -25,14 +25,14 @@ export const DashboardPage: React.FC = () => {
 
   const now = new Date();
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  const isBreakfast = currentMinutes < 9 * 60 + 30; // before 09:30 AM
-  const isLunch = !isBreakfast && currentMinutes < 14 * 60 + 30; // before 02:30 PM
-  const isDinner = !isBreakfast && !isLunch && currentMinutes < 21 * 60 + 30; // before 09:30 PM
-  const isClosedForDay = !isBreakfast && !isLunch && !isDinner; // after 09:30 PM
+  const isBreakfast = currentMinutes < 10 * 60 + 30; // before 10:30 AM
+  const isLunch = !isBreakfast && currentMinutes < 15 * 60 + 30; // 10:30 AM to 03:30 PM
+  const isDinner = !isBreakfast && !isLunch && currentMinutes < 22 * 60; // 03:30 PM to 10:00 PM
+  const isClosedForDay = !isBreakfast && !isLunch && !isDinner; // after 10:00 PM
 
   const currentMealName = isBreakfast ? 'Breakfast' : isLunch ? 'Lunch' : isDinner ? 'Dinner' : 'Closed for Today';
-  const currentMealHours = isBreakfast ? '08:00 AM - 09:30 AM' : isLunch ? '01:00 PM - 02:30 PM' : isDinner ? '08:00 PM - 09:30 PM' : 'Service Closed';
-  const currentCutoff = isBreakfast ? '07:00 AM' : isLunch ? '11:00 AM' : isDinner ? '06:00 PM' : 'Tomorrow 07:00 AM';
+  const currentMealHours = isBreakfast ? '08:00 AM - 10:30 AM' : isLunch ? '10:30 AM - 03:30 PM' : isDinner ? '08:00 PM - 10:00 PM' : 'Service Closed';
+  const currentCutoff = isBreakfast ? '07:30 AM' : isLunch ? '11:00 AM' : isDinner ? '06:00 PM' : 'Tomorrow 07:30 AM';
 
   const [liveScans, setLiveScans] = useState<any[]>([]);
   const [liveOrders, setLiveOrders] = useState<any[]>([]);

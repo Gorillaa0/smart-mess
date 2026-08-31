@@ -17,10 +17,11 @@ interface ScannedEntry {
 
 export const QRAttendancePage: React.FC = () => {
   const getDefaultMeal = (): 'Breakfast' | 'Lunch' | 'Dinner' => {
-    const hours = new Date().getHours();
-    if (hours < 10) return 'Breakfast';
-    if (hours < 15) return 'Lunch';
-    return 'Dinner';
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    if (currentMinutes < 10 * 60 + 30) return 'Breakfast'; // before 10:30 AM
+    if (currentMinutes < 15 * 60 + 30) return 'Lunch';     // 10:30 AM to 03:30 PM
+    return 'Dinner';                                        // 03:30 PM onwards
   };
 
   const [selectedMeal, setSelectedMeal] = useState<'Breakfast' | 'Lunch' | 'Dinner'>(getDefaultMeal);
