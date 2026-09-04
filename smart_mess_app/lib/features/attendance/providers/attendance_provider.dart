@@ -161,26 +161,92 @@ class AttendanceNotifier extends StateNotifier<List<H4MealScanRecord>> {
   }
 
   bool hasScanned(String registrationNo, String mealType) {
+    // Use local state ONLY as a quick cache check — NOT as the final authority.
+    // The cloud-authoritative check happens in _cloudHasScanned() inside recordScan.
     final today = DateTime.now().toLocal();
+    final todayDateStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
     final cleanMeal = mealType.toLowerCase().trim();
     return state.any((record) {
-      final recDate = record.scannedAt.toLocal();
-      final isSameDay = recDate.day == today.day &&
-          recDate.month == today.month &&
-          recDate.year == today.year;
-      final isSameStudent = record.registrationNo.trim() == registrationNo.trim() ||
-          record.rollNo.trim() == registrationNo.trim();
+      final recLocal = record.scannedAt.toLocal();
+      final recDateStr = '${recLocal.year}-${recLocal.month.toString().padLeft(2, '0')}-${recLocal.day.toString().padLeft(2, '0')}';
+      final isSameDay = recDateStr == todayDateStr;
+      final isSameStudent = record.registrationNo.trim() == registrationNo.trim();
       final recMeal = record.mealType.toLowerCase().trim();
-      final isSameMeal = recMeal == cleanMeal ||
-          recMeal.contains(cleanMeal) ||
-          cleanMeal.contains(recMeal);
+      // Exact meal match only — avoids cross-contamination between meals
+      final isSameMeal = recMeal == cleanMeal;
       return isSameStudent && isSameMeal && isSameDay;
     });
   }
 
+  /// Cloud-authoritative duplicate check — queries Firestore directly.
+  /// Returns true only if a confirmed scan record exists in the cloud for today's meal.
+  Future<bool> _cloudHasScanned(String registrationNo, String mealType) async {
+    final today = DateTime.now().toLocal();
+    final todayDateStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+    final cleanMeal = mealType.toLowerCase().trim();
+    try {
+      final dio = Dio();
+      final res = await dio.post(
+        'https://firestore.googleapis.com/v1/projects/smart-mess-sih/databases/default/documents:runQuery?key=AIzaSyA99YZY3BKk7J-LZCKQaEPLnVkjC_mXE2E',
+        data: {
+          'structuredQuery': {
+            'from': [{'collectionId': 'mealAttendance'}],
+            'where': {
+              'compositeFilter': {
+                'op': 'AND',
+                'filters': [
+                  {
+                    'fieldFilter': {
+                      'field': {'fieldPath': 'registrationNo'},
+                      'op': 'EQUAL',
+                      'value': {'stringValue': registrationNo.trim()},
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        options: Options(headers: {'Content-Type': 'application/json'}),
+      ).timeout(const Duration(seconds: 4));
+
+      if (res.statusCode == 200 && res.data is List) {
+        for (final item in res.data) {
+          if (item is Map && item['document'] != null) {
+            final fields = (item['document']['fields'] as Map?) ?? {};
+            final scannedAtStr = fields['scannedAt']?['stringValue']?.toString() ?? '';
+            final recMeal = (fields['mealType']?['stringValue']?.toString() ?? '').toLowerCase().trim();
+            if (scannedAtStr.isNotEmpty) {
+              final scannedAt = DateTime.tryParse(scannedAtStr)?.toLocal();
+              if (scannedAt != null) {
+                final recDateStr = '${scannedAt.year}-${scannedAt.month.toString().padLeft(2, '0')}-${scannedAt.day.toString().padLeft(2, '0')}';
+                if (recDateStr == todayDateStr && recMeal == cleanMeal) {
+                  return true; // Confirmed duplicate in cloud
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (_) {
+      // If cloud check fails (offline), fall back to local state check
+      return hasScanned(registrationNo, mealType);
+    }
+    return false;
+  }
+
   Future<bool> recordScan(H4Student student, String mealType) async {
+    // STEP 1: Quick local check (instant)
     if (hasScanned(student.registrationNo, mealType)) {
-      return false; // Already scanned
+      return false;
+    }
+
+    // STEP 2: Cloud-authoritative duplicate check before writing
+    final alreadyInCloud = await _cloudHasScanned(student.registrationNo, mealType);
+    if (alreadyInCloud) {
+      // Sync local state with cloud truth — refresh from cloud
+      await _fetchLiveScans();
+      return false;
     }
 
     final newRecord = H4MealScanRecord(

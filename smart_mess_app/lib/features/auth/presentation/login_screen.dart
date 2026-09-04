@@ -65,6 +65,89 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
         // Verification Succeeded! Firebase Auth verified the credentials
         if (userCredential.user != null) {
+          // ── SINGLE DEVICE SESSION ENFORCEMENT ─────────────────────────────────
+          // Get or generate this device's unique install ID
+          final prefs = await SharedPreferences.getInstance();
+          String? deviceId = prefs.getString('device_install_id');
+          if (deviceId == null || deviceId.isEmpty) {
+            // Generate a permanent unique ID for this device (UUID-style from timestamp + random)
+            deviceId = 'DEV_${DateTime.now().millisecondsSinceEpoch}_${student?.rollNo ?? rawQuery}';
+            await prefs.setString('device_install_id', deviceId);
+          }
+
+          // Check if another device already has an active session for this student
+          try {
+            final regNo = student?.registrationNo ?? rawQuery;
+            final sessionDoc = await FirebaseFirestore.instance
+                .collection('activeSessions')
+                .doc(regNo)
+                .get()
+                .timeout(const Duration(seconds: 4));
+
+            if (sessionDoc.exists) {
+              final existingDeviceId = sessionDoc.data()?['deviceId']?.toString() ?? '';
+              if (existingDeviceId.isNotEmpty && existingDeviceId != deviceId) {
+                // Another device is already logged in!
+                setState(() => _isLoading = false);
+                await FirebaseAuth.instance.signOut();
+                if (mounted) {
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (ctx) => AlertDialog(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      contentPadding: const EdgeInsets.all(24),
+                      title: Row(
+                        children: const [
+                          Icon(Icons.lock_person, color: Colors.redAccent, size: 28),
+                          SizedBox(width: 10),
+                          Flexible(
+                            child: Text(
+                              'Already Logged In on Another Device',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.red),
+                            ),
+                          ),
+                        ],
+                      ),
+                      content: const Text(
+                        'This Student ID is already logged in on another smartphone.\n\n'
+                        'Only one device is allowed per student for security.\n\n'
+                        'Please log out from the other device first, then try again.',
+                        style: TextStyle(fontSize: 13.5, height: 1.55),
+                      ),
+                      actions: [
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.redAccent,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('OK, UNDERSTOOD'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                return;
+              }
+            }
+
+            // Register this device as the active session in Firestore
+            FirebaseFirestore.instance
+                .collection('activeSessions')
+                .doc(regNo)
+                .set({
+              'registrationNo': regNo,
+              'deviceId': deviceId,
+              'studentName': student?.name ?? rawQuery,
+              'loginAt': DateTime.now().toIso8601String(),
+            }, SetOptions(merge: true)).catchError((_) {});
+          } catch (_) {
+            // If session check fails (e.g., no internet), allow login but do not block
+          }
+          // ── END SESSION ENFORCEMENT ────────────────────────────────────────────
+
           setState(() => _isLoading = false);
 
           student ??= H4Student(
@@ -90,7 +173,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
           // Save session to local storage
           try {
-            final prefs = await SharedPreferences.getInstance();
             await prefs.setBool('is_logged_in', true);
             await prefs.setString('logged_role', 'student');
             await prefs.setString('logged_student_reg', student.registrationNo);

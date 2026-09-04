@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:go_router/go_router.dart';
 import '../router/app_router.dart';
@@ -39,6 +40,15 @@ class AuthService {
 
     try {
       final prefs = await SharedPreferences.getInstance();
+      // Clear active session from Firestore so student can log in from any device after logout
+      final regNo = prefs.getString('logged_student_reg') ?? '';
+      if (regNo.isNotEmpty) {
+        FirebaseFirestore.instance
+            .collection('activeSessions')
+            .doc(regNo)
+            .delete()
+            .catchError((_) {});
+      }
       await prefs.setBool('is_logged_in', false);
       await prefs.remove('logged_role');
       await prefs.remove('logged_student_reg');
