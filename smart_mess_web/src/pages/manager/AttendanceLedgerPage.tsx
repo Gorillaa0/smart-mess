@@ -20,9 +20,34 @@ export interface DailyBillItem {
   dayTotal: number;
 }
 
+function getTodayLocalDate(): string {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getActiveMealType(): 'Breakfast' | 'Lunch' | 'Dinner' {
+  const mins = new Date().getHours() * 60 + new Date().getMinutes();
+  if (mins < 10 * 60 + 30) return 'Breakfast'; // before 10:30 AM
+  if (mins < 15 * 60 + 30) return 'Lunch';      // 10:30 AM - 3:30 PM
+  return 'Dinner';                               // after 3:30 PM
+}
+
+function getScanLocalDate(dateStr: string): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr.split('T')[0] || '';
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export const AttendanceLedgerPage: React.FC = () => {
-  const [selectedMeal, setSelectedMeal] = useState<'Breakfast' | 'Lunch' | 'Dinner'>('Lunch');
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [selectedMeal, setSelectedMeal] = useState<'Breakfast' | 'Lunch' | 'Dinner' | 'All'>('All');
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayLocalDate());
   const [statusFilter, setStatusFilter] = useState<string>('Present'); // Default to eaten only
   const [branchFilter, setBranchFilter] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -56,6 +81,7 @@ export const AttendanceLedgerPage: React.FC = () => {
               scans.push({
                 registrationNo: f.registrationNo?.stringValue || '',
                 rollNo: f.rollNo?.stringValue || '',
+                studentName: f.studentName?.stringValue || '',
                 mealType: f.mealType?.stringValue || '',
                 scannedAt: f.scannedAt?.stringValue || '',
                 id: f.id?.stringValue || ''
@@ -109,29 +135,45 @@ export const AttendanceLedgerPage: React.FC = () => {
   const attendanceMap: Record<string, { status: StudentMealStatus; scannedAt?: string; token?: string }> = {};
 
   H4_STUDENTS_LIST.forEach((s) => {
+    const sReg = s.registrationNo.trim().toLowerCase();
+    const sRoll = s.rollNo.trim().toLowerCase();
+
     const scanMatch = liveScans.find((sc) => {
-      const scanDate = sc.scannedAt ? sc.scannedAt.split('T')[0] : '';
-      return (
-        (sc.registrationNo === s.registrationNo || sc.rollNo === s.rollNo) &&
-        sc.mealType.toLowerCase() === selectedMeal.toLowerCase() &&
-        (scanDate === selectedDate || !scanDate)
-      );
+      const scReg = (sc.registrationNo || '').trim().toLowerCase();
+      const scRoll = (sc.rollNo || '').trim().toLowerCase();
+      const isStudent = scReg === sReg || scRoll === sRoll || scReg === sRoll || scRoll === sReg;
+      if (!isStudent) return false;
+
+      // Meal type match (All meals or specific meal)
+      const scMeal = (sc.mealType || '').trim().toLowerCase();
+      const isMeal = selectedMeal === 'All' || scMeal === selectedMeal.toLowerCase() || scMeal.includes(selectedMeal.toLowerCase());
+      if (!isMeal) return false;
+
+      // Date match in local timezone
+      const scanDate = getScanLocalDate(sc.scannedAt);
+      return scanDate === selectedDate || !scanDate;
     });
 
     const offMatch = liveMessOffs.find((mo) => {
-      return (
-        mo.registrationNo === s.registrationNo &&
-        (mo.mealType.toLowerCase() === selectedMeal.toLowerCase() || mo.mealType.toLowerCase() === 'full day') &&
-        mo.date === selectedDate
-      );
+      const moReg = (mo.registrationNo || '').trim().toLowerCase();
+      const isStudent = moReg === sReg || moReg === sRoll;
+      if (!isStudent) return false;
+
+      const moMeal = (mo.mealType || '').trim().toLowerCase();
+      const isMeal = selectedMeal === 'All' || moMeal === selectedMeal.toLowerCase() || moMeal === 'full day';
+      return isMeal && mo.date === selectedDate;
     });
 
     if (scanMatch) {
-      const scanTime = scanMatch.scannedAt ? new Date(scanMatch.scannedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Verified';
+      const d = scanMatch.scannedAt ? new Date(scanMatch.scannedAt) : null;
+      const scanTime = d && !isNaN(d.getTime())
+        ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : 'Verified';
+      const mealInitial = (scanMatch.mealType || selectedMeal || 'M')[0].toUpperCase();
       attendanceMap[s.registrationNo] = {
         status: 'present',
         scannedAt: scanTime,
-        token: `H4-${selectedMeal[0]}-${s.rollNo.slice(-4)}`
+        token: `H4-${mealInitial}-${s.rollNo.slice(-4)}`
       };
     } else if (offMatch) {
       attendanceMap[s.registrationNo] = {
@@ -322,18 +364,18 @@ export const AttendanceLedgerPage: React.FC = () => {
       <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         {/* Meal Type Tabs */}
         <div className="flex bg-gray-100 p-1 rounded-xl gap-1">
-          {(['Breakfast', 'Lunch', 'Dinner'] as const).map((meal) => (
+          {(['All', 'Breakfast', 'Lunch', 'Dinner'] as const).map((meal) => (
             <button
               key={meal}
               onClick={() => setSelectedMeal(meal)}
-              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                 selectedMeal === meal
                   ? 'bg-primary-800 text-white shadow-sm'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               <Utensils className="w-3.5 h-3.5" />
-              {meal}
+              {meal === 'All' ? 'All Meals' : meal}
             </button>
           ))}
         </div>
